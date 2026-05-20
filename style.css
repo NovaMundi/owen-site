@@ -1,0 +1,280 @@
+/* === THEMA === */
+:root {
+  --kleur-primair: #e8a000;
+  --kleur-accent: #e63946;
+  --kleur-achtergrond: #fffbf0;
+  --kleur-kaart: #ffffff;
+  --kleur-tekst: #1a1a2e;
+  --lettertype-titel: 'Boogaloo', cursive;
+  --lettertype-tekst: 'Nunito', sans-serif;
+  --rand-radius: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--lettertype-tekst);
+  background-color: var(--kleur-achtergrond);
+  color: var(--kleur-tekst);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === HEADER === */
+header {
+  background: linear-gradient(135deg, #e8a000, #e63946);
+  color: white;
+  text-align: center;
+  padding: 2rem 1rem 4.5rem;
+  clip-path: ellipse(100% 85% at 50% 0%);
+}
+
+.emoji-rij {
+  font-size: 1.4rem;
+  letter-spacing: 0.3rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.9;
+}
+
+header h1 {
+  font-family: var(--lettertype-titel);
+  font-size: clamp(2.2rem, 9vw, 4.5rem);
+  letter-spacing: 2px;
+  text-shadow: 3px 5px 10px rgba(0,0,0,0.2);
+  margin-bottom: 0.4rem;
+}
+
+.tagline {
+  font-size: 1.05rem;
+  opacity: 0.92;
+  font-weight: 700;
+}
+
+/* === LAYOUT === */
+main {
+  max-width: 680px;
+  width: 100%;
+  margin: -2.5rem auto 2rem;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1;
+}
+
+/* === KAARTEN === */
+.kaart {
+  background: var(--kleur-kaart);
+  border-radius: var(--rand-radius);
+  padding: 1.75rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.kaart h2 {
+  font-family: var(--lettertype-titel);
+  font-size: 1.7rem;
+  letter-spacing: 1px;
+  color: var(--kleur-primair);
+  margin-bottom: 1rem;
+}
+
+/* === PROFIEL === */
+.profiel-kaart { display: flex; gap: 1.5rem; align-items: center; }
+
+.profielfoto {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 5px solid var(--kleur-primair);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px var(--kleur-accent), 0 4px 16px rgba(232,160,0,0.3);
+}
+
+.over-mij p { line-height: 1.6; font-size: 1rem; }
+
+/* === GRAPJE VAN DE DAG === */
+.grapje-kaart {
+  background: linear-gradient(135deg, #fffbf0, #fff3cc);
+  border: 2px solid #ffd86e;
+}
+
+.grapje-kaart h2 { color: #b37200; }
+
+.grapje-teller {
+  font-size: 0.8rem;
+  color: #999;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.grapje-vraag {
+  font-family: var(--lettertype-titel);
+  font-size: 1.4rem;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+  margin-bottom: 1.25rem;
+  color: var(--kleur-tekst);
+}
+
+.onthul-knop, .willekeurig-knop {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 50px;
+  font-family: var(--lettertype-tekst);
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.onthul-knop {
+  background: var(--kleur-accent);
+  color: white;
+  box-shadow: 0 4px 12px rgba(230,57,70,0.35);
+}
+.onthul-knop:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(230,57,70,0.45); }
+
+.willekeurig-knop {
+  background: var(--kleur-primair);
+  color: white;
+  box-shadow: 0 4px 12px rgba(232,160,0,0.35);
+  margin-top: 1rem;
+}
+.willekeurig-knop:hover { transform: translateY(-2px); }
+
+.grapje-antwoord {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: white;
+  border-radius: 12px;
+  border-left: 4px solid var(--kleur-accent);
+  font-family: var(--lettertype-titel);
+  font-size: 1.3rem;
+  letter-spacing: 0.5px;
+  color: #b30000;
+  animation: inFade 0.3s ease;
+}
+
+@keyframes inFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.verborgen { display: none; }
+
+/* === ILLUSIE VAN DE DAG === */
+.illusie-kaart {
+  background: linear-gradient(135deg, #1a1a2e, #2d2d4e);
+  color: #f0f0f0;
+  border: 2px solid #4a4a7a;
+}
+
+.illusie-kaart h2 {
+  color: #c8b8ff;
+}
+
+.illusie-naam {
+  font-family: var(--lettertype-titel);
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+.illusie-afbeelding-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  margin-bottom: 1.25rem;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1rem;
+  border: 2px solid rgba(255,255,255,0.15);
+}
+
+.illusie-afbeelding {
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.illusie-emoji-fallback {
+  font-size: 5rem;
+  animation: pulsen-zacht 2s ease-in-out infinite;
+}
+
+@keyframes pulsen-zacht {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.1); opacity: 0.7; }
+}
+
+.illusie-beschrijving {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #e0d0ff;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+.illusie-onthul-knop, .illusie-willekeurig-knop {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 50px;
+  font-family: var(--lettertype-tekst);
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.illusie-onthul-knop {
+  background: #7b5ea7;
+  color: white;
+  box-shadow: 0 4px 14px rgba(123,94,167,0.5);
+}
+.illusie-onthul-knop:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(123,94,167,0.6); }
+
+.illusie-willekeurig-knop {
+  background: #4a4a7a;
+  color: #c8b8ff;
+  margin-top: 1rem;
+}
+.illusie-willekeurig-knop:hover { transform: translateY(-2px); }
+
+.illusie-uitleg {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255,255,255,0.07);
+  border-radius: 12px;
+  border-left: 4px solid #7b5ea7;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: #e8e0ff;
+}
+
+/* === FAVORIETEN === */
+.favorieten-lijst { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+.favorieten-lijst li {
+  background: var(--kleur-achtergrond);
+  border-radius: 12px;
+  padding: 0.6rem 1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+/* === FOOTER === */
+footer { text-align: center; padding: 1.5rem; font-size: 0.85rem; color: #999; }
+
+/* === MOBIEL === */
+@media (max-width: 480px) {
+  .profiel-kaart { flex-direction: column; text-align: center; }
+  .profielfoto { width: 100px; height: 100px; }
+}

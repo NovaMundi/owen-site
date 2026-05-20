@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Owen de Moppenkoning</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <div class="emoji-rij" aria-hidden="true">😂 👑 🤣 😂 👑 🤣 😂 👑 🤣 😂 👑 🤣</div>
+    <h1>Owen de Moppenkoning!</h1>
+    <p class="tagline">De beste grappen van het hele internet</p>
+  </header>
+
+  <main>
+
+    <!-- FOTO & OVER MIJ -->
+    <section class="kaart profiel-kaart">
+      <img src="photo.jpeg" alt="Owen" class="profielfoto">
+      <div class="over-mij">
+        <h2>Over mij</h2>
+        <p>Hoi! Ik ben Owen de Moppenkoning. Ik ben bijna 8 jaar en ik maak de beste grappen van de hele wereld. Geloof je me niet? Kijk maar hieronder! 👇</p>
+      </div>
+    </section>
+
+    <!-- GRAPJE VAN DE DAG -->
+    <section class="kaart grapje-kaart">
+      <h2>😂 Grapje van de dag</h2>
+      <p class="grapje-teller" id="grapje-teller">Grap #1</p>
+      <p class="grapje-vraag" id="grapje-vraag">Laden...</p>
+      <button class="onthul-knop" id="onthul-knop">Laat me de grap zien! 👇</button>
+      <p class="grapje-antwoord verborgen" id="grapje-antwoord"></p>
+      <button class="willekeurig-knop verborgen" id="willekeurig-knop">Nog een grapje! 🎲</button>
+    </section>
+
+    <!-- ILLUSIE VAN DE DAG -->
+    <section class="kaart illusie-kaart">
+      <h2>👁️ Illusie van de dag</h2>
+      <p class="illusie-naam" id="illusie-naam">Laden...</p>
+      <div class="illusie-afbeelding-wrapper">
+        <img class="illusie-afbeelding verborgen" id="illusie-afbeelding" alt="">
+        <div class="illusie-emoji-fallback" id="illusie-emoji">👁️</div>
+      </div>
+      <p class="illusie-beschrijving" id="illusie-beschrijving"></p>
+      <button class="illusie-onthul-knop" id="illusie-onthul-knop">Zie je het? Klik voor de uitleg! 🧠</button>
+      <p class="illusie-uitleg verborgen" id="illusie-uitleg"></p>
+      <button class="illusie-willekeurig-knop verborgen" id="illusie-willekeurig-knop">Nog een illusie! 🔮</button>
+    </section>
+
+    <!-- FAVORIETEN -->
+    <section class="kaart">
+      <h2>⭐ Mijn favorieten</h2>
+      <ul class="favorieten-lijst">
+        <li>😂 Grapjes maken</li>
+        <li>📚 Lezen</li>
+        <li>🎮 Gamen</li>
+        <li>👑 Moppenkoning zijn</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Gemaakt door Owen de Moppenkoning en papa &nbsp;•&nbsp; 2026 👑</p>
+  </footer>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
