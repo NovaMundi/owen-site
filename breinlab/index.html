@@ -1,0 +1,2210 @@
+﻿<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brein Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --yellow:#FFD93D; --orange:#FF6B35; --blue:#4ECDC4; --purple:#A855F7;
+    --pink:#FF6B9D; --green:#6BCB77; --dark:#1a1a2e; --bg:#FFF9F0;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--dark);overflow-x:hidden;padding-bottom:96px;}
+  body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(circle at 10% 20%,rgba(78,205,196,0.08) 0%,transparent 50%),
+    radial-gradient(circle at 90% 80%,rgba(255,107,53,0.08) 0%,transparent 50%);}
+
+  .topbar{position:fixed;top:10px;left:0;right:0;z-index:1001;display:flex;justify-content:space-between;padding:0 12px;pointer-events:none;}
+  .topbar > div{display:flex;gap:8px;pointer-events:auto;}
+  .chip-btn{display:flex;align-items:center;gap:.3rem;background:#fff;border:2.5px solid var(--dark);
+    border-radius:30px;padding:.4rem .8rem;font-family:'Fredoka One',cursive;font-size:.8rem;color:var(--dark);
+    cursor:pointer;box-shadow:3px 3px 0 var(--dark);}
+  .chip-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--dark);}
+
+  .hero{position:relative;text-align:center;padding:3.5rem 1.5rem 1.5rem;z-index:1;}
+  .hero-badge{display:inline-block;background:var(--yellow);color:var(--dark);font-family:'Fredoka One',cursive;
+    font-size:.85rem;padding:.3rem 1rem;border-radius:20px;border:2.5px solid var(--dark);margin-bottom:1rem;
+    transform:rotate(-2deg);box-shadow:3px 3px 0 var(--dark);}
+  .hero h1{font-family:'Fredoka One',cursive;font-size:clamp(2.2rem,7vw,3.6rem);line-height:1.1;
+    text-shadow:4px 4px 0 var(--yellow);margin-bottom:.5rem;}
+  .hero p{font-weight:700;color:#555;max-width:520px;margin:0 auto 1.5rem;}
+  .mascotte{width:120px;height:120px;margin:0 auto 1.25rem;position:relative;animation:float 3s ease-in-out infinite;}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  .mascotte-body{width:100%;height:100%;background:var(--yellow);border:3.5px solid var(--dark);
+    border-radius:50% 50% 50% 50%/60% 60% 40% 40%;display:flex;align-items:center;justify-content:center;
+    font-size:3rem;box-shadow:5px 5px 0 var(--dark);overflow:hidden;}
+  .mascotte-body img{width:88%;height:88%;object-fit:contain;}
+
+  .badge-bar{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin:.5rem 0 1.5rem;position:relative;z-index:1;}
+  .badge{width:46px;height:46px;border-radius:50%;border:3px solid var(--dark);display:flex;align-items:center;
+    justify-content:center;font-size:1.3rem;background:#ddd;opacity:.4;transition:all .4s;box-shadow:3px 3px 0 var(--dark);}
+  .badge.earned{background:var(--yellow);opacity:1;transform:scale(1.08);}
+
+  .nav{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;padding:0 1rem 1.5rem;position:relative;z-index:1;}
+  .nav-btn{font-family:'Fredoka One',cursive;font-size:.92rem;padding:.55rem 1.1rem;border-radius:30px;
+    border:2.5px solid var(--dark);cursor:pointer;box-shadow:3px 3px 0 var(--dark);background:#fff;transition:transform .15s,box-shadow .15s;}
+  .nav-btn:hover,.nav-btn.active{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--dark);}
+  .nav-btn.active{font-weight:900;}
+
+  .content{max-width:760px;margin:0 auto;padding:0 1.25rem 3rem;position:relative;z-index:1;}
+  .module{display:none;animation:slideIn .4s ease;}
+  .module.active{display:block;}
+  @keyframes slideIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+  .card{background:#fff;border:3px solid var(--dark);border-radius:20px;padding:1.75rem;margin-bottom:1.5rem;
+    box-shadow:6px 6px 0 var(--dark);position:relative;overflow:hidden;}
+  .card-title{font-family:'Fredoka One',cursive;font-size:1.5rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.5rem;}
+  .card p{font-size:1.02rem;line-height:1.65;color:#333;}
+  .card p+p{margin-top:.6rem;}
+  .hl{background:var(--yellow);border:2.5px solid var(--dark);border-radius:12px;padding:.9rem 1.1rem;margin:1rem 0;font-weight:700;}
+  .speech{background:#fff;border:3px solid var(--dark);border-radius:16px;padding:1rem 1.25rem;margin:0 auto 1.5rem;
+    max-width:540px;position:relative;font-weight:700;text-align:center;box-shadow:5px 5px 0 var(--dark);}
+  .speech::after{content:'';position:absolute;top:-14px;left:50%;transform:translateX(-50%);border:8px solid transparent;border-bottom-color:#fff;}
+  .speech::before{content:'';position:absolute;top:-20px;left:50%;transform:translateX(-50%);border:10px solid transparent;border-bottom-color:var(--dark);}
+
+  .gbtn{font-family:'Fredoka One',cursive;font-size:1rem;padding:.65rem 1.4rem;border-radius:30px;border:2.5px solid var(--dark);
+    cursor:pointer;margin:.3rem;box-shadow:4px 4px 0 var(--dark);transition:transform .1s,box-shadow .1s;background:#fff;}
+  .gbtn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--dark);}
+  .gbtn.primary{background:var(--orange);color:#fff;}
+  .gbtn.brake{background:var(--blue);}
+  .gbtn.touch{touch-action:none;}
+
+  /* race game */
+  .car-box{position:relative;height:120px;border-radius:16px;border:2.5px solid var(--dark);overflow:hidden;margin:1.25rem 0;
+    background:linear-gradient(to bottom,#87CEEB 60%,#90EE90 60%);}
+  .road{position:absolute;bottom:0;left:0;right:0;height:40%;background:#555;}
+  .road-line{position:absolute;top:50%;height:4px;background:#fff;transform:translateY(-50%);animation:roadMove .5s linear infinite;animation-play-state:paused;}
+  .tree{position:absolute;bottom:39%;font-size:1.5rem;line-height:1;z-index:0;transform:translateX(-50%);filter:drop-shadow(0 1px 1px rgba(0,0,0,.15));pointer-events:none;}
+  .cloud{position:absolute;font-size:1.4rem;z-index:0;opacity:.85;transform:translateX(-50%);pointer-events:none;}
+  @keyframes roadMove{from{transform:translateY(-50%) translateX(0)}to{transform:translateY(-50%) translateX(-100px)}}
+  .car{position:absolute;bottom:12px;left:5%;z-index:2;}
+  .car img{height:50px;width:auto;display:block;}
+  .stopzone{position:absolute;bottom:0;left:56%;width:24%;height:40%;z-index:1;
+    background:repeating-linear-gradient(45deg,rgba(107,203,119,.6) 0 9px,rgba(107,203,119,.25) 9px 18px);
+    border-left:3px dashed #2EA86B;border-right:3px dashed #2EA86B;}
+  .stopzone .flag{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:1.3rem;}
+  .speedlbl{position:absolute;top:8px;right:12px;font-family:'Fredoka One',cursive;font-size:.85rem;background:#fff;padding:2px 8px;border-radius:8px;border:2px solid var(--dark);}
+  .meter{height:22px;background:#eee;border-radius:12px;border:2.5px solid var(--dark);overflow:hidden;margin:.4rem 0 1rem;position:relative;}
+  .meter > div{height:100%;border-radius:10px;background:linear-gradient(to right,var(--green),var(--orange));width:0%;transition:width .12s linear;}
+  .stop-shadow{position:absolute;bottom:0;left:160%;width:19%;height:40%;z-index:1;border:3px dashed var(--orange);border-radius:4px;background:repeating-linear-gradient(45deg,rgba(255,107,53,.18),rgba(255,107,53,.18) 6px,transparent 6px,transparent 12px);box-sizing:border-box;}
+  .race-warn{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--yellow);border:2px solid var(--dark);border-radius:20px;padding:2px 12px;font-weight:800;font-size:.78rem;opacity:0;transition:opacity .2s;z-index:3;}
+
+  /* tabs game */
+  .tabs-area{min-height:150px;border:2.5px solid var(--dark);border-radius:14px;background:#1a1a2e;position:relative;margin:1rem 0;overflow:hidden;}
+  .tab-item{position:absolute;background:#fff;border:2.5px solid var(--dark);border-radius:10px;padding:.4rem .7rem;font-weight:800;font-size:.85rem;cursor:pointer;box-shadow:2px 2px 0 #000;}
+  .tab-item.main{background:var(--yellow);left:50%;top:50%;transform:translate(-50%,-50%);cursor:default;}
+  .tab-item.distract{background:#FFD6D6;}
+
+  /* neuron game */
+  .neuron-canvas{width:100%;height:260px;position:relative;background:#1a1a2e;border-radius:16px;border:3px solid var(--dark);overflow:hidden;margin:1rem 0;}
+  .conn-svg{position:absolute;inset:0;width:100%;height:100%;}
+  .neuron{position:absolute;width:58px;height:58px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;
+    justify-content:center;font-size:1.6rem;cursor:pointer;transform:translate(-50%,-50%);transition:box-shadow .2s;
+    box-shadow:0 0 12px rgba(255,255,255,.3);user-select:none;z-index:3;}
+  .neuron.lit{box-shadow:0 0 22px currentColor,0 0 40px currentColor;}
+  .neuron.next{animation:nodePulse 1.1s ease-in-out infinite;}
+  @keyframes nodePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.85)}50%{box-shadow:0 0 0 10px rgba(255,255,255,0)}}
+  #nd0{background:#A855F7;color:#A855F7;}#nd1{background:#4ECDC4;color:#4ECDC4;}
+  #nd2{background:#FF6B35;color:#FF6B35;}#nd3{background:#6BCB77;color:#6BCB77;font-size:1.8rem;}
+  .messenger{position:absolute;width:56px;height:56px;background:none;border:none;
+    display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;
+    transform:translate(-50%,-50%);z-index:4;}
+  .messenger img{width:56px;height:56px;object-fit:contain;transform:scale(1);transform-origin:center;transition:transform .22s ease-out;}
+  .messenger.stationary img{transform:scale(2.2);}
+  .neuron-inst{color:rgba(255,255,255,.75);text-align:center;font-size:.85rem;position:absolute;bottom:8px;left:0;right:0;padding:0 10px;}
+  .neuron-story{font-size:.88rem;color:#333;background:#f0f7ff;border-radius:10px;padding:.65rem .9rem;margin:.5rem 0;border-left:3px solid var(--blue);display:none;line-height:1.5;}
+  .hop-ring{position:absolute;width:84px;height:84px;border-radius:50%;border:4px solid #FFD93D;pointer-events:none;opacity:0;z-index:5;transform:translate(-50%,-50%) scale(1.3);}
+  .dop-toggle{display:flex;align-items:center;gap:1rem;margin:1rem 0;padding:.9rem;background:#f6f6f6;border-radius:12px;border:2.5px solid var(--dark);}
+  .switch{position:relative;width:58px;height:30px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;inset:0;background:#ccc;border-radius:30px;cursor:pointer;border:2px solid var(--dark);transition:background .3s;}
+  .slider::before{content:'';position:absolute;width:22px;height:22px;left:2px;top:2px;background:#fff;border-radius:50%;border:1.5px solid var(--dark);transition:transform .3s;}
+  input:checked+.slider{background:var(--green);}
+  input:checked+.slider::before{transform:translateX(26px);}
+
+  /* radio focus */
+  .radio-track{height:50px;border-radius:25px;border:3px solid var(--dark);position:relative;cursor:pointer;
+    background:linear-gradient(to right,#ff4444,#ffaa00,#44bb44);}
+  .radio-knob{position:absolute;width:42px;height:42px;background:#fff;border-radius:50%;border:3px solid var(--dark);
+    top:50%;transform:translateY(-50%);left:5%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;
+    box-shadow:3px 3px 0 var(--dark);transition:left .25s;}
+  .focusbar{height:30px;background:#eee;border-radius:15px;border:2.5px solid var(--dark);overflow:hidden;margin-top:.5rem;}
+  .focusbar>div{height:100%;background:linear-gradient(to right,var(--purple),var(--blue));width:20%;display:flex;align-items:center;padding-left:10px;color:#fff;font-weight:800;font-size:.8rem;transition:width .4s;}
+  .blur-demo{background:#EAF6FF;border:2.5px solid var(--dark);border-radius:14px;padding:1.4rem 1rem;text-align:center;margin:.5rem 0;}
+  .blur-text{font-family:'Fredoka One',cursive;font-size:1.4rem;color:var(--dark);transition:filter .15s;will-change:filter;}
+  .blur-state{text-align:center;font-weight:800;margin-bottom:.5rem;}
+  .sch svg{display:block;margin:0 auto 4px;}
+
+  /* timeline */
+  .tl{position:relative;height:70px;background:#1a1a2e;border-radius:14px;border:3px solid var(--dark);margin:1rem 0;}
+  .tl-base{position:absolute;left:0;right:0;top:50%;height:2px;background:rgba(255,255,255,.2);}
+  .tl-dot{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;border:2px solid #fff;transform:translate(-50%,-50%);}
+  .tl-lbl{position:absolute;top:calc(50% + 12px);transform:translateX(-50%);font-size:.62rem;color:rgba(255,255,255,.8);white-space:nowrap;}
+  .tl-reb{position:absolute;top:8px;height:54px;border-radius:8px;background:rgba(255,107,157,.18);}
+  .schedule{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.5rem;margin-top:1rem;}
+  .sch{background:#fff;border:2.5px solid var(--dark);border-radius:12px;padding:.5rem;text-align:center;font-size:.78rem;font-weight:700;box-shadow:3px 3px 0 var(--dark);}
+  .sch b{display:block;font-family:'Fredoka One',cursive;font-size:.95rem;}
+
+  /* feeling */
+  .feel-opts{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem;}
+  .feel{background:#fff;border:2.5px solid var(--dark);border-radius:12px;padding:.5rem .9rem;cursor:pointer;font-weight:700;
+    font-size:.9rem;box-shadow:3px 3px 0 var(--dark);transition:transform .15s,box-shadow .15s;}
+  .feel:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--dark);}
+  .feel.sel{background:var(--yellow);}
+  .feel-resp{margin-top:1rem;padding:1rem;background:var(--bg);border:2.5px solid var(--yellow);border-radius:12px;font-weight:700;display:none;}
+
+  /* powers + identity */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin:1.25rem 0;}
+  .power{background:#fff;border:3px solid var(--dark);border-radius:16px;padding:1.1rem 1rem;text-align:center;cursor:pointer;
+    box-shadow:5px 5px 0 var(--dark);transition:transform .2s,box-shadow .2s;}
+  .power:hover{transform:translate(-3px,-3px);box-shadow:8px 8px 0 var(--dark);}
+  .power .pe{font-size:2.4rem;display:block;margin-bottom:.4rem;}
+  .power .pn{font-family:'Fredoka One',cursive;font-size:1rem;}
+  .power .pd{font-size:.78rem;color:#555;margin-top:.3rem;display:none;}
+  .power.open .pd{display:block;}
+  .power .ph{display:none;margin-top:.6rem;padding:.5rem;border-radius:10px;background:rgba(0,0,0,.06);border:2px dashed var(--dark);}
+  .power.open .ph{display:block;}
+  .power .ph .hn{font-family:'Fredoka One',cursive;font-size:.85rem;}
+  .power .ph .hl2{font-size:.72rem;color:#444;font-weight:700;margin-top:2px;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin:1rem 0;}
+  .chip{background:#fff;border:2.5px solid var(--dark);border-radius:30px;padding:.5rem .9rem;font-weight:700;font-size:.9rem;
+    cursor:pointer;box-shadow:3px 3px 0 var(--dark);transition:transform .15s,box-shadow .15s,background .2s;user-select:none;}
+  .chip:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--dark);}
+  .chip.claimed{background:var(--yellow);}
+  .chip.adhd{border-style:dashed;border-color:var(--blue);}
+  .chip.adhd.claimed{background:#D4F4F2;}
+  .you-visual{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;align-items:center;margin:1.25rem 0;}
+  .you-piece{border:2.5px solid var(--dark);border-radius:12px;padding:.5rem .8rem;font-weight:800;font-size:.85rem;box-shadow:3px 3px 0 var(--dark);}
+  .you-big{background:var(--yellow);font-family:'Fredoka One',cursive;font-size:1.05rem;padding:.7rem 1.2rem;}
+  .you-small{background:#D4F4F2;font-size:.72rem;border-style:dashed;}
+  .count{text-align:center;font-weight:800;margin-top:.5rem;color:var(--orange);min-height:1.3rem;}
+
+  .progress{background:#fff;border:2.5px solid var(--dark);border-radius:30px;height:16px;margin:.75rem 0;overflow:hidden;box-shadow:3px 3px 0 var(--dark);}
+  .progress>div{height:100%;background:linear-gradient(to right,var(--blue),var(--purple));width:0%;transition:width .5s;}
+
+  /* moedbar */
+  .moedbar{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;width:calc(100% - 24px);max-width:680px;
+    background:linear-gradient(135deg,#FFF4D4,#FFE0E0);border:3px solid var(--dark);border-radius:16px;box-shadow:4px 4px 0 var(--dark);
+    padding:.6rem .7rem;z-index:1000;display:flex;align-items:center;gap:.55rem;}
+  .moedbar .heart{font-size:1.3rem;}
+  .moedbar .mtext{flex:1;font-weight:800;font-size:.88rem;line-height:1.3;transition:opacity .18s;}
+  .mbtn{flex-shrink:0;width:34px;height:34px;border-radius:50%;border:2.5px solid var(--dark);background:#fff;cursor:pointer;
+    font-size:1rem;display:flex;align-items:center;justify-content:center;}
+  .mbtn.refresh{background:var(--pink);}
+  .moedmini{position:fixed;right:14px;bottom:14px;width:54px;height:54px;border-radius:50%;border:3px solid var(--dark);
+    background:linear-gradient(135deg,#FFF4D4,#FFD6E8);box-shadow:4px 4px 0 var(--dark);cursor:pointer;font-size:1.6rem;
+    z-index:1000;display:none;align-items:center;justify-content:center;animation:float 3s ease-in-out infinite;}
+  .moedbar.hidden{display:none;}.moedmini.show{display:flex;}
+
+  /* setup overlay */
+  .overlay{position:fixed;inset:0;background:rgba(26,26,46,.75);z-index:2000;display:none;align-items:flex-start;justify-content:center;
+    overflow-y:auto;padding:2rem 1rem;}
+  .overlay.show{display:flex;}
+  .setup{background:var(--bg);border:3px solid var(--dark);border-radius:20px;max-width:560px;width:100%;padding:1.5rem;box-shadow:8px 8px 0 var(--dark);}
+  .setup h2{font-family:'Fredoka One',cursive;font-size:1.4rem;margin-bottom:.25rem;}
+  .setup .sub{color:#666;font-size:.85rem;margin-bottom:1rem;}
+  .field{margin-bottom:1rem;}
+  .field label{font-weight:800;font-size:.9rem;display:block;margin-bottom:.3rem;}
+  .field input[type=text],.field input[type=number],.field select,.field textarea{
+    width:100%;padding:.6rem .75rem;border:2.5px solid var(--dark);border-radius:10px;font-family:'Nunito';font-size:.95rem;background:#fff;}
+  .field textarea{min-height:64px;resize:vertical;}
+  .pick{display:flex;flex-wrap:wrap;gap:.4rem;}
+  .pick .opt{border:2.5px solid var(--dark);border-radius:20px;padding:.35rem .7rem;font-weight:700;font-size:.82rem;cursor:pointer;background:#fff;user-select:none;}
+  .pick .opt.on{background:var(--yellow);}
+  .dose-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;}
+  .dose-row input{flex:1;}
+  .setup .row{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem;}
+
+  /* CALM MODE */
+  body.calm{--yellow:#EFE1AC;--orange:#DE9270;--blue:#93C9C3;--purple:#BBA6D6;--pink:#E0A6BC;--green:#A9CDAB;--bg:#F3F1EA;}
+  body.calm::before{opacity:.3;}
+  body.calm .mascotte,body.calm .moedmini,body.calm .neuron.next,body.calm .road-line,body.calm .hero-scene *{animation:none !important;}
+  body.calm .card,body.calm .speech,body.calm .power{box-shadow:0 5px 14px rgba(26,26,46,.12) !important;}
+  body.calm .gbtn,body.calm .nav-btn,body.calm .chip,body.calm .feel,body.calm .badge,body.calm .chip-btn{box-shadow:2px 2px 0 rgba(26,26,46,.35);}
+  @media (prefers-reduced-motion:reduce){.mascotte,.moedmini,.neuron.next,.road-line{animation:none !important;}}
+
+  /* child avatar (top circle) */
+  .child-avatar-wrap{width:110px;height:110px;margin:0 auto .75rem;position:relative;animation:float 3s ease-in-out infinite;}
+  .child-avatar{width:100%;height:100%;border-radius:50%;border:3.5px solid var(--dark);background:var(--yellow);
+    box-shadow:5px 5px 0 var(--dark);display:flex;align-items:center;justify-content:center;
+    font-family:'Fredoka One',cursive;font-size:2.6rem;overflow:hidden;}
+  .child-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+  /* mascot chat row */
+  .mascot-row{display:flex;align-items:center;gap:1rem;max-width:580px;margin:.2rem auto 1.5rem;padding:0 1rem;position:relative;z-index:1;}
+  .mascot-avatar{flex-shrink:0;width:140px;animation:float 3s ease-in-out infinite;}
+  .mascot-avatar img{width:100%;height:auto;display:block;object-fit:contain;filter:drop-shadow(2px 4px 8px rgba(0,0,0,.2));}
+  .mascot-dialog{flex:1;min-width:0;}
+  .mascot-name{font-size:.68rem;color:#888;font-weight:800;margin-bottom:.2rem;letter-spacing:.04em;}
+  .mascot-bubble{margin:0;max-width:none;text-align:left;font-size:.9rem;}
+  .mascot-bubble::before{top:50%;left:-20px;transform:translateY(-50%);border-color:transparent var(--dark) transparent transparent;border-bottom-color:transparent;}
+  .mascot-bubble::after{top:50%;left:-14px;transform:translateY(-50%);border-color:transparent #fff transparent transparent;border-bottom-color:transparent;}
+  #mascotSpeech{transition:opacity .22s;}
+  #mascotSpeech.celebrate{background:var(--yellow);}
+  #mascotSpeech.celebrate::after{border-color:transparent var(--yellow) transparent transparent;}
+
+  /* intro overlay */
+  .intro-ov{position:fixed;inset:0;background:linear-gradient(160deg,#0f0c29 0%,#1a1a5e 45%,#24243e 100%);z-index:3000;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;
+    transition:opacity .45s;}
+  .intro-ov.out{opacity:0;pointer-events:none;}
+  .intro-ov.hidden{display:none;}
+  .intro-stars{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .intro-star{position:absolute;border-radius:50%;background:#fff;animation:twinkle 2s ease-in-out infinite;}
+  @keyframes twinkle{0%,100%{opacity:.15}50%{opacity:.9}}
+  .intro-neuro{width:min(220px,55vw);height:auto;margin-bottom:.5rem;animation:float 3s ease-in-out infinite;
+    filter:drop-shadow(0 6px 28px rgba(78,205,196,.35));}
+  .intro-name{font-family:'Fredoka One',cursive;font-size:.8rem;color:rgba(255,255,255,.5);letter-spacing:.08em;margin-bottom:.75rem;}
+  .intro-bubble{background:#fff;border-radius:22px;padding:1.1rem 1.4rem;max-width:420px;width:100%;
+    text-align:center;font-weight:700;font-size:1rem;line-height:1.6;color:#1a1a2e;
+    box-shadow:0 8px 32px rgba(0,0,0,.35);margin-bottom:1.25rem;min-height:4.5rem;
+    transition:opacity .2s;}
+  .intro-dots{display:flex;gap:.5rem;justify-content:center;margin-bottom:1.25rem;}
+  .intro-dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.25);transition:background .25s,transform .25s;}
+  .intro-dot.on{background:#FFD93D;transform:scale(1.25);}
+  .intro-btn{font-family:'Fredoka One',cursive;font-size:1.05rem;padding:.75rem 2rem;border-radius:30px;
+    border:3px solid var(--dark);cursor:pointer;box-shadow:4px 4px 0 rgba(0,0,0,.4);
+    background:var(--yellow);color:var(--dark);transition:transform .1s,box-shadow .1s;}
+  .intro-btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 rgba(0,0,0,.4);}
+  .intro-skip{color:rgba(255,255,255,.4);font-size:.78rem;cursor:pointer;margin-top:.8rem;text-decoration:underline;}
+  /* intro: taal- en profielstap */
+  .intro-lang-wrap{display:flex;gap:.75rem;justify-content:center;width:100%;padding:.25rem 0;}
+  .intro-lang-card{flex:1;max-width:155px;padding:1rem .5rem;border-radius:18px;border:3px solid var(--dark);background:#fff;cursor:pointer;text-align:center;font-family:'Fredoka One',cursive;font-size:1rem;box-shadow:4px 4px 0 rgba(0,0,0,.35);transition:transform .1s,box-shadow .1s,background .15s;color:var(--dark);}
+  .intro-lang-card:active,.intro-lang-card.on{transform:translate(2px,2px);box-shadow:2px 2px 0 rgba(0,0,0,.35);background:var(--yellow);}
+  .intro-lang-card .flag{font-size:2rem;display:block;margin-bottom:.3rem;}
+  .intro-bubble.form-mode{text-align:left;font-weight:400;font-size:.92rem;padding:1rem 1.1rem;}
+  .intro-field{margin-bottom:.8rem;}
+  .intro-field label{display:block;font-size:.72rem;font-weight:800;color:#666;margin-bottom:.28rem;letter-spacing:.03em;}
+  .intro-input,.intro-select{width:100%;padding:.52rem .7rem;border:2.5px solid var(--dark);border-radius:12px;font-family:'Fredoka One',cursive;font-size:.9rem;background:#fff;color:var(--dark);box-sizing:border-box;-webkit-appearance:none;}
+  .intro-select{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231a1a2e'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .7rem center;padding-right:2rem;}
+
+  /* module completion button */
+  .mod-done-wrap{margin:1.5rem 0 .5rem;text-align:center;}
+  .done-btn{font-family:'Fredoka One',cursive;font-size:1rem;padding:.8rem 1.6rem;border-radius:30px;border:3px solid var(--dark);cursor:pointer;box-shadow:4px 4px 0 var(--dark);background:var(--yellow);transition:transform .1s,box-shadow .1s;width:100%;display:block;}
+  .done-btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--dark);}
+  .done-check{display:none;font-family:'Fredoka One',cursive;font-size:1rem;color:var(--green);font-weight:800;padding:.6rem;text-align:center;}
+  .mod-done-wrap.completed .done-btn{display:none;}
+  .mod-done-wrap.completed .done-check{display:block;}
+
+  .confetti-piece{position:fixed;top:0;pointer-events:none;z-index:9999;animation:cfall 3s ease-in forwards;}
+  @keyframes cfall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}80%{opacity:1}100%{transform:translateY(105vh) rotate(900deg);opacity:0}}
+  @media(max-width:500px){.grid{grid-template-columns:1fr 1fr;}}
+
+  /* tts button */
+  .tts-btn{width:26px;height:26px;border-radius:50%;border:2px solid var(--dark);background:#fff;cursor:pointer;font-size:.7rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;}
+  .tts-btn.speaking{background:var(--blue);}
+  body.calm .tts-btn{border-color:rgba(26,26,46,.35);}
+
+  /* guide overlay */
+  .guide-overlay{position:fixed;inset:0;background:rgba(26,26,46,.75);z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2rem 1rem;}
+  .guide-overlay.show{display:flex;}
+  .guide-box{background:var(--bg);border:3px solid var(--dark);border-radius:20px;max-width:600px;width:100%;padding:1.5rem;box-shadow:8px 8px 0 var(--dark);}
+  .guide-mod{margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:2px dashed #ddd;}
+  .guide-mod:last-child{border-bottom:none;margin-bottom:0;}
+  .guide-mod h3{font-family:'Fredoka One',cursive;font-size:1.05rem;margin-bottom:.5rem;}
+  .guide-q{background:#fff;border:2px solid var(--dark);border-radius:10px;padding:.55rem .85rem;margin:.35rem 0;font-size:.88rem;font-weight:700;}
+  .guide-q::before{content:'💬 ';}
+
+  /* ===== HERO SCENES ===== */
+  .hero-scene{position:relative;width:100%;height:165px;border-radius:12px;overflow:hidden;margin:.75rem 0 .25rem;display:none;}
+  .power.open .hero-scene{display:block;}
+  .hs{position:absolute;line-height:1;pointer-events:none;user-select:none;}
+  body.calm .hero-scene *{animation-play-state:paused !important;}
+  @media(prefers-reduced-motion:reduce){.hero-scene *{animation-play-state:paused !important;}}
+
+  /* Scene 0 — Rakettank: ruimtelancering */
+  .sc0{background:radial-gradient(ellipse at 40% 60%,#1a0050 0%,#050010 100%);}
+  @keyframes sc0Rkt{0%{transform:translate(0,0) rotate(-30deg);opacity:1}85%{opacity:1}100%{transform:translate(80px,-200px) rotate(-30deg);opacity:0}}
+  @keyframes sc0Star{0%{transform:translateX(0);opacity:1}100%{transform:translateX(-270px);opacity:0}}
+  @keyframes sc0Flame{0%,100%{transform:scale(.8) rotate(150deg)}50%{transform:scale(1.6) rotate(150deg)}}
+  .sc0 .hs-rkt{left:35%;top:42%;font-size:3.5rem;animation:sc0Rkt 1.8s ease-in infinite;}
+  .sc0 .hs-flm{left:25%;top:66%;font-size:1.8rem;animation:sc0Flame .28s ease-in-out infinite;}
+  .sc0 .hs-s1{left:92%;top:10%;font-size:1.1rem;animation:sc0Star 1.1s 0s linear infinite;}
+  .sc0 .hs-s2{left:88%;top:38%;font-size:.8rem;animation:sc0Star 1.4s .3s linear infinite;}
+  .sc0 .hs-s3{left:84%;top:66%;font-size:1.2rem;animation:sc0Star .9s .6s linear infinite;}
+  .sc0 .hs-s4{left:78%;top:22%;font-size:.7rem;animation:sc0Star 1.2s .15s linear infinite;}
+  .sc0 .hs-s5{left:74%;top:54%;font-size:.9rem;animation:sc0Star 1s .45s linear infinite;}
+
+  /* Scene 1 — Professor Vonk: idee-explosie */
+  .sc1{background:radial-gradient(ellipse at 50% 50%,#2d1b69 0%,#0d0a28 100%);}
+  @keyframes sc1Bulb{0%,88%,100%{transform:scale(0);opacity:0}22%,68%{transform:scale(1.25);opacity:1}}
+  @keyframes sc1Spark{0%{transform:translate(0,0);opacity:1}100%{transform:translate(var(--sx),var(--sy));opacity:0}}
+  @keyframes sc1Brain{0%,100%{filter:drop-shadow(0 0 6px #A855F7)}50%{filter:drop-shadow(0 0 26px #FFD93D)}}
+  .sc1 .hs-brn{left:50%;top:50%;transform:translate(-50%,-50%);font-size:3.5rem;animation:sc1Brain 1.1s ease-in-out infinite;}
+  .sc1 .hs-b1{left:7%;top:7%;font-size:1.8rem;animation:sc1Bulb 1.8s 0s ease-in-out infinite;}
+  .sc1 .hs-b2{left:74%;top:5%;font-size:1.5rem;animation:sc1Bulb 1.8s .3s ease-in-out infinite;}
+  .sc1 .hs-b3{left:80%;top:62%;font-size:1.7rem;animation:sc1Bulb 1.8s .6s ease-in-out infinite;}
+  .sc1 .hs-b4{left:3%;top:66%;font-size:1.3rem;animation:sc1Bulb 1.8s .9s ease-in-out infinite;}
+  .sc1 .hs-b5{left:42%;top:3%;font-size:1.1rem;animation:sc1Bulb 1.8s 1.2s ease-in-out infinite;}
+  .sc1 .hs-sp{font-size:1rem;animation:sc1Spark .85s ease-out infinite;}
+  .sc1 .hs-sp1{left:50%;top:50%;--sx:-58px;--sy:-42px;animation-delay:0s;}
+  .sc1 .hs-sp2{left:50%;top:50%;--sx:54px;--sy:-38px;animation-delay:.21s;}
+  .sc1 .hs-sp3{left:50%;top:50%;--sx:-55px;--sy:40px;animation-delay:.42s;}
+  .sc1 .hs-sp4{left:50%;top:50%;--sx:52px;--sy:44px;animation-delay:.63s;}
+
+  /* Scene 2 — Laserblik: laserstraal naar doel */
+  .sc2{background:linear-gradient(135deg,#05081a 0%,#0a0520 100%);}
+  @keyframes sc2Beam{0%,100%{width:0%;opacity:.2}50%{width:58%;opacity:1}}
+  @keyframes sc2Eye{0%,100%{filter:drop-shadow(0 0 5px #4ECDC4)}50%{filter:drop-shadow(0 0 24px #4ECDC4)}}
+  @keyframes sc2Tgt{0%,100%{transform:translate(-50%,-50%) scale(.8);opacity:.6}50%{transform:translate(-50%,-50%) scale(1.15);opacity:1}}
+  @keyframes sc2Spark{0%,100%{transform:scale(0);opacity:0}40%,60%{transform:scale(1.3);opacity:1}}
+  .sc2 .hs-eye{left:7%;top:50%;transform:translateY(-50%);font-size:3.5rem;animation:sc2Eye 1.1s ease-in-out infinite;}
+  .sc2 .hs-beam{position:absolute;top:calc(50% - 3px);left:22%;height:5px;background:linear-gradient(to right,#4ECDC4 0%,rgba(78,205,196,.6) 70%,transparent);border-radius:3px;animation:sc2Beam 1.1s ease-in-out infinite;}
+  .sc2 .hs-tgt{left:83%;top:50%;transform:translate(-50%,-50%);font-size:3rem;animation:sc2Tgt 1.1s ease-in-out infinite;}
+  .sc2 .hs-sp1{left:74%;top:27%;font-size:1.5rem;animation:sc2Spark 1.1s .3s ease-in-out infinite;}
+
+  /* Scene 3 — Hartradar: hartgolven */
+  .sc3{background:radial-gradient(ellipse at 50% 50%,#3d0a2e 0%,#140810 100%);}
+  @keyframes sc3Ring{0%{transform:translate(-50%,-50%) scale(0);opacity:.9}100%{transform:translate(-50%,-50%) scale(4.2);opacity:0}}
+  @keyframes sc3Hrt{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.35)}}
+  @keyframes sc3Face{0%,100%{filter:drop-shadow(0 0 3px #FF6B9D);opacity:.4}50%{filter:drop-shadow(0 0 16px #FF6B9D);opacity:1}}
+  .sc3 .hs-ring{position:absolute;left:50%;top:50%;width:46px;height:46px;border-radius:50%;border:3px solid #FF6B9D;pointer-events:none;animation:sc3Ring 2.1s ease-out infinite;}
+  .sc3 .hs-ring2{animation-delay:.7s;}
+  .sc3 .hs-ring3{animation-delay:1.4s;}
+  .sc3 .hs-hrt{left:50%;top:50%;transform:translate(-50%,-50%);font-size:3.5rem;animation:sc3Hrt .85s ease-in-out infinite;}
+  .sc3 .hs-f1{left:6%;top:22%;font-size:2.1rem;animation:sc3Face 2.1s 0s ease-in-out infinite;}
+  .sc3 .hs-f2{left:78%;top:18%;font-size:2.1rem;animation:sc3Face 2.1s .7s ease-in-out infinite;}
+  .sc3 .hs-f3{left:5%;top:63%;font-size:2.1rem;animation:sc3Face 2.1s 1.4s ease-in-out infinite;}
+  .sc3 .hs-f4{left:78%;top:63%;font-size:2.1rem;animation:sc3Face 2.1s 1.05s ease-in-out infinite;}
+
+  /* Scene 4 — Detective Waarom: zoekend vergrootglas */
+  .sc4{background:linear-gradient(180deg,#08080f 0%,#111108 100%);}
+  @keyframes sc4Glass{0%{left:10%;top:22%}38%{left:50%;top:52%}70%{left:62%;top:15%}100%{left:10%;top:22%}}
+  @keyframes sc4Q{0%,88%,100%{transform:scale(0) rotate(-12deg);opacity:0}28%,62%{transform:scale(1.1) rotate(6deg);opacity:1}}
+  @keyframes sc4Star{0%,100%{opacity:0;transform:scale(0) rotate(0deg)}45%,55%{opacity:1;transform:scale(1.3) rotate(20deg)}}
+  .sc4 .hs-gls{font-size:3.2rem;animation:sc4Glass 3.8s ease-in-out infinite;position:absolute;}
+  .sc4 .hs-q1{left:67%;top:10%;font-size:1.9rem;animation:sc4Q 2.6s 0s ease-in-out infinite;}
+  .sc4 .hs-q2{left:77%;top:57%;font-size:1.5rem;animation:sc4Q 2.6s .65s ease-in-out infinite;}
+  .sc4 .hs-q3{left:54%;top:80%;font-size:1.3rem;animation:sc4Q 2.6s 1.3s ease-in-out infinite;}
+  .sc4 .hs-q4{left:36%;top:4%;font-size:1.1rem;animation:sc4Q 2.6s 1.95s ease-in-out infinite;}
+  .sc4 .hs-star{left:44%;top:40%;font-size:2.2rem;animation:sc4Star 3.8s 1.2s ease-in-out infinite;}
+
+  /* Scene 5 — Bliksembrein: razendsnelle bliksem */
+  .sc5{background:radial-gradient(ellipse at 50% 50%,#091330 0%,#02040c 100%);}
+  @keyframes sc5Bolt{0%,100%{transform:scale(0) rotate(var(--rot));opacity:0}18%,38%{transform:scale(1.5) rotate(var(--rot));opacity:1}55%{transform:scale(0) rotate(var(--rot));opacity:0}}
+  @keyframes sc5Brain{0%,100%{filter:drop-shadow(0 0 5px #FFD93D)}50%{filter:drop-shadow(0 0 30px #FFD93D)}}
+  @keyframes sc5Txt{0%,100%{opacity:0;transform:translateX(-50%) scale(.4)}28%,72%{opacity:1;transform:translateX(-50%) scale(1)}}
+  .sc5 .hs-brn{left:50%;top:50%;transform:translate(-50%,-50%);font-size:3.5rem;animation:sc5Brain .45s ease-in-out infinite;}
+  .sc5 .hs-bolt{font-size:1.9rem;animation:sc5Bolt .48s ease-out infinite;position:absolute;}
+  .sc5 .hs-b1{left:72%;top:10%;--rot:-22deg;animation-delay:0s;}
+  .sc5 .hs-b2{left:83%;top:52%;--rot:18deg;animation-delay:.08s;}
+  .sc5 .hs-b3{left:67%;top:83%;--rot:48deg;animation-delay:.16s;}
+  .sc5 .hs-b4{left:10%;top:10%;--rot:-52deg;animation-delay:.04s;}
+  .sc5 .hs-b5{left:5%;top:54%;--rot:32deg;animation-delay:.12s;}
+  .sc5 .hs-b6{left:16%;top:82%;--rot:62deg;animation-delay:.24s;}
+  .sc5 .hs-txt1{position:absolute;left:50%;top:6%;font-size:.95rem;color:#FFD93D;font-weight:800;font-family:'Fredoka One',cursive;animation:sc5Txt .48s 0s ease-in-out infinite;}
+  .sc5 .hs-txt2{position:absolute;left:50%;top:80%;font-size:.95rem;color:#4ECDC4;font-weight:800;font-family:'Fredoka One',cursive;animation:sc5Txt .48s .24s ease-in-out infinite;}
+
+  /* Hero-afbeeldingen (Firefly PNG) */
+  .hs-img{width:100%;height:165px;object-fit:cover;object-position:center 15%;display:block;}
+
+  /* SVG superhelden (fallback / unused) */
+  .sv-hero{display:block;overflow:visible;}
+  .hero-scene svg *{transform-box:fill-box;transform-origin:center;}
+  @keyframes sv-flame{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.65) translateY(-3px)}}
+  @keyframes sv-glow{0%,100%{opacity:0.15;transform:scale(1)}50%{opacity:0.75;transform:scale(1.2)}}
+  @keyframes sv-ring{0%{transform:scale(.55);opacity:1}100%{transform:scale(4.2);opacity:0}}
+  @keyframes sv-beam{0%,100%{opacity:0.45}50%{opacity:1}}
+  @keyframes sv-zap{0%,55%,100%{opacity:1;transform:translateY(0)}35%{opacity:0.08;transform:translateY(-5px)}}
+  @keyframes sv-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  @keyframes sv-throb{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+
+  /* === Hero-kaarten grid (Superkrachten) === */
+  .hero-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin:1rem 0;}
+  @media(max-width:500px){.hero-grid{grid-template-columns:repeat(2,1fr);}}
+  .hcard{background:#fff;border:3px solid var(--dark);border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:5px 5px 0 var(--dark);transition:transform .18s,box-shadow .18s;}
+  .hcard:hover,.hcard:active{transform:translate(-3px,-3px);box-shadow:8px 8px 0 var(--dark);}
+  .hcard{position:relative;}
+  .hcard-img{width:100%;aspect-ratio:1;object-fit:cover;object-position:center 5%;display:block;}
+  .hcard-done{position:absolute;top:6px;right:6px;background:#FFD93D;border:2.5px solid var(--dark);border-radius:50%;width:1.8rem;height:1.8rem;display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:2px 2px 0 var(--dark);display:none;}
+  .hcard.done .hcard-done{display:flex;}
+  .hcard-lbl{padding:.4rem .3rem .55rem;text-align:center;}
+  .hcard-pwr{font-size:.6rem;color:var(--pink);font-weight:800;text-transform:uppercase;letter-spacing:.04em;}
+  .hcard-name{font-family:'Fredoka One',cursive;font-size:.76rem;margin-top:.1rem;}
+  .hcard-score{font-size:.6rem;color:#888;margin-top:.2rem;min-height:.85rem;}
+
+  /* === Hero game modal === */
+  .hmodal{position:fixed;inset:0;background:rgba(10,10,30,.85);z-index:400;display:flex;align-items:center;justify-content:center;padding:1rem;}
+  .hmodal.hidden{display:none;}
+  .hmodal-box{background:#fff;border:3px solid var(--dark);border-radius:20px;box-shadow:8px 8px 0 var(--dark);width:100%;max-width:400px;max-height:92vh;overflow-y:auto;position:relative;}
+  .hm-img{width:100%;height:195px;object-fit:cover;object-position:center 5%;border-radius:17px 17px 0 0;display:block;}
+  .hm-body{padding:.8rem 1rem 1.2rem;}
+  .hm-close{position:absolute;top:.6rem;right:.7rem;background:rgba(255,255,255,.9);border:2px solid var(--dark);border-radius:50%;width:2rem;height:2rem;font-size:.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 var(--dark);z-index:1;}
+  .hm-pwr{font-size:.65rem;font-weight:800;text-transform:uppercase;color:var(--pink);letter-spacing:.05em;}
+  .hm-hero{font-family:'Fredoka One',cursive;font-size:1.1rem;margin:.1rem 0;}
+  .hm-quote{font-size:.78rem;color:#555;font-style:italic;margin-bottom:.9rem;}
+  .hgame{background:#F5F3FF;border:2px dashed #C4B5FD;border-radius:14px;padding:.9rem;}
+  .hgame-ttl{font-family:'Fredoka One',cursive;font-size:.95rem;margin-bottom:.4rem;}
+  .hgame p{font-size:.82rem;margin:.3rem 0;line-height:1.4;}
+  .g-bar-wrap{background:#ddd;border-radius:8px;height:14px;overflow:hidden;margin:.5rem 0;}
+  .g-bar{height:100%;background:var(--pink);border-radius:8px;transition:width .1s linear;}
+  .g-tapbtn{display:block;width:100%;padding:.75rem;font-family:'Fredoka One',cursive;font-size:1.1rem;background:var(--yellow);border:3px solid var(--dark);border-radius:14px;box-shadow:4px 4px 0 var(--dark);cursor:pointer;margin:.55rem 0;transition:transform .07s,box-shadow .07s;}
+  .g-tapbtn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--dark);}
+  .g-tapbtn:disabled{opacity:.5;cursor:default;}
+  .g-opt{display:block;width:100%;padding:.5rem .75rem;font-size:.82rem;background:#fff;border:2.5px solid var(--dark);border-radius:12px;box-shadow:3px 3px 0 var(--dark);cursor:pointer;margin:.35rem 0;text-align:left;transition:background .15s;}
+  .g-opt:hover{background:#fafafa;}
+  .g-opt.ok{background:#D1FAE5 !important;border-color:#10B981;}
+  .g-opt.no{background:#FEE2E2 !important;border-color:#EF4444;}
+  .g-opt:disabled{cursor:default;}
+  .g-res{font-family:'Fredoka One',cursive;font-size:.93rem;text-align:center;padding:.55rem;background:var(--yellow);border:2px solid var(--dark);border-radius:12px;margin-top:.5rem;}
+  .egrid{display:grid;gap:3px;margin:.45rem 0;}
+  .egrid span{font-size:1.5rem;cursor:pointer;text-align:center;padding:.1rem;border-radius:7px;transition:background .1s;}
+  .egrid span:hover{background:rgba(0,0,0,.06);}
+  .egrid span.hit{background:#D1FAE5;}
+  .egrid span.miss{background:#FEE2E2;animation:ewobble .28s;}
+  @keyframes ewobble{0%,100%{transform:translateX(0)}33%{transform:translateX(-4px)}66%{transform:translateX(4px)}}
+  .react-blob{font-size:3.5rem;text-align:center;cursor:pointer;padding:.8rem;border-radius:16px;margin:.5rem 0;user-select:none;transition:opacity .12s;}
+  .react-blob.wait{opacity:0;pointer-events:none;}
+  .react-blob.go{opacity:1;animation:blobpop .22s ease-out;}
+  @keyframes blobpop{0%{transform:scale(.4)}65%{transform:scale(1.3)}100%{transform:scale(1)}}
+</style>
+</head>
+<body>
+
+<div class="intro-ov hidden" id="introOv">
+  <div class="intro-stars" id="introStars"></div>
+  <img class="intro-neuro" src="assets/Brain.png" alt="Neuro" id="introImg">
+  <div class="intro-name" id="introNameLbl"></div>
+  <div class="intro-bubble" id="introBubble"></div>
+  <div class="intro-dots" id="introDots"></div>
+  <button class="intro-btn" id="introBtn" onclick="introNext()"></button>
+  <div class="intro-skip" id="introSkip" onclick="introClose()"></div>
+</div>
+
+<div class="topbar">
+  <div>
+    <button class="chip-btn" id="langBtn" onclick="toggleLang()">🌐 <span id="langLbl">EN</span></button>
+  </div>
+  <div>
+    <button class="chip-btn" id="calmBtn" onclick="toggleCalm()"><span id="calmIcon">🌙</span><span id="calmLbl">Rustig</span></button>
+    <button class="chip-btn" onclick="openGuide()" aria-label="Gespreksgids">📖</button>
+    <button class="chip-btn" id="setupBtn" onclick="openSetup()">⚙️</button>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-badge" id="heroBadge">🔬 Brein Lab</div>
+  <div class="child-avatar-wrap">
+    <div class="child-avatar" id="childAvatar"></div>
+  </div>
+  <h1 id="greeting">Hoi!</h1>
+  <div class="mascot-row">
+    <div class="mascot-avatar" onclick="introShow()" title="Neuro" style="cursor:pointer"><img src="assets/Brain.png" alt="Neuro"></div>
+    <div class="mascot-dialog">
+      <div class="mascot-name" id="mascotName"></div>
+      <div class="speech mascot-bubble" id="mascotSpeech"></div>
+    </div>
+  </div>
+</div>
+
+<div class="badge-bar" id="badgeBar"></div>
+<div class="nav" id="nav"></div>
+<div class="content" id="content"></div>
+
+<!-- moedmaker bar -->
+<div class="moedbar" id="moedBar">
+  <span class="heart">💛</span>
+  <span class="mtext" id="moedText"></span>
+  <button class="mbtn refresh" onclick="newMoedBar()" aria-label="new">🔄</button>
+  <button class="mbtn" onclick="toggleMoedBar(false)" aria-label="min">–</button>
+</div>
+<button class="moedmini" id="moedMini" onclick="toggleMoedBar(true)">💛</button>
+
+<!-- setup overlay -->
+<div class="overlay" id="overlay">
+  <div class="setup" id="setupForm"></div>
+</div>
+
+<!-- hero game modal -->
+<div class="hmodal hidden" id="heroModal" onclick="if(event.target===this)closeHeroModal()">
+  <div class="hmodal-box">
+    <img id="hmImg" class="hm-img" alt="">
+    <button class="hm-close" onclick="closeHeroModal()">✕</button>
+    <div class="hm-body">
+      <div class="hm-pwr" id="hmPwr"></div>
+      <div class="hm-hero" id="hmHero"></div>
+      <div class="hm-quote" id="hmQuote"></div>
+      <div class="hgame" id="hmGame"></div>
+    </div>
+  </div>
+</div>
+
+<!-- guide overlay -->
+<div class="guide-overlay" id="guideOverlay">
+  <div class="guide-box" id="guideForm"></div>
+</div>
+
+<script>
+/* =================== DATA / I18N =================== */
+const STRENGTHS = {
+  humor:{e:'😄',nl:'Grappig',en:'Funny'},
+  reader:{e:'📚',nl:'Goede lezer',en:'Great reader'},
+  drawer:{e:'✏️',nl:'Tekenaar',en:'Artist'},
+  curious:{e:'🔍',nl:'Nieuwsgierig',en:'Curious'},
+  smart:{e:'🧠',nl:'Slim',en:'Smart'},
+  languages:{e:'🗣️',nl:'Talenknobbel',en:'Good with languages'},
+  math:{e:'➕',nl:'Goed in rekenen',en:'Good at maths'},
+  bigSibling:{e:'👦',nl:'Grote broer/zus',en:'Big sibling'},
+  kind:{e:'❤️',nl:'Lief',en:'Kind'},
+  brave:{e:'🦁',nl:'Dapper',en:'Brave'},
+  friend:{e:'🤝',nl:'Goede vriend',en:'Good friend'},
+  ideas:{e:'💡',nl:'Vol ideeën',en:'Full of ideas'},
+  sporty:{e:'⚽',nl:'Sportief',en:'Sporty'},
+  builder:{e:'🧱',nl:'Bouwer',en:'Builder'}
+};
+
+const POWERS = [
+  {e:'🚀',nl:{n:'Energie',d:'Power als een raket. Als je ergens van houdt, ga je er vol voor!',hn:'Kapitein Rakettank',hl:'Mijn motor stopt nóóit!'},
+        en:{n:'Energy',d:'Power like a rocket. When you love something, you go all in!',hn:'Captain Rocketank',hl:'My engine never stops!'}},
+  {e:'💡',nl:{n:'Creativiteit',d:'Jouw brein ziet verbanden die anderen missen.',hn:'Professor Vonk',hl:'Ik zie ideeën die niemand ziet!'},
+        en:{n:'Creativity',d:'Your brain sees links others miss.',hn:'Professor Spark',hl:'I see ideas no one else sees!'}},
+  {e:'🎯',nl:{n:'Hyperfocus',d:'Als iets je boeit, focus je SUPER goed.',hn:'Laserblik',hl:'Niets kan mij afleiden!'},
+        en:{n:'Hyperfocus',d:'When something grabs you, you focus SO well.',hn:'Laserfocus',hl:'Nothing can distract me!'}},
+  {e:'💗',nl:{n:'Gevoeligheid',d:'Je voelt dingen diep. Dat maakt je empathisch.',hn:'Hartradar',hl:'Ik voel meteen hoe een vriend zich voelt.'},
+        en:{n:'Sensitivity',d:'You feel things deeply. That makes you caring.',hn:'Heart Radar',hl:'I sense how a friend feels right away.'}},
+  {e:'🔍',nl:{n:'Nieuwsgierigheid',d:'Je wil altijd snappen hoe dingen werken.',hn:'Detective Waarom',hl:'Ik moet elk raadsel oplossen!'},
+        en:{n:'Curiosity',d:'You always want to know how things work.',hn:'Detective Why',hl:'I must solve every mystery!'}},
+  {e:'⚡',nl:{n:'Snelheid',d:'Jouw brein verwerkt info razendsnel.',hn:'Bliksembrein',hl:'Ik weet het antwoord vóór de vraag af is!'},
+        en:{n:'Speed',d:'Your brain processes info lightning-fast.',hn:'Lightning Brain',hl:'I know the answer before the question ends!'}}
+];
+
+const T = {
+  nl:{
+    appBadge:'🔬 {name} Brein Lab', calmOn:'Feller', calmOff:'Rustig',
+    greetMorning:'Goedemorgen, {name}!', greetMidday:'Goedemiddag, {name}!', greetEve:'Goedenavond, {name}!', greetNight:'Goedenacht, {name}!',
+    heroSub:'Ontdek hoe jouw bijzondere brein werkt. Kies een onderwerp en begin!',
+    navBrain:'🧠 Jouw brein', navMsg:'🧪 Boodschappers', navMed:'💊 Medicijn', navWave:'🌊 De golf', navPower:'⭐ Superkrachten', navYou:'❤️ Jij bent jij',
+    // brain - racecar
+    rcSpeech:'Wist je dat jouw brein heel bijzonder is? Niet kapot — gewoon anders. En anders is cool!',
+    rcTitle:'🏎️ Een racewagen-brein', rcP1:'Sommige hersenen zijn als een rustige fiets. Die van jou is een racewagen: razendsnel en vol ideeën!',
+    rcP2:'Een racewagen heeft ook sterke remmen nodig. Jouw remmen (stilzitten, focussen) hebben soms wat hulp nodig. Dat is ADHD.',
+    rcHl:'Het is nooit jouw schuld als iets moeilijk gaat. Jouw motor is gewoon heel krachtig!',
+    rcGameTitle:'🎮 Het Stop-spel', rcGoal:'Druk op START. Je racewagen schiet meteen naar topsnelheid — langzamer kan niet. Rem vol op het juiste moment, zodat je precies in het groene vak tot stilstand komt!',
+    rcStart:'🚀 START', brake:'🛑 REM', again:'↩️ Opnieuw', speed:'Snelheid',
+    rcShadow:'Het oranje streepvak laat zien wáár je zou stoppen als je nú remt (je remweg). Rem zodra dat over het groene vak ligt!', rcWarn:'⚠️ Stopvak komt eraan!',
+    rcWinAid:'🏁 PERFECT geremd! Zag je dat oranje hulpje? Het liet precies zien waar je zou stoppen. Dat is slim gebruik maken van een steuntje — hulp gebruiken is niet zwak, het is slim!',
+    rcEncourage1:'Je remweg wordt al kleiner — je leert het echt! Probeer nog een keer.',
+    rcEncourage2:'Dit is een pittig moment. Zet het hulpje aan als je wil — dat mag altijd.',
+    rcWinBlind:'🏁 PERFECT — en helemaal zónder hulpje! Je voelde zélf precies aan wanneer je moest remmen. Knap hoor; dat komt door oefenen. En als het lastig is: een hulpje gebruiken mag altijd.',
+    blindOff:'🦮 Hulpje aan', blindOn:'🙈 Hulpje uit (moeilijker!)',
+    rcOver:'💨 Te laat! Je schoot voorbij het vak. Denk aan je remweg — rem een tikje eerder.',
+    rcShort:'🛑 Te vroeg geremd! Je stond stil vóór het vak. Wacht iets langer met remmen.',
+    rcForgot:'😅 Je vergat te remmen en raasde voorbij! Druk volgende keer op REM als de balk bij de streep komt.',
+    // brain - tabs
+    tbSpeech:'Jouw brein heeft heel veel open tegelijk — als een scherm vol tabbladen. Dat maakt je creatief, maar focussen kan lastig zijn.',
+    tbTitle:'🪟 Een brein vol tabbladen', tbP1:'Stel je een scherm voor met heel veel vensters tegelijk open. Zo voelt jouw brein soms: overal ideeën!',
+    tbP2:'Dat is geweldig voor bedenken, maar bij één ding blijven is lastig als alles om aandacht roept. Dat is ADHD.',
+    tbHl:'Je bent niet "afgeleid omdat je niet je best doet". Jouw brein ziet gewoon heel veel tegelijk.',
+    tbGameTitle:'🎮 Sluit de extra tabbladen', tbGoal:'Doel: tik de afleidende vensters weg, zodat alleen je taak (geel) overblijft!',
+    tbWin:'🎉 Gelukt! Alle afleiders weg — nu kun je focussen. Zo voelt het als je je hoofd opruimt (en medicijn helpt daarbij).',
+    // messengers
+    msgSpeech:'Je hersenen sturen de hele dag berichtjes naar elkaar. Soms gaat de bezorging mis…',
+    msgTitle:'🧪 Hersencellen praten met elkaar', msgP1:'Je brein heeft miljarden cellen (neuronen) die berichtjes sturen. Tussen elke cel zit een klein spleetje (een synaps).',
+    msgP2:'Om over te steken gebruikt je brein bezorgers: dopamine. Bij jou worden die soms te snel opgeruimd, dan komt het berichtje niet goed aan — en focussen wordt lastig.',
+    msgGameTitle:'🎮 Houd het berichtje gaande', msgGoal:'Doel: breng het idee 💡 naar het doel 🎯 in 3 sprongen. Tik telkens snel op de knipperende cel — vóórdat het berichtje wegglijdt!',
+    dopLow:'🔴 Dopamine: te weinig', dopOk:'🟢 Dopamine: genoeg!',
+    msgStart:'👆 Tik op het idee 💡 om de dopamine-bezorger te sturen!',
+    msgCharge:'⚡ De bezorger laadt op... hij staat op het punt de synaps over te springen!',
+    msgLeap:'🌀 Hij springt! Tik snel op de volgende hersencel voordat hij verdwijnt!',
+    msgArm:'⚡ Snel! Tik op de knipperende cel!', // legacy
+    msgFollow:'🧭 Tik op de cel die knippert.',
+    msgMiss:'💨 De dopamine loste op voor hij de overkant haalde. Zo voelt het als er te weinig is — het signaal bereikt de volgende cel gewoon niet. Probeer sneller, of zet de dopamine-hulp aan.',
+    msgHop:'✅ Synaps gehaald! De gedachte leeft nog — door naar de volgende!',
+    msgContext:'De ⚡ bezorger stelt een <strong>dopamine-molecuul</strong> voor. Het gapje dat hij moet oversteken heet een <strong>synaps</strong>. Als hij aankomt, bereikt jouw gedachte de volgende hersencel — zo werkt een seintje in je brein!',
+    msgWinNoDop:'🎉 Knap gedaan! Maar zag je hoe moeilijk dat was? Het berichtje gleed steeds weg. Zet nu de dopamine-hulp aan en druk op Opnieuw — dan zul je zien dat het véél makkelijker gaat!',
+    msgWinDop:'🎉 Gelukt — en zag je hoe soepel dat ging? Met genoeg dopamine blijft het berichtje lang genoeg om over te springen. Zo helpt je medicijn ook! Zet \u2019m eens uit en probeer opnieuw, dan voel je het verschil.',
+    // medicine
+    medSpeechStim:'Jij krijgt medicijn. Maar wat doet het eigenlijk vanbinnen?',
+    medSpeechNon:'Jij krijgt medicijn. Het werkt rustig en langzaam — zo doet het zijn werk.',
+    medTitle:'💊 Medicijn = een bril voor je brein',
+    medExplStim:'Weet je nog die boodschappers (dopamine)? Jouw medicijn zorgt dat ze wat langer blijven, zodat de berichtjes in je hoofd duidelijk aankomen. Het is net een bril: je ogen veranderen niet, maar alles wordt scherper. Jij blijft gewoon jij.',
+    medExplNon:'Jouw medicijn is geen "pepmiddel". Het werkt rustig en bouwt langzaam op, en helpt je hersenen elke dag een beetje beter samenwerken — zodat focussen makkelijker wordt. Jij blijft gewoon jij.',
+    medFocusTitle:'🔍 Maak het scherp', medFocusGoal:'Schuif van wazig naar scherp. Zo helpt je medicijn je concentratie: het maakt de boel in je hoofd helderder, zodat je makkelijker bij één ding blijft.',
+    medBlurWord:'De vos rent door het bos 🦊', medBlurLow:'😵‍💫 Wazig — lastig te lezen', medBlurHigh:'😎 Scherp — nu kun je het lezen!',
+    focus:'Focus', medFocusWin:'✨ Scherp! Zo voelt het als je je goed kunt concentreren. Je medicijn haalt je ideeën niet weg — het maakt het makkelijker om bij één ding te blijven.',
+    medSchedTitle:'⏰ Wanneer neem je het?',
+    // wave
+    waveSpeech:'Soms na school voel je je anders dan normaal. Dat heeft een naam — en een reden!',
+    waveTitle:'🌊 Wat is een rebound?', waveP1:'Als je medicijn uitwerkt, daalt het in je brein. Soms zakt het even iets verder dan normaal.',
+    waveP2:'Dan kunnen gevoelens sterker aanvoelen: sneller boos, verdrietig, of erg hongerig. Dat heet een rebound.',
+    waveHl:'Het is als een golf: hij komt op en ebt vanzelf weer weg. Het gaat altijd over, en het is niet jouw schuld!',
+    waveDayTitle:'📅 Jouw dag', waveRebZone:'rebound', waveHome:'Thuis',
+    feelTitle:'🎯 Hoe voel jij je nu?', feelPick:'Tik op wat het meeste klopt:',
+    waveFriends:'En als je verdrietig bent omdat iets niet kan — zoals spelen met een vriend — dan mag dat groot voelen. Je bent niet "te veel". Je voelt gewoon diep.',
+    // powers
+    powSpeech:'Het ADHD-brein heeft bijzondere krachten. Elke kracht heeft een eigen superheld!',
+    powTitle:'⭐ Jouw superkrachten', powGoal:'Klik op een superheld om te ontdekken wat jou bijzonder maakt:', heroTag:'Superheld',
+    powEnd:'🦸 Net als echte superhelden moet je leren je krachten te besturen. Daar helpt je medicijn bij — niet om je kracht weg te halen, maar om hem goed te richten!',
+    powEndNoMed:'🦸 Net als echte superhelden leer je je krachten besturen — met oefenen, hulp en goede gewoontes.',
+    // you
+    youSpeech:'Nu het allerbelangrijkste. Dit gaat niet over je brein — dit gaat over JOU. 💛',
+    youTitle:'❤️ Jij bent niet je ADHD', youP1:'ADHD is iets wat je brein heeft — niet wie je bent. Net als bruine ogen, of lang zijn. Eén klein dingetje, niet het hele verhaal.',
+    youP2:'Als iemand vraagt "wie is {name}?", is het antwoord niet "ADHD". Het is dit:',
+    youHl:'Zie je? ADHD is maar één stukje. Al die andere stukjes — dáár besta jij uit. Samen ben je compleet, precies goed zoals je bent.',
+    adhdPiece:'ADHD (1 stukje)',
+    ditTitle:'🧩 Dit ben ik!', ditIntro:'Tik aan wat bij jou hoort. Kijk hoeveel het er zijn!',
+    ditAdhd:'🧩 Ja — ADHD hoort er ook bij. Maar zie je? Het is maar één van zoveel stukjes die samen JIJ zijn.',
+    ditAll:'💛 Kijk nou! Jij bestaat uit {n} stukjes. Al die dingen samen = jij!',
+    ditSome:'✨ {n} stukjes al — en er is nog meer. Jij bent zoveel meer dan één ding!',
+    diffTitle:'🌍 Iedereen is anders — en dat is normaal', diffP:'Er bestaat geen "normaal" brein. Elk brein werkt anders. Jij bent net zo gewoon — en net zo bijzonder — als ieder ander kind.',
+    hardTitle:'💪 Als iets niet meteen lukt', hardP1:'Soms heb je een geweldig idee, maar lukt het niet zoals je wilde. Dan kun je je boos of verdrietig voelen. Dat is normaal.',
+    hardHl:'Jouw ideeën gaan zó snel dat je handen ze soms niet bijhouden. Dat is niet stom — je hoofd zit vol geweldige dingen. Oefenen helpt. En ondertussen ben je al fantastisch.',
+    moedTitle:'✨ Moedmaker', moedIntro:'Even een steuntje nodig? Hier staat er altijd eentje voor je.',
+    diplomaTitle:'🏆 {name} Brein Lab diploma', diplomaTodo:'Ga alle onderwerpen langs om je diploma te verdienen! 🎓',
+    diplomaDone:'Gefeliciteerd, {name}!', diplomaDoneP:'Je weet nu superveel over je brein — maar het allerbelangrijkste: jij bent geweldig, precies zoals je bent. 💛',
+    progress:'{a} van {b} onderdelen gedaan',
+    // setup
+    setTitle:'Instellingen', setSub:'Vul in voor wie deze app is. Alles blijft lokaal op dit apparaat.',
+    fName:'Naam van het kind', fAge:'Leeftijd', fBrain:'Welke uitleg past het best?',
+    brainRace:'Druk / vol energie (racewagen)', brainTabs:'Dromerig / snel afgeleid (tabbladen)',
+    fMeds:'Gebruikt het kind medicatie?', medNone:'Nee', medStim:'Ja — stimulerend (bv. methylfenidaat)', medNonOpt:'Ja — niet-stimulerend',
+    fDoses:'Tijden van inname', addDose:'+ tijd toevoegen', fStrengths:'Sterke kanten (kies er een paar)',
+    fSupporters:'Namen van dierbaren (optioneel, voor de moedmakers)', fSupPlaceholder:'bv. mama, papa, oma',
+    fCustom:'Eigen moedmakers (optioneel, één per regel)', fCustomPlaceholder:'bv. Ik ben trots op je, kanjer.',
+    fPhoto:'Foto van het kind (optioneel)', fPhotoRemove:'✕ Foto verwijderen',
+    save:'Opslaan', cancel:'Annuleren', schoolEnd:'School uit',
+    setDisc:'Deze app geeft uitleg, geen medisch advies. Vraag je arts over de medicatie van je kind.',
+    // guide
+    guideTitle:'Gespreksgids', guideSub:'Gespreksstarters per onderwerp — voor ouder of leerkracht', guideClose:'Sluiten', ttsRead:'Lees voor',
+    gBrainTitle:'🧠 Jouw brein',
+    gBrainQ1:'Hoe voelt jouw hoofd als je lang stil moet zitten?',
+    gBrainQ2:'Wanneer merk jij dat je motor op volle toeren draait?',
+    gBrainQ3:'Is er iets dat helpt als je brein te hard gaat?',
+    gMsgTitle:'🧪 Boodschappers',
+    gMsgQ1:'Was er vandaag een moment waarop focussen heel moeilijk was?',
+    gMsgQ2:'Wat helpt jou om bij één ding te blijven?',
+    gMsgQ3:'Merk jij verschil op dagen dat concentreren makkelijker gaat?',
+    gMedTitle:'💊 Medicijn',
+    gMedQ1:'Hoe was het voor jou om te horen dat je medicijn ging gebruiken?',
+    gMedQ2:'Is er iets aan je medicijn wat je niet begrijpt of soms spannend vindt?',
+    gMedQ3:'Wat is er anders op een dag dat focussen makkelijker gaat?',
+    gWaveTitle:'🌊 De golf',
+    gWaveQ1:'Herken jij dat gevoel na school — dat alles meer aankomt?',
+    gWaveQ2:'Wat helpt jou om die moeilijke tijd door te komen?',
+    gWaveQ3:'Aan wie vertel jij hoe je je voelt als het even niet lekker gaat?',
+    gPowTitle:'⭐ Superkrachten',
+    gPowQ1:'Welke van deze krachten herken jij het meest bij jezelf?',
+    gPowQ2:'Wanneer heb jij jouw superpower het sterkst gevoeld?',
+    gPowQ3:'Welke kracht wil je nog beter leren gebruiken?',
+    gYouTitle:'❤️ Jij bent jij',
+    gYouQ1:'Als een vriend jou zou beschrijven aan iemand: wat zou die zeggen?',
+    gYouQ2:'Wat ben je trots op uit de afgelopen week?',
+    gYouQ3:'Is er iets over jezelf dat jij wil dat meer mensen weten?',
+    // emotional card
+    zwaarTitle:'💙 Soms is het gewoon zwaar',
+    zwaarP1:'Weet je wat soms het moeilijkste is aan ADHD? Niet de onrust of het vergeten. Het is dat gevoel dat je anders bent. Dat iedereen om je heen het makkelijker lijkt te hebben.',
+    zwaarP2:'En dat je soms precies weet wat je wilt zeggen of doen — maar dat het dan toch niet zo uitkomt. Dat is niet stom. Dat is niet jouw schuld. Jouw brein en jouw handen spreken soms gewoon een andere taal.',
+    zwaarHl:'Dat gevoel kennen heel veel kinderen met ADHD. Je bent er echt niet alleen in. Er zijn mensen — thuis, op school, soms iemand die je helpt — die dit begrijpen en aan jouw kant staan.',
+    // mascot guide speech per module
+    mascotName:'Neuro zegt:',
+    mcBrain:'Hoi! Ik ben Neuro — jouw gids. 👋 Wist je dat jouw brein op mij lijkt? Razendsnel en vol energie. Lees mee, dan leg ik je uit hoe het werkt!',
+    mcMessengers:'Nu laat ik je iets heel bijzonders zien: de kleine berichtjes die door je brein vliegen. Zo werkt dopamine — en ik ga het je laten ervaren!',
+    mcMedicine:'Medicijn klinkt misschien spannend. Maar ik leg je uit wat het écht doet vanbinnen. Eigenlijk is het best cool!',
+    mcWave:'Na school voel jij je soms anders dan normaal, toch? Dat heeft een naam en een reden. Ik leg het je uit, dan snap je precies wat er gebeurt.',
+    mcPowers:'Dit is mijn favoriete hoofdstuk! Want jij hebt echte superkrachten — echt waar. Klik op een held om ze te ontdekken!',
+    mcYou:'En nu het allerbelangrijkste. Dit gaat niet over je brein — dit gaat over JOU. Luister goed! 💛',
+    // mascot completion reactions
+    mcdBrain:'YES! Je snapt nu hoe jouw bijzondere brein werkt. Ik ben trots op je! 🎉',
+    mcdMessengers:'Knap gedaan! Nu weet je wat dopamine doet. Dat weten maar weinig mensen! ⚡',
+    mcdMedicine:'Super! Een bril voor je brein — goed onthouden! Je doet het geweldig. 💊',
+    mcdWave:'Geweldig! Nu snap je de golf. En onthoud: het gaat altijd weer over. 🌊',
+    mcdPowers:'Wauw! Jij kent nu al je superkrachten. Vergeet ze nooit! ⭐',
+    mcdYou:'Dit is het allerbelangrijkste wat je weet: jij bent geweldig. Precies zoals je bent. Altijd. ❤️',
+    // module completion buttons
+    done_brain:'Ik snap nu hoe mijn bijzondere brein werkt! 🏎️',
+    done_messengers:'Ik snap nu wat dopamine doet! ⚡',
+    done_medicine:'Ik snap nu wat mijn medicijn doet! 💊',
+    done_wave:'Ik snap nu hoe de golf en rebound werken! 🌊',
+    done_powers:'Ik ken nu al mijn superkrachten! ⭐',
+    done_you:'Ik weet nu dat ik geweldig ben zoals ik ben! ❤️',
+    // short action prompts in messenger game
+    msgInstCharge:'⚡ Klaar...',
+    msgInstLeap:'🌀 Tik!'
+  },
+  en:{
+    appBadge:'🔬 {name}\u2019s Brain Lab', calmOn:'Brighter', calmOff:'Calm',
+    greetMorning:'Good morning, {name}!', greetMidday:'Good afternoon, {name}!', greetEve:'Good evening, {name}!', greetNight:'Good night, {name}!',
+    heroSub:'Discover how your special brain works. Pick a topic and start!',
+    navBrain:'🧠 Your brain', navMsg:'🧪 Messengers', navMed:'💊 Medicine', navWave:'🌊 The wave', navPower:'⭐ Superpowers', navYou:'❤️ You are you',
+    rcSpeech:'Did you know your brain is special? Not broken — just different. And different is cool!',
+    rcTitle:'🏎️ A race-car brain', rcP1:'Some brains are like a calm bike. Yours is a race car: super fast and full of ideas!',
+    rcP2:'A race car also needs strong brakes. Your brakes (sitting still, focusing) sometimes need help. That\u2019s ADHD.',
+    rcHl:'It\u2019s never your fault when something is hard. Your engine is just really powerful!',
+    rcGameTitle:'🎮 The Stop game', rcGoal:'Press START. Your race car shoots straight to top speed — you can\u2019t go slower. Slam the brakes at the right moment so you stop right in the green zone!',
+    rcStart:'🚀 START', brake:'🛑 BRAKE', again:'↩️ Again', speed:'Speed',
+    rcShadow:'The orange striped box shows where you\u2019d stop if you braked now (your braking distance). Brake when it lies over the green zone!', rcWarn:'⚠️ Stop zone coming up!',
+    rcWinAid:'🏁 PERFECT braking! Did you see that orange helper? It showed exactly where you’d stop. That’s using a support smartly — getting help isn’t weak, it’s clever!',
+    rcEncourage1:'Your braking distance is getting smaller — you’re really learning! Try again.',
+    rcEncourage2:'This is a tricky moment. Switch the helper on if you want — that’s always okay.',
+    rcWinBlind:'🏁 PERFECT — and with no helper at all! You felt exactly when to brake all by yourself. Impressive; that comes from practice. And if it\u2019s hard: using a helper is always okay.',
+    blindOff:'🦮 Helper on', blindOn:'🙈 Helper off (harder!)',
+    rcOver:'💨 Too late! You shot past the zone. Remember your braking distance — brake a touch earlier.',
+    rcShort:'🛑 Braked too early! You stopped before the zone. Wait a little longer to brake.',
+    rcForgot:'😅 You forgot to brake and raced past! Next time press BRAKE when the bar reaches the line.',
+    tbSpeech:'Your brain keeps a lot open at once — like a screen full of tabs. Great for ideas, tricky for focus.',
+    tbTitle:'🪟 A brain full of tabs', tbP1:'Imagine a screen with lots of windows open at once. That\u2019s how your brain feels sometimes: ideas everywhere!',
+    tbP2:'Amazing for creating, but staying on one thing is hard when everything calls for attention. That\u2019s ADHD.',
+    tbHl:'You\u2019re not "distracted because you\u2019re not trying". Your brain just sees a lot at once.',
+    tbGameTitle:'🎮 Close the extra tabs', tbGoal:'Goal: tap away the distracting windows so only your task (yellow) is left!',
+    tbWin:'🎉 Done! Distractions gone — now you can focus. That\u2019s what tidying your mind feels like (and medicine helps with that).',
+    msgSpeech:'Your brain sends messages all day. Sometimes delivery goes wrong…',
+    msgTitle:'🧪 Brain cells talk to each other', msgP1:'Your brain has billions of cells (neurons) that send messages. Between each is a tiny gap (a synapse).',
+    msgP2:'To cross it your brain uses messengers: dopamine. In your brain they sometimes get cleared too fast, so the message doesn\u2019t fully arrive — and focusing gets hard.',
+    msgGameTitle:'🎮 Keep the message going', msgGoal:'Goal: bring the idea 💡 to the target 🎯 in 3 hops. Each time, quickly tap the blinking cell — before the message slips away!',
+    dopLow:'🔴 Dopamine: too little', dopOk:'🟢 Dopamine: enough!',
+    msgStart:'👆 Tap the idea 💡 to send the dopamine messenger!',
+    msgCharge:'⚡ The messenger is charging up... about to leap across the synapse!',
+    msgLeap:'🌀 It jumps! Tap the next brain cell before it fades away!',
+    msgArm:'⚡ Quick! Tap the blinking cell!',
+    msgFollow:'🧭 Tap the blinking cell.',
+    msgMiss:'💨 The dopamine dissolved before reaching the other side. This is what too little feels like — the signal just never gets through. Try faster, or switch the helper on.',
+    msgHop:'✅ Synapse crossed! The thought is still alive — on to the next!',
+    msgContext:'The ⚡ messenger represents a <strong>dopamine molecule</strong>. The gap it has to cross is called a <strong>synapse</strong>. When it arrives, your thought reaches the next brain cell — that’s how a signal works in your brain!',
+    msgWinNoDop:'🎉 Well done! But did you see how hard that was? The message kept slipping away. Now switch the dopamine helper on and press Again — you\u2019ll see it goes much more easily!',
+    msgWinDop:'🎉 Done — and did you see how smoothly that went? With enough dopamine the message stays long enough to hop across. That\u2019s how your medicine helps too! Turn it off and try again to feel the difference.',
+    medSpeechStim:'You take medicine. But what does it actually do inside?',
+    medSpeechNon:'You take medicine. It works gently and slowly — that\u2019s how it does its job.',
+    medTitle:'💊 Medicine = glasses for your brain',
+    medExplStim:'Remember those messengers (dopamine)? Your medicine helps them stay a bit longer, so the messages in your head arrive clearly. It\u2019s like glasses: your eyes don\u2019t change, but everything gets sharper. You\u2019re still you.',
+    medExplNon:'Your medicine isn\u2019t a "boost". It works gently and builds up slowly, helping your brain work together a little better each day — so focusing gets easier. You\u2019re still you.',
+    medFocusTitle:'🔍 Make it sharp', medFocusGoal:'Slide from blurry to sharp. That\u2019s how your medicine helps your focus: it makes things in your head clearer, so it\u2019s easier to stay on one thing.',
+    medBlurWord:'The fox runs through the woods 🦊', medBlurLow:'😵‍💫 Blurry — hard to read', medBlurHigh:'😎 Sharp — now you can read it!',
+    focus:'Focus', medFocusWin:'✨ Sharp! That\u2019s how it feels when you can concentrate well. Your medicine doesn\u2019t take your ideas away — it makes it easier to stay on one thing.',
+    medSchedTitle:'⏰ When do you take it?',
+    waveSpeech:'Sometimes after school you feel different. It has a name — and a reason!',
+    waveTitle:'🌊 What is a rebound?', waveP1:'When your medicine wears off, it drops in your brain. Sometimes it dips a bit below normal.',
+    waveP2:'Then feelings can feel stronger: quicker to get angry, sad, or very hungry. That\u2019s a rebound.',
+    waveHl:'It\u2019s like a wave: it rises and then ebbs away on its own. It always passes, and it\u2019s not your fault!',
+    waveDayTitle:'📅 Your day', waveRebZone:'rebound', waveHome:'Home',
+    feelTitle:'🎯 How do you feel now?', feelPick:'Tap what fits best:',
+    waveFriends:'And if you\u2019re sad because something can\u2019t happen — like playing with a friend — that may feel big. You\u2019re not "too much". You just feel deeply.',
+    powSpeech:'The ADHD brain has special powers. Each one has its own superhero!',
+    powTitle:'⭐ Your superpowers', powGoal:'Click a superhero to discover what makes you special:', heroTag:'Superhero',
+    powEnd:'🦸 Like real superheroes, you learn to steer your powers. Your medicine helps with that — not to take your power away, but to aim it well!',
+    powEndNoMed:'🦸 Like real superheroes, you learn to steer your powers — with practice, help and good habits.',
+    youSpeech:'Now the most important thing. This isn\u2019t about your brain — it\u2019s about YOU. 💛',
+    youTitle:'❤️ You are not your ADHD', youP1:'ADHD is something your brain has — not who you are. Like brown eyes, or being tall. One small thing, not the whole story.',
+    youP2:'If someone asks "who is {name}?", the answer isn\u2019t "ADHD". It\u2019s this:',
+    youHl:'See? ADHD is just one piece. All those other pieces — that\u2019s what you\u2019re made of. Together you\u2019re complete, exactly right as you are.',
+    adhdPiece:'ADHD (1 piece)',
+    ditTitle:'🧩 This is me!', ditIntro:'Tap what fits you. Look how many there are!',
+    ditAdhd:'🧩 Yes — ADHD is part of it too. But see? It\u2019s just one of so many pieces that together make YOU.',
+    ditAll:'💛 Look! You\u2019re made of {n} pieces. All of them together = you!',
+    ditSome:'✨ {n} pieces already — and there\u2019s more. You\u2019re so much more than one thing!',
+    diffTitle:'🌍 Everyone is different — and that\u2019s normal', diffP:'There\u2019s no "normal" brain. Every brain works differently. You\u2019re just as ordinary — and just as special — as any other kid.',
+    hardTitle:'💪 When something doesn\u2019t work right away', hardP1:'Sometimes you have a great idea but it doesn\u2019t come out how you wanted. You might feel angry or sad. That\u2019s normal.',
+    hardHl:'Your ideas go so fast your hands sometimes can\u2019t keep up. That\u2019s not silly — your head is full of great things. Practice helps. And meanwhile, you\u2019re already amazing.',
+    moedTitle:'✨ Boost', moedIntro:'Need a little lift? There\u2019s always one here for you.',
+    diplomaTitle:'🏆 {name}\u2019s Brain Lab diploma', diplomaTodo:'Visit all the topics to earn your diploma! 🎓',
+    diplomaDone:'Congratulations, {name}!', diplomaDoneP:'You now know a lot about your brain — but most important: you are amazing, exactly as you are. 💛',
+    progress:'{a} of {b} parts done',
+    setTitle:'Settings', setSub:'Set up who this app is for. Everything stays local on this device.',
+    fName:'Child\u2019s name', fAge:'Age', fBrain:'Which explanation fits best?',
+    brainRace:'Busy / lots of energy (race car)', brainTabs:'Dreamy / easily distracted (tabs)',
+    fMeds:'Does the child take medication?', medNone:'No', medStim:'Yes — stimulant (e.g. methylphenidate)', medNonOpt:'Yes — non-stimulant',
+    fDoses:'Times taken', addDose:'+ add time', fStrengths:'Strengths (pick a few)',
+    fSupporters:'Names of loved ones (optional, for the boosts)', fSupPlaceholder:'e.g. mum, dad, grandma',
+    fCustom:'Your own boosts (optional, one per line)', fCustomPlaceholder:'e.g. I\u2019m proud of you, champ.',
+    fPhoto:'Photo of the child (optional)', fPhotoRemove:'✕ Remove photo',
+    save:'Save', cancel:'Cancel', schoolEnd:'School ends',
+    setDisc:'This app gives education, not medical advice. Ask your doctor about your child\u2019s medication.',
+    // guide
+    guideTitle:'Conversation guide', guideSub:'Conversation starters per topic \u2014 for parent or teacher', guideClose:'Close', ttsRead:'Read aloud',
+    gBrainTitle:'\ud83e\udde0 Your brain',
+    gBrainQ1:'How does your head feel when you have to sit still for a long time?',
+    gBrainQ2:'When do you notice your engine running at full speed?',
+    gBrainQ3:'Is there anything that helps when your brain is going too fast?',
+    gMsgTitle:'\ud83e\uddea Messengers',
+    gMsgQ1:'Was there a moment today when focusing was really hard?',
+    gMsgQ2:'What helps you to stay with one thing?',
+    gMsgQ3:'Do you notice a difference on days when concentrating feels easier?',
+    gMedTitle:'\ud83d\udc8a Medicine',
+    gMedQ1:'How did you feel when you found out you were going to take medicine?',
+    gMedQ2:'Is there something about your medicine you don\u2019t understand or find a bit scary?',
+    gMedQ3:'What\u2019s different on a day when focusing feels easier?',
+    gWaveTitle:'\ud83c\udf0a The wave',
+    gWaveQ1:'Do you recognise that feeling after school \u2014 when everything feels bigger?',
+    gWaveQ2:'What helps you get through that tricky time?',
+    gWaveQ3:'Who do you tell when you\u2019re not feeling great?',
+    gPowTitle:'\u2b50 Superpowers',
+    gPowQ1:'Which of these powers do you recognise most in yourself?',
+    gPowQ2:'When have you felt your superpower the strongest?',
+    gPowQ3:'Which power would you like to get even better at?',
+    gYouTitle:'\u2764\ufe0f You are you',
+    gYouQ1:'If a friend were to describe you to someone new: what would they say?',
+    gYouQ2:'What are you proud of from this week?',
+    gYouQ3:'Is there something about yourself you wish more people knew?',
+    // emotional card
+    zwaarTitle:'\ud83d\udc99 Sometimes it\u2019s just hard',
+    zwaarP1:'You know what\u2019s sometimes the hardest part of ADHD? Not the restlessness or the forgetting. It\u2019s the feeling that you\u2019re different. That everyone around you seems to have an easier time.',
+    zwaarP2:'And that sometimes you know exactly what you want to say or do \u2014 but it just doesn\u2019t come out right. That\u2019s not silly. That\u2019s not your fault. Your brain and your hands sometimes just speak different languages.',
+    zwaarHl:'Lots of kids with ADHD know that feeling. You\u2019re truly not alone in it. There are people \u2014 at home, at school, sometimes someone who helps you \u2014 who understand this and are on your side.',
+    // mascot guide speech per module
+    mascotName:'Neuro says:',
+    mcBrain:'Hi! I\u2019m Neuro \u2014 your guide. \ud83d\udc4b Did you know your brain is just like mine? Super fast and full of energy. Read along and I\u2019ll explain how it works!',
+    mcMessengers:'Now let me show you something amazing: the tiny messages flying through your brain. This is how dopamine works \u2014 and I\u2019m going to let you feel it!',
+    mcMedicine:'Medicine might sound a bit scary. But I\u2019ll show you what it actually does inside. It\u2019s pretty cool, honestly!',
+    mcWave:'Sometimes after school you feel different than normal, right? That has a name and a reason. I\u2019ll explain it so you know exactly what\u2019s happening.',
+    mcPowers:'This is my favourite part! Because you have real superpowers \u2014 for real. Click a hero to discover them!',
+    mcYou:'And now the most important thing. This isn\u2019t about your brain \u2014 it\u2019s about YOU. Listen up! \ud83d\udc9b',
+    // mascot completion reactions
+    mcdBrain:'YES! You now understand how your special brain works. I\u2019m so proud of you! \ud83c\udf89',
+    mcdMessengers:'Well done! Now you know what dopamine does. Not many people know that! \u26a1',
+    mcdMedicine:'Amazing! Glasses for your brain \u2014 remember that! You\u2019re doing great. \ud83d\udc8a',
+    mcdWave:'Brilliant! You now understand the wave. And remember: it always passes. \ud83c\udf0a',
+    mcdPowers:'Wow! You now know all your superpowers. Never forget them! \u2b50',
+    mcdYou:'The most important thing: you are amazing. Exactly as you are. Always. \u2764\ufe0f',
+    // module completion buttons
+    done_brain:'I now understand how my special brain works! \ud83c\udfce\ufe0f',
+    done_messengers:'I now understand what dopamine does! \u26a1',
+    done_medicine:'I now understand what my medicine does! \ud83d\udc8a',
+    done_wave:'I now understand the wave and rebound! \ud83c\udf0a',
+    done_powers:'I now know all my superpowers! \u2b50',
+    done_you:'I know now that I\u2019m amazing just as I am! \u2764\ufe0f',
+    // short action prompts in messenger game
+    msgInstCharge:'\u26a1 Ready...',
+    msgInstLeap:'\ud83c\udf00 Tap!'
+  }
+};
+
+const MOED = {
+  nl:[
+    'Jij bent niet je ADHD. Jij bent {name} — grappig, slim en nieuwsgierig. 💛',
+    'Een moeilijk moment maakt jou geen moeilijk kind. Het waait weer over. 🌤️',
+    'Jouw hoofd zit boordevol ideeën. Dat is iets heel moois. 💡',
+    'Het is oké als iets niet meteen lukt. Oefenen mag tijd kosten. 🌱',
+    'Je bent precies goed zoals je bent. Echt waar. ⭐',
+    'Fouten maken hoort erbij — zelfs de slimste mensen maken ze. 🙂',
+    'Anders denken is niet minder. Het is gewoon anders. 🧠',
+    'Boos of verdrietig zijn mag. Je gevoelens kloppen, en ze gaan voorbij. 🌊',
+    'De wereld heeft jóuw soort brein nodig. 🌍',
+    'Heel veel mensen houden van jou — gewoon om wie je bent. ❤️',
+    'Je bent dapper, ook als iets eng of moeilijk voelt. 🦁',
+    'Het is oké om hulp te vragen. Sterke mensen doen dat ook. 🤝',
+    'Je hoeft niet perfect te zijn. Niemand is dat. Jij bent precies genoeg. ✨',
+    'Vragen stellen is slim, niet stom. 🔍',
+    'Vandaag hoef je alleen maar jezelf te zijn. Dat is meer dan genoeg. 🌻',
+    'Jij bent een fantastisch kind. Vandaag, morgen, altijd. 🌟'
+  ],
+  en:[
+    'You are not your ADHD. You are {name} — funny, smart and curious. 💛',
+    'A hard moment doesn\u2019t make you a hard kid. It passes. 🌤️',
+    'Your head is full of ideas. That\u2019s a beautiful thing. 💡',
+    'It\u2019s okay if something doesn\u2019t work right away. Practice takes time. 🌱',
+    'You are exactly right just as you are. Really. ⭐',
+    'Making mistakes is part of it — even the smartest people do. 🙂',
+    'Thinking differently isn\u2019t less. It\u2019s just different. 🧠',
+    'Being angry or sad is allowed. Your feelings are real, and they pass. 🌊',
+    'The world needs your kind of brain. 🌍',
+    'Lots of people love you — just for who you are. ❤️',
+    'You are brave, even when something feels scary or hard. 🦁',
+    'It\u2019s okay to ask for help. Strong people do too. 🤝',
+    'You don\u2019t have to be perfect. No one is. You are exactly enough. ✨',
+    'Asking questions is smart, not silly. 🔍',
+    'Today, all you have to be is yourself. That\u2019s more than enough. 🌻',
+    'You are an amazing kid. Today, tomorrow, always. 🌟'
+  ]
+};
+
+/* =================== STATE =================== */
+const DEFAULT_PROFILE = {
+  name:'Owen', age:8, lang:'nl', brain:'racecar',
+  meds:'stim', doses:['08:00','12:00'], schoolEnd:'14:15',
+  strengths:['humor','reader','drawer','curious','smart','bigSibling','kind','brave','friend','ideas'],
+  supporters:['Jake','Sam'], custom:[]
+};
+let P = loadProfile();
+let lang = P.lang || 'nl';
+const visited = loadDone();
+let lastMoedIdx = -1;
+
+function loadProfile(){
+  try{ const s = localStorage.getItem('breinlabProfile'); if(s) return Object.assign({}, DEFAULT_PROFILE, JSON.parse(s)); }catch(e){}
+  return Object.assign({}, DEFAULT_PROFILE);
+}
+function saveProfile(){ try{ localStorage.setItem('breinlabProfile', JSON.stringify(P)); }catch(e){} }
+function loadDone(){ try{ const s=localStorage.getItem('breinlabDone'); if(s) return new Set(JSON.parse(s)); }catch(e){} return new Set(); }
+function saveDone(){ try{ localStorage.setItem('breinlabDone', JSON.stringify([...visited])); }catch(e){} }
+
+function t(key, vars){
+  let s = (T[lang] && T[lang][key]) || (T.nl[key]) || key;
+  if(vars) for(const k in vars) s = s.replaceAll('{'+k+'}', vars[k]);
+  return s;
+}
+function strengthLabel(k){ const s=STRENGTHS[k]; return s ? (s.e+' '+s[lang]) : k; }
+
+function activeModules(){
+  const m = ['brain','messengers'];
+  if(P.meds==='stim'){ m.push('medicine','wave'); }
+  else if(P.meds==='non'){ m.push('medicine'); }
+  m.push('powers','you');
+  return m;
+}
+const MODMETA = {
+  brain:{nav:'navBrain',badge:'🧠'}, messengers:{nav:'navMsg',badge:'🧪'},
+  medicine:{nav:'navMed',badge:'💊'}, wave:{nav:'navWave',badge:'🌊'},
+  powers:{nav:'navPower',badge:'⭐'}, you:{nav:'navYou',badge:'❤️'}
+};
+
+/* =================== RENDER =================== */
+let currentModule = null;
+function render(){
+  document.documentElement.lang = lang;
+  document.getElementById('heroBadge').textContent = t('appBadge',{name:P.name});
+  const mn=document.getElementById('mascotName'); if(mn) mn.textContent=t('mascotName');
+  updateChildAvatar();
+  document.getElementById('langLbl').textContent = (lang==='nl'?'EN':'NL');
+  setGreeting();
+  applyCalmLabels();
+
+  const mods = activeModules();
+  // badges
+  const bb = document.getElementById('badgeBar');
+  bb.innerHTML = mods.map(k=>`<div class="badge" id="bdg-${k}">${MODMETA[k].badge}</div>`).join('');
+  // nav
+  const nav = document.getElementById('nav');
+  nav.innerHTML = mods.map(k=>`<button class="nav-btn" data-m="${k}" onclick="showModule('${k}')">${t(MODMETA[k].nav)}</button>`).join('');
+  // content
+  const c = document.getElementById('content');
+  c.innerHTML = mods.map(k=>`<div class="module" id="mod-${k}">${renderModule(k)}</div>`).join('');
+
+  if(!currentModule || !mods.includes(currentModule)) currentModule = mods[0];
+  window._boot = true;
+  showModule(currentModule, true);
+  // restore earned badges
+  visited.forEach(k=>{ const b=document.getElementById('bdg-'+k); if(b) b.classList.add('earned'); });
+  initAfterRender();
+  updateProgress();
+  window._boot = false;
+  document.getElementById('moedText').textContent = pickMoed();
+}
+
+function doneWrap(k){
+  const done=visited.has(k);
+  const check=lang==='nl'?'✓ Klaar!':'✓ Done!';
+  return `<div class="mod-done-wrap${done?' completed':''}" id="done-${k}">
+    <button class="done-btn" onclick="completeModule('${k}')">${t('done_'+k)}</button>
+    <div class="done-check">${check}</div>
+  </div>`;
+}
+
+function renderModule(k){
+  if(k==='brain') return P.brain==='tabs' ? mBrainTabs() : mBrainRace();
+  if(k==='messengers') return mMessengers();
+  if(k==='medicine') return mMedicine();
+  if(k==='wave') return mWave();
+  if(k==='powers') return mPowers();
+  if(k==='you') return mYou();
+  return '';
+}
+
+function mBrainRace(){
+  return `
+  <div class="speech">${t('rcSpeech')}</div>
+  <div class="card"><div class="card-title" style="color:var(--orange)">${t('rcTitle')}</div>
+    <p>${t('rcP1')}</p><p>${t('rcP2')}</p><div class="hl">🏆 ${t('rcHl')}</div></div>
+  <div class="card"><div class="card-title" style="color:var(--orange)">${t('rcGameTitle')}</div>
+    <p><strong>🏁 ${t('rcGoal')}</strong></p>
+    <div class="car-box" id="carBox">
+      <div class="road"><div class="road-line" style="width:60px;left:8%"></div><div class="road-line" style="width:60px;left:35%"></div><div class="road-line" style="width:60px;left:62%"></div></div>
+      <div class="cloud" style="top:8%">☁️</div><div class="cloud" style="top:14%">☁️</div><div class="cloud" style="top:6%">☁️</div><div class="cloud" style="top:18%">☁️</div>
+      <div class="tree">🌲</div><div class="tree">🌳</div><div class="tree">🌲</div><div class="tree">🌳</div><div class="tree">🌲</div><div class="tree">🌳</div><div class="tree">🌲</div><div class="tree">🌳</div><div class="tree">🌲</div><div class="tree">🌳</div>
+      <div class="stopzone" id="stopZone" style="left:160%"><span class="flag">🏁</span></div>
+      <div class="stop-shadow" id="stopShadow"></div>
+      <div class="car" id="car"><img src="assets/Raceauto-removebg-preview.png" alt="raceauto"></div>
+      <div class="speedlbl" id="speedLbl">${t('speed')}: 0</div>
+      <div class="race-warn" id="raceWarn">${t('rcWarn')}</div>
+    </div>
+    <div class="hl" id="shadowTip" style="background:#EAF6FF;font-size:.85rem">📏 ${t('rcShadow')}</div>
+    <div class="dop-toggle"><label class="switch"><input type="checkbox" id="blindChk" checked onchange="toggleBlind()"><span class="slider"></span></label>
+      <span style="font-weight:800;font-size:.9rem" id="blindLbl">${t('blindOff')}</span></div>
+    <div><button class="gbtn primary" id="startBtn" onclick="startRace()">${t('rcStart')}</button>
+      <button class="gbtn brake" id="brakeBtn" onclick="brakeRace()">${t('brake')}</button>
+      <button class="gbtn" onclick="resetRace()">${t('again')}</button></div>
+    <div id="raceMsg" class="hl" style="display:none;margin-top:1rem"></div>
+  </div>
+  ${doneWrap('brain')}`;
+}
+function mBrainTabs(){
+  return `
+  <div class="speech">${t('tbSpeech')}</div>
+  <div class="card"><div class="card-title" style="color:var(--purple)">${t('tbTitle')}</div>
+    <p>${t('tbP1')}</p><p>${t('tbP2')}</p><div class="hl">🪟 ${t('tbHl')}</div></div>
+  <div class="card"><div class="card-title" style="color:var(--purple)">${t('tbGameTitle')}</div>
+    <p><strong>🎯 ${t('tbGoal')}</strong></p>
+    <div class="tabs-area" id="tabsArea"></div>
+    <button class="gbtn" onclick="initTabs()">${t('again')}</button>
+    <div id="tabsMsg" class="hl" style="display:none;margin-top:1rem"></div>
+  </div>
+  ${doneWrap('brain')}`;
+}
+function mMessengers(){
+  return `
+  <div class="speech">${t('msgSpeech')}</div>
+  <div class="card"><div class="card-title" style="color:var(--blue)">${t('msgTitle')}</div>
+    <p>${t('msgP1')}</p><p>${t('msgP2')}</p></div>
+  <div class="card"><div class="card-title" style="color:var(--blue)">${t('msgGameTitle')}</div>
+    <p><strong>🎯 ${t('msgGoal')}</strong></p>
+    <p style="font-size:.85rem;color:#555;background:#f0f7ff;border-radius:10px;padding:.6rem .8rem;border-left:3px solid var(--blue)">${t('msgContext')}</p>
+    <div class="dop-toggle"><label class="switch"><input type="checkbox" id="dopChk" onchange="toggleDop()"><span class="slider"></span></label>
+      <span style="font-weight:800;font-size:.9rem" id="dopLbl">${t('dopLow')}</span></div>
+    <div class="neuron-canvas" id="neuronCanvas">
+      <svg class="conn-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <polyline points="14,50 38,50 62,50 86,50" fill="none" stroke="rgba(255,255,255,.18)" stroke-width=".6" stroke-dasharray="2,2"/>
+        <line id="sg0" x1="14" y1="50" x2="38" y2="50" stroke="#FFD93D" stroke-width="1.4" opacity="0"/>
+        <line id="sg1" x1="38" y1="50" x2="62" y2="50" stroke="#FFD93D" stroke-width="1.4" opacity="0"/>
+        <line id="sg2" x1="62" y1="50" x2="86" y2="50" stroke="#FFD93D" stroke-width="1.4" opacity="0"/></svg>
+      <div class="hop-ring" id="hopRing"></div>
+      <div class="neuron lit" id="nd0" onclick="tapNeuron(0)" style="left:14%;top:50%">💡</div>
+      <div class="neuron" id="nd1" onclick="tapNeuron(1)" style="left:38%;top:50%">🧠</div>
+      <div class="neuron" id="nd2" onclick="tapNeuron(2)" style="left:62%;top:50%">🧠</div>
+      <div class="neuron" id="nd3" onclick="tapNeuron(3)" style="left:86%;top:50%">🎯</div>
+      <div id="msgr" class="messenger"><img src="assets/bliksembol.png" alt=""></div>
+      <div class="neuron-inst" id="neuronInst">${t('msgStart')}</div>
+    </div>
+    <div id="neuronResult" class="hl" style="display:none;margin-top:1rem"></div>
+    <button class="gbtn" onclick="resetNeuron()" style="margin-top:.6rem">${t('again')}</button>
+  </div>
+  ${doneWrap('messengers')}`;
+}
+function mMedicine(){
+  const stim = P.meds==='stim';
+  return `
+  <div class="speech">${stim?t('medSpeechStim'):t('medSpeechNon')}</div>
+  <div class="card"><div class="card-title" style="color:var(--purple)">${t('medTitle')}</div>
+    <p>${stim?t('medExplStim'):t('medExplNon')}</p></div>
+  <div class="card"><div class="card-title" style="color:var(--purple)">${t('medFocusTitle')}</div>
+    <p>${t('medFocusGoal')}</p>
+    <div class="blur-demo"><div class="blur-text" id="blurText">${t('medBlurWord')}</div></div>
+    <div class="blur-state" id="blurState">${t('medBlurLow')}</div>
+    <div class="radio-track" id="focusTrack" onclick="focusClick(event)"><div class="radio-knob" id="focusKnob">🔍</div></div>
+    <div style="font-weight:800;margin:1rem 0 .3rem">${t('focus')}:</div>
+    <div class="focusbar"><div id="focusBar">10%</div></div>
+    <div id="focusMsg" class="hl" style="display:none;margin-top:1rem"></div></div>
+  <div class="card"><div class="card-title" style="color:var(--purple)">${t('medSchedTitle')}</div>
+    <div class="schedule">${P.doses.map((d,i)=>`<div class="sch">${clockSVG(d,58)}<b>${d}</b>${stim?(i===0?'💊⚡':'💊🔋'):'💊'}</div>`).join('')}</div></div>
+  ${doneWrap('medicine')}`;
+}
+function mWave(){
+  return `
+  <div class="speech">${t('waveSpeech')}</div>
+  <div class="card"><div class="card-title" style="color:var(--green)">${t('waveTitle')}</div>
+    <p>${t('waveP1')}</p><p>${t('waveP2')}</p><div class="hl">🏄 ${t('waveHl')}</div></div>
+  <div class="card"><div class="card-title" style="color:var(--green)">${t('waveDayTitle')}</div>
+    <div class="tl" id="timeline"></div>
+    <div class="schedule" id="tlSchedule"></div></div>
+  <div class="card"><div class="card-title" style="color:var(--green)">${t('feelTitle')}</div>
+    <p>${t('waveFriends')}</p></div>
+  <div class="card"><div class="card-title">${t('feelTitle')}</div><p>${t('feelPick')}</p>
+    <div class="feel-opts" id="feelOpts"></div>
+    <div class="feel-resp" id="feelResp"></div></div>
+  ${doneWrap('wave')}`;
+}
+const FEELINGS = {
+  super:{nl:'😄 Super!',en:'😄 Great!',rnl:'😄 Geniet ervan! Waarschijnlijk zit je lekker in het midden van je golf.',ren:'😄 Enjoy it! You\u2019re probably right in the middle of your wave.'},
+  ok:{nl:'🙂 Best goed',en:'🙂 Pretty good',rnl:'🙂 Fijn, alles in balans!',ren:'🙂 Nice, all in balance!'},
+  meh:{nl:'😐 Zo-zo',en:'😐 So-so',rnl:'😐 Dat kan als de golf afloopt. Even wachten, het gaat over.',ren:'😐 That can happen as the wave ebbs. Wait a bit, it passes.'},
+  mad:{nl:'😤 Boos',en:'😤 Angry',rnl:'😤 Boos mag. Misschien is dit de rebound — adem even diep in.',ren:'😤 Anger is okay. Maybe this is the rebound — take a deep breath.'},
+  tired:{nl:'😴 Moe',en:'😴 Tired',rnl:'😴 Moe na school is normaal. Een snack en even rust helpt.',ren:'😴 Tired after school is normal. A snack and some rest help.'},
+  hungry:{nl:'🍕 Honger',en:'🍕 Hungry',rnl:'🍕 Medicijn kan je eetlust remmen. Na de golf komt honger terug — eet wat lekkers!',ren:'🍕 Medicine can curb appetite. Hunger returns after the wave — have a snack!'}
+};
+function heroScene(i){
+  const imgs=['Kapitein%20Rakettank','Professor%20Vonk','Laserblik','Hartradar','Detective%20Waarom','Bliksembrein'];
+  const sc=['sc0','sc1','sc2','sc3','sc4','sc5'];
+  return `<div class="hero-scene ${sc[i]}"><img src="assets/${imgs[i]}.png" alt="" class="hs-img"></div>`;
+}
+function mPowers(){
+  _scCache=null;
+  const imgs=['Kapitein%20Rakettank','Professor%20Vonk','Laserblik','Hartradar','Detective%20Waarom','Bliksembrein'];
+  const bgs=['#0d0022','#1a0d3d','#030510','#200515','#060607','#050812'];
+  const sc=loadScores();
+  const cards = POWERS.map((p,i)=>`
+    <div class="hcard${sc[i]!=null?' done':''}" id="hcard-${i}" onclick="openHeroGame(${i})" role="button" tabindex="0">
+      <img src="assets/${imgs[i]}.png" alt="${p[lang].hn}" class="hcard-img" style="background:${bgs[i]}">
+      <div class="hcard-done">⭐</div>
+      <div class="hcard-lbl">
+        <div class="hcard-pwr">${p[lang].n}</div>
+        <div class="hcard-name">${p[lang].hn}</div>
+        <div class="hcard-score" id="hcard-score-${i}">${sc[i]!=null?scoreLabel(i):''}</div>
+      </div>
+    </div>`).join('');
+  const end = (P.meds==='none') ? t('powEndNoMed') : t('powEnd');
+  return `
+  <div class="speech">${t('powSpeech')}</div>
+  <div class="card"><div class="card-title" style="color:var(--pink)">${t('powTitle')}</div>
+    <p>${t('powGoal')}</p><div class="hero-grid">${cards}</div>
+    <div class="hl">${end}</div></div>
+  ${doneWrap('powers')}`;
+}
+function mYou(){
+  const pieces = pickIdentityPieces().slice(0,5).map(k=>`<div class="you-piece" style="background:#FFE8D6">${STRENGTHS[k][lang]}</div>`).join('');
+  const chips = pickIdentityPieces().map(k=>`<span class="chip" onclick="claimChip(this)">${strengthLabel(k)}</span>`).join('')
+    + `<span class="chip adhd" onclick="claimChip(this)">🧩 ADHD</span>`;
+  return `
+  <div class="speech">${t('youSpeech')}</div>
+  <div class="card"><div class="card-title" style="color:var(--pink)">${t('youTitle')}</div>
+    <p>${t('youP1')}</p><p>${t('youP2',{name:P.name})}</p>
+    <div class="you-visual"><div class="you-piece you-big">${P.name} 💛</div>${pieces}<div class="you-piece you-small">${t('adhdPiece')}</div></div>
+    <div class="hl">🧩 ${t('youHl')}</div></div>
+  <div class="card"><div class="card-title" style="color:var(--pink)">${t('ditTitle')}</div>
+    <p style="text-align:center;font-weight:700">${t('ditIntro')}</p>
+    <div class="chips" id="chips">${chips}</div><div class="count" id="chipCount"></div></div>
+  <div class="card"><div class="card-title" style="color:var(--blue)">${t('zwaarTitle')}</div>
+    <p>${t('zwaarP1')}</p><p>${t('zwaarP2')}</p>
+    <div class="hl" style="background:#EAF6FF">💙 ${t('zwaarHl')}</div></div>
+  <div class="card"><div class="card-title" style="color:var(--blue)">${t('diffTitle')}</div><p>${t('diffP')}</p></div>
+  <div class="card"><div class="card-title" style="color:var(--orange)">${t('hardTitle')}</div>
+    <p>${t('hardP1')}</p><div class="hl">🚀 ${t('hardHl')}</div></div>
+  <div class="card"><div class="card-title">${t('moedTitle')}</div><p style="text-align:center">${t('moedIntro')}</p></div>
+  <div class="card"><div class="card-title">${t('diplomaTitle',{name:P.name})}</div>
+    <div id="diploma" style="text-align:center;padding:1rem">
+      <p>${t('diplomaTodo')}</p>
+      <div class="progress"><div id="progFill"></div></div>
+      <div id="progText" style="font-weight:700;color:#666;font-size:.9rem;margin-top:.5rem"></div></div></div>
+  ${doneWrap('you')}`;
+}
+function pickIdentityPieces(){
+  let arr = (P.strengths && P.strengths.length) ? P.strengths.slice() : ['humor','curious','kind','brave','ideas'];
+  return arr.filter(k=>STRENGTHS[k]);
+}
+
+/* =================== NAV / BADGES =================== */
+function showModule(k, silent){
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  document.querySelectorAll('.tts-btn.speaking').forEach(b=>b.classList.remove('speaking'));
+  currentModule = k;
+  document.querySelectorAll('.module').forEach(m=>m.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const mod = document.getElementById('mod-'+k); if(mod) mod.classList.add('active');
+  const btn = document.querySelector('.nav-btn[data-m="'+k+'"]'); if(btn) btn.classList.add('active');
+  if(!_mcTimer){ const cap=k[0].toUpperCase()+k.slice(1); setMascotSpeech(t('mc'+cap)); }
+  if(!silent) window.scrollTo({top:0,behavior:'smooth'});
+}
+function earnBadge(k){
+  if(visited.has(k)){ updateProgress(); return; }
+  visited.add(k);
+  const b = document.getElementById('bdg-'+k); if(b) b.classList.add('earned');
+  if(!window._boot) confetti();
+  updateProgress();
+}
+function updateChildAvatar(){
+  const el = document.getElementById('childAvatar'); if(!el) return;
+  if(P.photo){
+    el.innerHTML = `<img src="${P.photo}" alt="${P.name}">`;
+  } else {
+    el.innerHTML = P.name ? P.name[0].toUpperCase() : '🧒';
+  }
+}
+
+let _mcTimer = null;
+function setMascotSpeech(text, celebrate=false){
+  const el = document.getElementById('mascotSpeech');
+  if(!el) return;
+  el.style.opacity = '0';
+  setTimeout(()=>{
+    el.innerHTML = text;
+    el.classList.toggle('celebrate', celebrate);
+    el.style.opacity = '1';
+  }, 200);
+}
+function completeModule(k){
+  const wrap = document.getElementById('done-'+k);
+  if(wrap) wrap.classList.add('completed');
+  earnBadge(k);
+  saveDone();
+  if(_mcTimer) clearTimeout(_mcTimer);
+  const cap = k[0].toUpperCase()+k.slice(1);
+  setMascotSpeech(t('mcd'+cap), true);
+  _mcTimer = setTimeout(()=>{ setMascotSpeech(t('mc'+cap)); }, 4500);
+}
+function updateProgress(){
+  const total = activeModules().length;
+  const done = activeModules().filter(k=>visited.has(k)).length;
+  const fill = document.getElementById('progFill'); const txt = document.getElementById('progText');
+  if(fill) fill.style.width = (done/total*100)+'%';
+  if(txt) txt.textContent = t('progress',{a:done,b:total});
+  if(done===total){
+    const d = document.getElementById('diploma');
+    if(d && !d.dataset.done){ d.dataset.done='1';
+      d.innerHTML = `<div style="font-size:3rem;animation:float 2s ease-in-out infinite">🎓</div>
+        <div style="font-family:'Fredoka One',cursive;font-size:1.6rem;color:var(--orange);margin:.4rem 0">${t('diplomaDone',{name:P.name})}</div>
+        <p style="font-weight:700">${t('diplomaDoneP')}</p>`;
+      bigConfetti();
+    }
+  }
+}
+
+/* =================== GAMES =================== */
+// race — launch op topsnelheid, draait om op tijd remmen (met remweg)
+let raceState='idle', rSpeed=0, worldX=0, braking=false, raceLoop=null, blindMode=false, aidShown=true, raceMisses=0;
+const CAR=16, TOP=10.0, ACC=0.8, DEC=0.5, ZS=460, ZW=50, ZE=ZS+ZW, MAXX=ZS+ZW+70, SCALE=0.5;
+function brakeDist(v){ return v*v/(2*DEC); }
+function toggleBlind(){ blindMode=!document.getElementById('blindChk').checked; // schakelaar aan = hulpje aan
+  const l=document.getElementById('blindLbl'); if(l) l.textContent=blindMode?t('blindOn'):t('blindOff');
+  const tip=document.getElementById('shadowTip'); if(tip) tip.style.display=blindMode?'none':'block';
+  if(raceState==='run'||raceState==='done') resetRace(); else updateRace(); }
+function startRace(){ if(raceState==='run') return; if(raceState==='done') resetRace();
+  raceState='run'; braking=false; rSpeed=0; worldX=0; aidShown=!blindMode;
+  const m=document.getElementById('raceMsg'); if(m) m.style.display='none';
+  if(!raceLoop) raceLoop=setInterval(raceTick,33); updateRace(); }
+function brakeRace(){ if(raceState==='run') braking=true; }
+function raceTick(){
+  if(raceState!=='run') return;
+  if(braking) rSpeed=Math.max(0,rSpeed-DEC); else rSpeed=Math.min(TOP,rSpeed+ACC);
+  worldX+=rSpeed; updateRace();
+  if(braking && rSpeed<=0){ raceStop(); return; }
+  if(worldX>=MAXX){ raceState='done'; clearInterval(raceLoop); raceLoop=null; setRaceMsg(t('rcForgot'),'#FFE8D6'); updateRace(); }
+}
+function raceStop(){ raceState='done'; clearInterval(raceLoop); raceLoop=null;
+  let res = (worldX>=ZS && worldX<=ZE) ? 'win' : (worldX<ZS ? 'short' : 'over');
+  if(res==='win'){ raceMisses=0; setRaceMsg(blindMode?t('rcWinBlind'):t('rcWinAid'),'#D4F4F2'); confetti(); }
+  else {
+    raceMisses++;
+    const map={short:['rcShort','#FFE8D6'],over:['rcOver','#FFE8D6']};
+    let msg=t(map[res][0]);
+    if(raceMisses>=5) msg+=' '+t('rcEncourage2');
+    else if(raceMisses>=3) msg+=' '+t('rcEncourage1');
+    setRaceMsg(msg,'#FFE8D6');
+  }
+  updateRace(); }
+function updateRace(){
+  const car=document.getElementById('car'); if(car) car.style.left=CAR+'%';
+  const s=document.getElementById('speedLbl'); if(s) s.textContent=t('speed')+': '+Math.round(rSpeed*36);
+  const zone=document.getElementById('stopZone'); if(zone){ zone.style.left=(CAR+(ZS-worldX)*SCALE)+'%'; zone.style.width=(ZW*SCALE)+'%'; }
+  const sh=document.getElementById('stopShadow');
+  if(sh){ if(aidShown && raceState==='run' && rSpeed>0.2){ sh.style.display='block'; sh.style.left=(CAR+brakeDist(rSpeed)*SCALE)+'%'; sh.style.width=(ZW*SCALE)+'%'; }
+    else sh.style.display='none'; }
+  const trees=document.querySelectorAll('#carBox .tree'); const TN=trees.length, TSP=24, TPER=TN*TSP;
+  trees.forEach((el,k)=>{ const rel=(((k*TSP - worldX)%TPER)+TPER)%TPER; el.style.left=(CAR-32+rel*SCALE)+'%'; });
+  const clouds=document.querySelectorAll('#carBox .cloud'); const CN=clouds.length, CSC=SCALE*0.32;
+  clouds.forEach((el,k)=>{ const base=k*(125/CN); const x=(((base - worldX*CSC)%130)+130)%130 - 15; el.style.left=x+'%'; });
+  document.querySelectorAll('.road-line').forEach(l=>{ if(rSpeed<=0) l.style.animationPlayState='paused';
+    else { l.style.animationPlayState='running'; l.style.animationDuration=(Math.max(0.12,0.55-rSpeed/16)).toFixed(2)+'s'; }});
+  const warn=document.getElementById('raceWarn'); if(warn){ const d=ZS-worldX; warn.style.opacity=(raceState==='run'&&!braking&&d<210&&d>0)?'1':'0'; }
+}
+function setRaceMsg(txt,bg){ const m=document.getElementById('raceMsg'); if(!m) return; if(!txt){m.style.display='none';return;} m.style.display='block'; m.style.background=bg||'#FFE8D6'; m.textContent=txt; }
+function resetRace(){ if(raceLoop){clearInterval(raceLoop);raceLoop=null;} raceState='idle'; rSpeed=0; worldX=0; braking=false; raceMisses=0;
+  updateRace(); const m=document.getElementById('raceMsg'); if(m) m.style.display='none'; }
+
+// tabs game
+function initTabs(){
+  const area=document.getElementById('tabsArea'); if(!area) return;
+  area.innerHTML='';
+  const main=document.createElement('div'); main.className='tab-item main'; main.textContent='📘'; area.appendChild(main);
+  const labels=['📺','🎮','🐶','🍪','🎵','💬'];
+  const n=5;
+  for(let i=0;i<n;i++){
+    const d=document.createElement('div'); d.className='tab-item distract'; d.textContent=labels[i%labels.length];
+    d.style.left=(8+Math.random()*72)+'%'; d.style.top=(8+Math.random()*64)+'%';
+    d.onclick=()=>{ d.remove(); checkTabs(); };
+    area.appendChild(d);
+  }
+  const msg=document.getElementById('tabsMsg'); if(msg) msg.style.display='none';
+}
+function checkTabs(){
+  const left=document.querySelectorAll('#tabsArea .distract').length;
+  if(left===0){ const msg=document.getElementById('tabsMsg'); if(msg){msg.style.display='block';msg.style.background='#D4FFE4';msg.textContent=t('tbWin');} confetti(); }
+}
+
+// neuron timing game
+const NODES=[{x:14,y:50},{x:38,y:50},{x:62,y:50},{x:86,y:50}];
+let nStep=0, dopOn=false, hopTimer=null, hopActive=false, dopUsedRun=false;
+function neuronWindow(){ return dopOn?2600:500; } // ms: zonder dopamine glijdt het bijna meteen weg
+function toggleDop(){ dopOn=document.getElementById('dopChk').checked;
+  const l=document.getElementById('dopLbl'); if(l) l.textContent=dopOn?t('dopOk'):t('dopLow');
+  if(nStep>=3){ resetNeuron(); return; } // klaar gespeeld: zet klaar om opnieuw te proberen met nieuwe instelling
+  if(hopActive) armHop(); } // herstart huidige sprong met nieuw tijdvenster
+function setNextPulse(){ for(let i=0;i<4;i++){ const el=document.getElementById('nd'+i); if(el) el.classList.toggle('next', hopActive && i===nStep+1); } }
+function neuronVisible(){ const m=document.getElementById('mod-messengers'); return m && m.classList.contains('active'); }
+function startMessage(){ if(nStep!==0||hopActive) return; dopUsedRun=false; armHop(); }
+function setNeuronStory(html){
+  const s=document.getElementById('neuronStory');
+  if(!s) return;
+  if(html){ s.innerHTML=html; s.style.display='block'; }
+  else { s.style.display='none'; s.innerHTML=''; }
+}
+function armHop(){
+  if(nStep>=3) return;
+  hopActive=true; if(hopTimer){clearTimeout(hopTimer);hopTimer=null;}
+  const target=nStep+1, from=NODES[nStep], to=NODES[target], win=neuronWindow();
+  setNextPulse();
+  // Stap 1: toon de bal groot op het vertrekpunt (oplaadfase)
+  const m=document.getElementById('msgr');
+  if(m){ m.classList.remove('stationary'); m.style.transition='none';
+    m.style.left=from.x+'%'; m.style.top=from.y+'%'; m.style.opacity='1';
+    void m.offsetWidth; m.classList.add('stationary'); }
+  const r0=document.getElementById('neuronResult'); if(r0) r0.style.display='none';
+  const inst=document.getElementById('neuronInst'); if(inst) inst.textContent=t('msgInstCharge');
+  // Stap 2: na oplaadpauze → verklein en vlieg
+  setTimeout(()=>{
+    if(!hopActive) return;
+    if(inst) inst.textContent=t('msgInstLeap');
+    const ring=document.getElementById('hopRing');
+    if(ring){ ring.style.transition='none'; ring.style.left=to.x+'%'; ring.style.top=to.y+'%';
+      ring.style.borderColor=dopOn?'#6BCB77':'#FF6B9D'; ring.style.opacity='0.95'; ring.style.transform='translate(-50%,-50%) scale(1.35)';
+      void ring.offsetWidth; ring.style.transition='transform '+win+'ms linear,opacity '+win+'ms linear';
+      ring.style.transform='translate(-50%,-50%) scale(0.5)'; }
+    flyOver(from,to,win);
+    hopTimer=setTimeout(missHop,win);
+  }, 600);
+}
+function flyOver(from,to,ms){ const m=document.getElementById('msgr'); if(!m) return;
+  m.classList.remove('stationary');
+  m.style.transition='none'; m.style.left=from.x+'%'; m.style.top=from.y+'%'; m.style.opacity='1'; void m.offsetWidth;
+  m.style.transition='left '+ms+'ms linear,top '+ms+'ms linear'; m.style.left=to.x+'%'; m.style.top=to.y+'%'; }
+function clearRing(){ const r=document.getElementById('hopRing'); if(r){ r.style.transition='none'; r.style.opacity='0'; } }
+function missHop(){ hopTimer=null; hopActive=false; clearRing(); setNextPulse();
+  const m=document.getElementById('msgr'); if(m){ m.style.transition='opacity .3s'; m.style.opacity='0'; }
+  if(!neuronVisible()) return;
+  const inst=document.getElementById('neuronInst'); if(inst) inst.textContent='💨';
+  const r=document.getElementById('neuronResult');
+  if(r){ r.style.display='block'; r.style.background='#FFE8D6'; r.textContent=t('msgMiss'); }
+  setTimeout(()=>{ if(!neuronVisible()) return; if(r) r.style.display='none'; armHop(); }, 1800); }
+function tapNeuron(i){
+  if(i===0){ startMessage(); return; }
+  if(!hopActive) return;
+  if(i!==nStep+1){ const inst=document.getElementById('neuronInst'); if(inst) inst.textContent=t('msgFollow'); return; }
+  if(dopOn) dopUsedRun=true;
+  if(hopTimer){clearTimeout(hopTimer);hopTimer=null;}
+  hopActive=false; clearRing();
+  const sg=document.getElementById('sg'+nStep); if(sg) sg.setAttribute('opacity','1');
+  const m=document.getElementById('msgr'); if(m){ m.style.transition='left .15s,top .15s'; m.style.left=NODES[i].x+'%'; m.style.top=NODES[i].y+'%'; m.style.opacity='1'; setTimeout(()=>m.classList.add('stationary'),160); }
+  nStep=i; const nd=document.getElementById('nd'+i); if(nd) nd.classList.add('lit'); setNextPulse();
+  const inst=document.getElementById('neuronInst');
+  if(nStep>=3){ finishNeuron(); } else { if(inst) inst.textContent='✅'; setTimeout(()=>armHop(), 400); }
+}
+function finishNeuron(){ const r=document.getElementById('neuronResult'); const inst=document.getElementById('neuronInst');
+  if(inst) inst.textContent=''; const m=document.getElementById('msgr'); if(m){ m.style.transition='opacity .3s'; m.style.opacity='0'; }
+  if(r){ r.style.display='block'; r.style.background = dopUsedRun?'#D4FFE4':'#FFF3D4'; r.textContent = dopUsedRun?t('msgWinDop'):t('msgWinNoDop'); }
+  confetti(); }
+function resetNeuron(){ setNeuronStory(null); if(hopTimer){clearTimeout(hopTimer);hopTimer=null;} hopActive=false; nStep=0; dopUsedRun=false;
+  ['nd1','nd2','nd3'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.remove('lit');});
+  ['sg0','sg1','sg2'].forEach(id=>{const e=document.getElementById(id);if(e)e.setAttribute('opacity','0');});
+  clearRing(); const m=document.getElementById('msgr'); if(m){m.style.transition='none';m.style.opacity='0';m.style.left=NODES[0].x+'%';m.style.top=NODES[0].y+'%';}
+  const r=document.getElementById('neuronResult'); if(r) r.style.display='none';
+  const inst=document.getElementById('neuronInst'); if(inst) inst.textContent=t('msgStart'); setNextPulse(); }
+
+// analoge klok (SVG) voor een tijd "HH:MM"
+function clockSVG(time,size){
+  size=size||58; const parts=(time||'0:00').split(':'); const h=parseInt(parts[0])||0, m=parseInt(parts[1])||0;
+  const cx=size/2, cy=size/2, r=size/2-3;
+  const hand=(ang,len,w,col)=>{ const rad=(ang-90)*Math.PI/180; return `<line x1="${cx}" y1="${cy}" x2="${(cx+Math.cos(rad)*len).toFixed(1)}" y2="${(cy+Math.sin(rad)*len).toFixed(1)}" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`; };
+  let ticks=''; for(let i=0;i<12;i++){ const a=(i/12)*360-90, rad=a*Math.PI/180;
+    ticks+=`<line x1="${(cx+Math.cos(rad)*(r-2)).toFixed(1)}" y1="${(cy+Math.sin(rad)*(r-2)).toFixed(1)}" x2="${(cx+Math.cos(rad)*(r-6)).toFixed(1)}" y2="${(cy+Math.sin(rad)*(r-6)).toFixed(1)}" stroke="#1a1a2e" stroke-width="1.4"/>`; }
+  const hourA=((h%12)/12)*360+(m/60)*30, minA=(m/60)*360;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" stroke="#1a1a2e" stroke-width="2.5"/>${ticks}${hand(hourA,r*0.5,3,'#1a1a2e')}${hand(minA,r*0.74,2,'#FF6B35')}<circle cx="${cx}" cy="${cy}" r="2.4" fill="#1a1a2e"/></svg>`;
+}
+
+// focus / wazig->scherp spel
+let focusVal=10,fdrag=false;
+function setFocus(pct){ focusVal=Math.max(5,Math.min(95,pct));
+  const k=document.getElementById('focusKnob'); if(k) k.style.left=(focusVal-5)+'%';
+  const blur=Math.max(0,(100-focusVal)/100*8);
+  const bt=document.getElementById('blurText'); if(bt) bt.style.filter='blur('+blur.toFixed(1)+'px)';
+  const fb=document.getElementById('focusBar'); const p=Math.round(focusVal); if(fb){ fb.style.width=p+'%'; fb.textContent=p+'%'; }
+  const st=document.getElementById('blurState'); if(st) st.textContent = focusVal>=70 ? t('medBlurHigh') : t('medBlurLow');
+  const msg=document.getElementById('focusMsg'); if(msg){ if(focusVal<85) msg.style.display='none';
+    else { msg.style.display='block'; msg.style.background='#D4FFE4'; msg.textContent=t('medFocusWin'); confetti(); } }
+}
+function focusClick(e){ const r=e.currentTarget.getBoundingClientRect(); setFocus(((e.clientX-r.left)/r.width)*90+5); }
+function bindFocus(){ const k=document.getElementById('focusKnob'),tr=document.getElementById('focusTrack'); if(!k||!tr) return;
+  k.addEventListener('pointerdown',e=>{fdrag=true;e.preventDefault();});
+  document.addEventListener('pointermove',e=>{ if(!fdrag) return; const r=tr.getBoundingClientRect(); setFocus(((e.clientX-r.left)/r.width)*90+5); });
+  document.addEventListener('pointerup',()=>fdrag=false); }
+
+// timeline
+function drawTimeline(){
+  const tl=document.getElementById('timeline'); const sch=document.getElementById('tlSchedule'); if(!tl) return;
+  const toMin=s=>{const[a,b]=s.split(':').map(Number);return a*60+b;};
+  const start=7*60, end=20*60, span=end-start;
+  const pos=m=>Math.max(2,Math.min(98,((m-start)/span)*100));
+  let html='<div class="tl-base"></div>';
+  // rebound zone after last dose (+ ~5h)
+  const lastDose=P.doses.map(toMin).sort((a,b)=>a-b).slice(-1)[0];
+  const rebStart=pos(lastDose+4.5*60), rebEnd=pos(lastDose+7*60);
+  html+=`<div class="tl-reb" style="left:${rebStart}%;width:${Math.max(6,rebEnd-rebStart)}%"></div>`;
+  P.doses.forEach((d,i)=>{ const x=pos(toMin(d)); html+=`<div class="tl-dot" style="left:${x}%;background:${i%2?'#A855F7':'#4ECDC4'}"></div><div class="tl-lbl" style="left:${x}%">💊 ${d}</div>`; });
+  if(P.schoolEnd){ const x=pos(toMin(P.schoolEnd)); html+=`<div class="tl-dot" style="left:${x}%;background:#FFD93D"></div><div class="tl-lbl" style="left:${x}%">🏠 ${P.schoolEnd}</div>`; }
+  tl.innerHTML=html;
+  if(sch){ sch.innerHTML = P.doses.map((d,i)=>`<div class="sch">${clockSVG(d,52)}<b>${d}</b>💊</div>`).join('')
+    + (P.schoolEnd?`<div class="sch">${clockSVG(P.schoolEnd,52)}<b>${P.schoolEnd}</b>🏠 ${t('waveHome')}</div>`:'')
+    + `<div class="sch" style="background:#FFE0E0;border-color:var(--pink)"><b>🌊</b>${t('waveRebZone')}</div>`; }
+}
+
+// feeling
+function renderFeelings(){ const w=document.getElementById('feelOpts'); if(!w) return;
+  w.innerHTML=Object.keys(FEELINGS).map(k=>`<button class="feel" onclick="selFeel(this,'${k}')">${FEELINGS[k][lang]}</button>`).join(''); }
+function selFeel(btn,k){ document.querySelectorAll('.feel').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+  const r=document.getElementById('feelResp'); if(r){ r.style.display='block'; r.textContent=FEELINGS[k][lang==='nl'?'rnl':'ren']; } }
+
+// powers — see openHeroGame() below
+
+// identity chips
+let claimed=0;
+function claimChip(el){ if(el.classList.contains('claimed')) return; el.classList.add('claimed'); claimed++;
+  const c=document.getElementById('chipCount'); const total=document.querySelectorAll('#chips .chip').length;
+  if(c){ if(el.classList.contains('adhd')) c.textContent=t('ditAdhd');
+    else if(claimed>=total) c.textContent=t('ditAll',{n:total});
+    else c.textContent=t('ditSome',{n:claimed}); }
+  confetti(); }
+
+/* =================== MOEDMAKER =================== */
+function buildMoedList(){
+  let list = MOED[lang].slice();
+  if(P.supporters && P.supporters.length){
+    const names = P.supporters.join(lang==='nl'?' en ':' and ');
+    list.push(lang==='nl'?`${names} houden heel veel van je. ❤️`:`${names} love you very much. ❤️`);
+  }
+  if(P.custom && P.custom.length) list = list.concat(P.custom);
+  return list;
+}
+function pickMoed(){ const list=buildMoedList(); let i; do{ i=Math.floor(Math.random()*list.length); }while(i===lastMoedIdx&&list.length>1); lastMoedIdx=i;
+  return list[i].replaceAll('{name}',P.name); }
+function fade(el,v){ if(!el) return; el.style.opacity='0'; setTimeout(()=>{el.textContent=v;el.style.opacity='1';},180); }
+function newMoedBar(){ fade(document.getElementById('moedText'), pickMoed()); }
+function toggleMoedBar(expand){ const bar=document.getElementById('moedBar'),mini=document.getElementById('moedMini');
+  if(expand){bar.classList.remove('hidden');mini.classList.remove('show');} else {bar.classList.add('hidden');mini.classList.add('show');} }
+
+/* =================== CALM / LANG / GREETING =================== */
+function applyCalm(on){ document.body.classList.toggle('calm',on); applyCalmLabels(on); }
+function applyCalmLabels(force){ const on = (typeof force==='boolean')?force:document.body.classList.contains('calm');
+  const ic=document.getElementById('calmIcon'),lb=document.getElementById('calmLbl');
+  if(ic) ic.textContent=on?'☀️':'🌙'; if(lb) lb.textContent=on?t('calmOn'):t('calmOff'); }
+function toggleCalm(){ const on=!document.body.classList.contains('calm'); applyCalm(on); try{localStorage.setItem('breinlabCalm',on?'1':'0');}catch(e){} }
+function initCalm(){ let s=null; try{s=localStorage.getItem('breinlabCalm');}catch(e){}
+  let on; if(s==='1')on=true; else if(s==='0')on=false; else {const h=new Date().getHours();on=(h>=18||h<7);} applyCalm(on); }
+
+function toggleLang(){ window.speechSynthesis && window.speechSynthesis.cancel(); lang=(lang==='nl')?'en':'nl'; P.lang=lang; saveProfile(); render(); }
+function setGreeting(){ const h=new Date().getHours(); let k;
+  if(h>=5&&h<12)k='greetMorning'; else if(h>=12&&h<18)k='greetMidday'; else if(h>=18&&h<23)k='greetEve'; else k='greetNight';
+  const e=document.getElementById('greeting'); if(e) e.textContent=t(k,{name:P.name}); }
+
+/* =================== CONFETTI =================== */
+function confetti(){ const calm=document.body.classList.contains('calm');
+  const cols=calm?['#EFE1AC','#DE9270','#93C9C3','#BBA6D6','#E0A6BC','#A9CDAB']:['#FFD93D','#FF6B35','#4ECDC4','#A855F7','#FF6B9D','#6BCB77'];
+  const n=calm?8:18;
+  for(let i=0;i<n;i++){ const p=document.createElement('div'); p.className='confetti-piece';
+    const size=10+Math.random()*10;
+    p.style.cssText=`left:${Math.random()*100}vw;top:0;background:${cols[Math.floor(Math.random()*cols.length)]};width:${size}px;height:${size}px;animation-duration:${(calm?3:2)+Math.random()*1.5}s;animation-delay:${Math.random()*0.4}s;border-radius:${Math.random()>.5?'50%':'3px'};`;
+    document.body.appendChild(p); setTimeout(()=>p.remove(),5000); } }
+function bigConfetti(){ const b=document.body.classList.contains('calm')?2:5; for(let i=0;i<b;i++) setTimeout(confetti,i*300); }
+
+
+/* =================== INIT AFTER RENDER =================== */
+function initAfterRender(){
+  // race
+  resetRace();
+  // tabs
+  if(document.getElementById('tabsArea')) initTabs();
+  // neuron
+  if(document.getElementById('neuronCanvas')){ nStep=0; dopOn=false; resetNeuron(); }
+  // radio
+  if(document.getElementById('focusTrack')){ focusVal=10; bindFocus(); setFocus(10); }
+  // timeline + feelings
+  if(document.getElementById('timeline')) drawTimeline();
+  if(document.getElementById('feelOpts')) renderFeelings();
+  // identity
+  claimed=0;
+  // tts
+  initTTSButtons();
+  // restore done-wrap state for already-completed modules
+  activeModules().forEach(k=>{
+    if(visited.has(k)){ const w=document.getElementById('done-'+k); if(w) w.classList.add('completed'); }
+  });
+}
+
+/* =================== SETUP =================== */
+let setupDoses=[];
+function openSetup(){
+  setupDoses = P.doses.slice();
+  const f=document.getElementById('setupForm');
+  f.innerHTML = `
+    <h2>${t('setTitle')}</h2><div class="sub">${t('setSub')}</div>
+    <div class="field"><label>${t('fPhoto')}</label>
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+        <div id="suPhotoPreview" style="width:60px;height:60px;border-radius:50%;border:3px solid var(--dark);background:var(--yellow);display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:1.6rem;overflow:hidden;flex-shrink:0">${P.photo?`<img src="${P.photo}" style="width:100%;height:100%;object-fit:cover">`:P.name[0].toUpperCase()}</div>
+        <div style="display:flex;flex-direction:column;gap:.35rem">
+          <label style="font-weight:700;font-size:.85rem;cursor:pointer;background:#fff;border:2.5px solid var(--dark);border-radius:10px;padding:.4rem .8rem;box-shadow:3px 3px 0 var(--dark);display:inline-block">📷 ${lang==='nl'?'Foto kiezen':'Choose photo'}<input type="file" id="suPhoto" accept="image/*" style="display:none" onchange="previewSetupPhoto(event)"></label>
+          ${P.photo?`<button class="opt" style="cursor:pointer;border-color:var(--pink)" onclick="removeSetupPhoto()">${t('fPhotoRemove')}</button>`:''}
+        </div>
+      </div>
+    </div>
+    <div class="field"><label>${t('fName')}</label><input type="text" id="suName" value="${P.name}"></div>
+    <div class="field"><label>${t('fAge')}</label><input type="number" id="suAge" min="4" max="16" value="${P.age}"></div>
+    <div class="field"><label>${t('fBrain')}</label>
+      <select id="suBrain"><option value="racecar" ${P.brain==='racecar'?'selected':''}>${t('brainRace')}</option>
+      <option value="tabs" ${P.brain==='tabs'?'selected':''}>${t('brainTabs')}</option></select></div>
+    <div class="field"><label>${t('fMeds')}</label>
+      <select id="suMeds" onchange="toggleDoseField()"><option value="none" ${P.meds==='none'?'selected':''}>${t('medNone')}</option>
+      <option value="stim" ${P.meds==='stim'?'selected':''}>${t('medStim')}</option>
+      <option value="non" ${P.meds==='non'?'selected':''}>${t('medNonOpt')}</option></select>
+      <div class="sub" style="margin-top:.4rem">⚠️ ${t('setDisc')}</div></div>
+    <div class="field" id="doseField"><label>${t('fDoses')}</label><div id="doseList"></div>
+      <button class="opt" style="cursor:pointer" onclick="addDose()">${t('addDose')}</button>
+      <div style="margin-top:.6rem"><label>${t('schoolEnd')}</label><input type="text" id="suSchool" value="${P.schoolEnd||''}" placeholder="14:15"></div></div>
+    <div class="field"><label>${t('fStrengths')}</label><div class="pick" id="suStrengths">
+      ${Object.keys(STRENGTHS).map(k=>`<span class="opt ${P.strengths.includes(k)?'on':''}" data-k="${k}" onclick="this.classList.toggle('on')">${STRENGTHS[k].e} ${STRENGTHS[k][lang]}</span>`).join('')}</div></div>
+    <div class="field"><label>${t('fSupporters')}</label><input type="text" id="suSup" value="${(P.supporters||[]).join(', ')}" placeholder="${t('fSupPlaceholder')}"></div>
+    <div class="field"><label>${t('fCustom')}</label><textarea id="suCustom" placeholder="${t('fCustomPlaceholder')}">${(P.custom||[]).join('\n')}</textarea></div>
+    <div class="row"><button class="gbtn primary" onclick="saveSetup()">${t('save')}</button>
+      <button class="gbtn" onclick="closeSetup()">${t('cancel')}</button></div>`;
+  _pendingPhoto = undefined;
+  renderDoseList(); toggleDoseField();
+  document.getElementById('overlay').classList.add('show');
+}
+function renderDoseList(){ const dl=document.getElementById('doseList'); if(!dl) return;
+  dl.innerHTML=setupDoses.map((d,i)=>`<div class="dose-row"><input type="text" value="${d}" onchange="setupDoses[${i}]=this.value" placeholder="08:00"><span class="opt" style="cursor:pointer" onclick="removeDose(${i})">✕</span></div>`).join(''); }
+function addDose(){ setupDoses.push('12:00'); renderDoseList(); }
+function removeDose(i){ setupDoses.splice(i,1); renderDoseList(); }
+function toggleDoseField(){ const v=document.getElementById('suMeds').value; const df=document.getElementById('doseField');
+  if(df) df.style.display = (v==='none')?'none':'block'; }
+function saveSetup(){
+  P.name = (document.getElementById('suName').value||'').trim() || 'Brein';
+  P.age = parseInt(document.getElementById('suAge').value)||8;
+  P.brain = document.getElementById('suBrain').value;
+  P.meds = document.getElementById('suMeds').value;
+  P.doses = setupDoses.filter(d=>/^\d{1,2}:\d{2}$/.test(d)); if(!P.doses.length) P.doses=['08:00'];
+  P.schoolEnd = (document.getElementById('suSchool').value||'').trim();
+  P.strengths = Array.from(document.querySelectorAll('#suStrengths .opt.on')).map(o=>o.dataset.k);
+  if(!P.strengths.length) P.strengths=['humor','curious','kind','brave','ideas'];
+  P.supporters = (document.getElementById('suSup').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  P.custom = (document.getElementById('suCustom').value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  if(_pendingPhoto !== undefined) P.photo = _pendingPhoto || undefined;
+  saveProfile(); visited.clear(); try{localStorage.removeItem('breinlabDone');}catch(e){} currentModule=null; closeSetup(); render();
+}
+function closeSetup(){ document.getElementById('overlay').classList.remove('show'); }
+let _pendingPhoto = undefined; // undefined = unchanged, null = remove, string = new base64
+function previewSetupPhoto(e){
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    _pendingPhoto = ev.target.result;
+    const prev = document.getElementById('suPhotoPreview');
+    if(prev) prev.innerHTML = `<img src="${_pendingPhoto}" style="width:100%;height:100%;object-fit:cover">`;
+  };
+  reader.readAsDataURL(file);
+}
+function removeSetupPhoto(){
+  _pendingPhoto = null;
+  const prev = document.getElementById('suPhotoPreview');
+  if(prev) prev.innerHTML = P.name ? P.name[0].toUpperCase() : '🧒';
+}
+
+/* =================== GUIDE =================== */
+const GUIDE_MODS = {
+  brain:      {title:'gBrainTitle', qs:['gBrainQ1','gBrainQ2','gBrainQ3']},
+  messengers: {title:'gMsgTitle',   qs:['gMsgQ1','gMsgQ2','gMsgQ3']},
+  medicine:   {title:'gMedTitle',   qs:['gMedQ1','gMedQ2','gMedQ3']},
+  wave:       {title:'gWaveTitle',  qs:['gWaveQ1','gWaveQ2','gWaveQ3']},
+  powers:     {title:'gPowTitle',   qs:['gPowQ1','gPowQ2','gPowQ3']},
+  you:        {title:'gYouTitle',   qs:['gYouQ1','gYouQ2','gYouQ3']}
+};
+function openGuide(){
+  const f = document.getElementById('guideForm');
+  const mods = activeModules();
+  f.innerHTML = `<h2 style="font-family:'Fredoka One',cursive;font-size:1.4rem;margin-bottom:.25rem">${t('guideTitle')}</h2>`
+    + `<p style="color:#666;font-size:.85rem;margin-bottom:1.2rem">${t('guideSub')}</p>`
+    + mods.map(k => {
+        const g = GUIDE_MODS[k];
+        return `<div class="guide-mod"><h3>${t(g.title)}</h3>${g.qs.map(q=>`<div class="guide-q">${t(q)}</div>`).join('')}</div>`;
+      }).join('')
+    + `<div style="margin-top:1rem"><button class="gbtn" onclick="closeGuide()">${t('guideClose')}</button></div>`;
+  document.getElementById('guideOverlay').classList.add('show');
+}
+function closeGuide(){ document.getElementById('guideOverlay').classList.remove('show'); }
+
+/* =================== TTS =================== */
+function stripEmoji(str){
+  return str
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu,'')
+    .replace(/[\u{2600}-\u{27BF}]/gu,'')
+    .replace(/[\u{FE00}-\u{FE0F}]/gu,'')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+}
+function speakCard(card){
+  if(!('speechSynthesis' in window)) return;
+  const btn = card.querySelector('.tts-btn');
+  // tweede tik op dezelfde knop = stoppen
+  if(btn && btn.classList.contains('speaking')){
+    window.speechSynthesis.cancel();
+    btn.classList.remove('speaking');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  document.querySelectorAll('.tts-btn.speaking').forEach(b=>b.classList.remove('speaking'));
+  const parts = [];
+  card.querySelectorAll('.card-title, p, .hl').forEach(el=>{
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll('button,.tts-btn,.gbtn').forEach(b=>b.remove());
+    const txt = stripEmoji(clone.textContent.trim().replace(/\s+/g,' '));
+    if(txt.length > 2) parts.push(txt);
+  });
+  if(!parts.length) return;
+  const utt = new SpeechSynthesisUtterance(parts.join('. '));
+  utt.lang = lang==='nl' ? 'nl-NL' : 'en-GB';
+  utt.rate = 1.05;
+  utt.pitch = 1.2;
+  // kies vrouwelijke stem, daarna neural/natural, daarna beste match op taal
+  const voices = window.speechSynthesis.getVoices();
+  const tgt = utt.lang;
+  const FEMALE = /hanna|zira|samantha|fiona|karen|moira|kate|susan|victoria|female|vrouw|anna|lotte|ellen|nora|tessa|amelie|sara|julia|linda|sophie/i;
+  const ranked = voices.filter(v=>v.lang.startsWith(tgt.split('-')[0]))
+    .sort((a,b)=>{
+      const s=v=>(FEMALE.test(v.name)?4:0)+(/neural|natural|enhanced|premium/i.test(v.name)?2:0)+(v.lang===tgt?1:0);
+      return s(b)-s(a);
+    });
+  if(ranked.length) utt.voice = ranked[0];
+  if(btn) btn.classList.add('speaking');
+  utt.onend = utt.onerror = () => { if(btn) btn.classList.remove('speaking'); };
+  window.speechSynthesis.speak(utt);
+}
+function initTTSButtons(){
+  if(!('speechSynthesis' in window)) return;
+  document.querySelectorAll('.card').forEach(card=>{
+    if(card.querySelector('.tts-btn')) return;
+    const title = card.querySelector('.card-title');
+    if(!title) return;
+    const btn = document.createElement('button');
+    btn.className = 'tts-btn';
+    btn.innerHTML = '🔊';
+    btn.setAttribute('aria-label', t('ttsRead'));
+    btn.onclick = e => { e.stopPropagation(); speakCard(card); };
+    title.appendChild(btn);
+  });
+}
+
+/* =================== HERO GAMES =================== */
+const HGAME_IMGS=['Kapitein%20Rakettank','Professor%20Vonk','Laserblik','Hartradar','Detective%20Waarom','Bliksembrein'];
+let hgIdx=-1,hgState={},hgTimers=[];
+
+/* Score helpers */
+let _scCache=null;
+function loadScores(){if(_scCache)return _scCache;try{_scCache=JSON.parse(localStorage.getItem('breinlabScores')||'{}');}catch(e){_scCache={};}return _scCache;}
+function saveScore(idx,val){
+  const s=loadScores();const cur=s[idx];
+  const better=(!cur&&cur!==0)||val>cur;
+  if(better){s[idx]=val;_scCache=s;try{localStorage.setItem('breinlabScores',JSON.stringify(s));}catch(e){}}
+  return{val,best:s[idx],isNew:better};
+}
+function scoreLabel(idx){
+  const s=loadScores();const v=s[idx];if(v==null)return '';
+  const nl=lang==='nl';
+  if(idx===0)return nl?`🏅 ${v} tikken`:`🏅 ${v} taps`;
+  if(idx===5)return nl?`🏅 ${v}/5 correct`:`🏅 ${v}/5 correct`;
+  return `🏅 ${v}/3`;
+}
+function shuffleOpts(opts,ans){
+  const idx=opts.map((_,i)=>i);
+  for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+  return{opts:idx.map(i=>opts[i]),ans:idx.indexOf(ans)};
+}
+
+function gWin(box,msg,score){
+  const nl=lang==='nl';
+  let extra='';
+  if(score!=null){
+    const r=saveScore(hgIdx,score);
+    extra=r.isNew?' 🏆 '+(nl?'Nieuw record!':'New record!'):(nl?` (record: ${r.best})`:`(record: ${r.best})`);
+    const lbl=document.getElementById('hcard-score-'+hgIdx);
+    if(lbl)lbl.textContent=scoreLabel(hgIdx);
+  }
+  const res=document.createElement('div');res.className='g-res';res.innerHTML=msg+extra;box.appendChild(res);
+  const card=document.getElementById('hcard-'+hgIdx);if(card)card.classList.add('done');
+  confetti();
+  const btn=document.createElement('button');btn.className='g-tapbtn';btn.style.marginTop='.7rem';
+  btn.textContent=nl?'🦸 Probeer een andere superkracht!':'🦸 Try another superpower!';
+  btn.onclick=closeHeroModal;box.appendChild(btn);
+  setTimeout(()=>res.scrollIntoView({behavior:'smooth',block:'nearest'}),150);
+}
+
+function openHeroGame(i){
+  const p=POWERS[i];
+  document.getElementById('hmImg').src='assets/'+HGAME_IMGS[i]+'.png';
+  document.getElementById('hmPwr').textContent=p[lang].n;
+  document.getElementById('hmHero').textContent=p[lang].hn;
+  document.getElementById('hmQuote').textContent='"'+p[lang].hl+'"';
+  document.getElementById('heroModal').classList.remove('hidden');
+  document.body.style.overflow='hidden';
+  hgIdx=i;hgState={};
+  hgTimers.forEach(id=>{clearTimeout(id);clearInterval(id);});hgTimers=[];
+  [game0,game1,game2,game3,game4,game5][i](document.getElementById('hmGame'));
+}
+function closeHeroModal(){
+  document.getElementById('heroModal').classList.add('hidden');
+  document.body.style.overflow='';
+  hgTimers.forEach(id=>{clearTimeout(id);clearInterval(id);});hgTimers=[];hgState={};
+}
+
+/* Game 0 — Energie: doel 20 tikken in 5 seconden */
+function game0(box){
+  const nl=lang==='nl',TARGET=20;
+  hgState={taps:0,active:false,done:false,target:TARGET};
+  const sc=loadScores()[0];
+  const scTxt=sc!=null?(nl?` · Record: ${sc} tikken`:` · Record: ${sc} taps`):'';
+  box.innerHTML=`<div class="hgame-ttl">🚀 ${nl?'Energieboost!':'Energy Boost!'}</div>
+<p>${nl?`Doel: ${TARGET} tikken in 5 seconden!${scTxt}`:`Goal: ${TARGET} taps in 5 seconds!${scTxt}`}</p>
+<div class="g-bar-wrap"><div class="g-bar" id="g0bar" style="width:0%"></div></div>
+<div id="g0cnt" style="text-align:center;font-weight:800;font-size:1.1rem;margin:.35rem 0">0/${TARGET}</div>
+<button class="g-tapbtn" id="g0btn" onclick="g0tap()">🚀 ${nl?'TIK!':'TAP!'}</button>`;
+}
+function g0tap(){
+  const gs=hgState,nl=lang==='nl';
+  if(gs.done)return;
+  if(!gs.active){
+    gs.active=true;gs.end=Date.now()+5000;
+    const iv=setInterval(()=>{
+      const left=gs.end-Date.now();
+      if(left<=0){
+        clearInterval(iv);gs.done=true;
+        const btn=document.getElementById('g0btn');if(btn){btn.disabled=true;btn.textContent='🎉';}
+        const bar=document.getElementById('g0bar');if(bar)bar.style.width=Math.min(100,gs.taps/gs.target*100)+'%';
+        const hit=gs.taps>=gs.target;
+        const msg=nl?(hit?`🏁 Gehaald! ${gs.taps} tikken!`:`${gs.taps} tikken — probeer ${gs.target} te halen!`)
+                    :(hit?`🏁 Done! ${gs.taps} taps!`:`${gs.taps} taps — try to reach ${gs.target}!`);
+        gWin(document.getElementById('hmGame'),msg,gs.taps);return;
+      }
+      const bar=document.getElementById('g0bar');if(bar)bar.style.width=Math.min(100,(5000-left)/50)+'%';
+      const cnt=document.getElementById('g0cnt');if(cnt)cnt.textContent=gs.taps+'/'+gs.target+' · '+Math.ceil(left/1000)+'s';
+    },80);
+    hgTimers.push(iv);
+  }
+  gs.taps++;
+  const cnt=document.getElementById('g0cnt');if(cnt)cnt.textContent=gs.taps+'/'+gs.target+(gs.active&&gs.end?' · '+Math.max(0,Math.ceil((gs.end-Date.now())/1000))+'s':'');
+  const bar=document.getElementById('g0bar');if(bar)bar.style.width=Math.min(100,gs.taps/gs.target*100)+'%';
+}
+
+/* Game 1 — Creativiteit: uitvindersspel met shuffle */
+const G1D={nl:[
+  {q:'🌂 + 🍕',opts:['Pizza-paraplu (regent het kaas? 🧀)','Gewone paraplu','Bezorgdienst op de fiets'],win:0,fb:'Haha! Vonk ziet verbanden die niemand ziet!'},
+  {q:'🧲 + 🐟',opts:['Natte magneet','Vis-vanger-magneet — nooit meer hengel nodig! 🎣','Gewone magneet'],win:1,fb:'Geniaal! Elke connectie is een uitvinding!'},
+  {q:'📚 + 🚀',opts:['Boekenkast','Gewone raket','Vliegende bibliotheek — boeken overal! 📚🚀'],win:2,fb:'Wauw! Jij denkt als Professor Vonk!'},
+],en:[
+  {q:'🌂 + 🍕',opts:['Pizza umbrella (does it rain cheese? 🧀)','Regular umbrella','Delivery by bike'],win:0,fb:'Ha! Vonk sees connections nobody else sees!'},
+  {q:'🧲 + 🐟',opts:['Wet magnet','Fish-catching magnet — no fishing rod needed! 🎣','Regular magnet'],win:1,fb:'Genius! Every connection is an invention!'},
+  {q:'📚 + 🚀',opts:['Bookshelf','Regular rocket','Flying library — books everywhere! 📚🚀'],win:2,fb:'Wow! You think just like Professor Spark!'},
+]};
+function game1(box){
+  const nl=lang==='nl',d=G1D[lang];
+  hgState={q:0,score:0};
+  const sc=loadScores()[1];
+  const renderQ=()=>{
+    const q=d[hgState.q];
+    const sh=shuffleOpts(q.opts,q.win);hgState.curAns=sh.ans;
+    const scTxt=sc!=null?(nl?` · Record: ${sc}/3`:` · Record: ${sc}/3`):'';
+    box.innerHTML=`<div class="hgame-ttl">💡 ${nl?'Uitvindersspel':'Inventor Game'}</div>
+<p>${nl?`Vraag ${hgState.q+1}/3${scTxt}: wat maak je van...`:`Question ${hgState.q+1}/3${scTxt}: what do you make from...`} <strong>${q.q}</strong>?</p>
+${sh.opts.map((o,i)=>`<button class="g-opt" onclick="g1pick(${i})">${o}</button>`).join('')}`;
+  };
+  renderQ();
+  window.g1pick=function(i){
+    const q=d[hgState.q],nl=lang==='nl',correct=i===hgState.curAns;
+    box.querySelectorAll('.g-opt').forEach((b,j)=>{b.disabled=true;if(j===hgState.curAns)b.classList.add('ok');else if(j===i&&!correct)b.classList.add('no');});
+    if(correct)hgState.score++;
+    const fb=document.createElement('p');fb.style.cssText='font-weight:700;margin-top:.4rem';fb.textContent=q.fb;box.appendChild(fb);
+    hgState.q++;
+    if(hgState.q<d.length){
+      const nxt=document.createElement('button');nxt.className='g-tapbtn';nxt.style.marginTop='.5rem';
+      nxt.textContent=nl?'Volgende →':'Next →';nxt.onclick=renderQ;box.appendChild(nxt);
+    } else {
+      gWin(box,nl?`🎉 ${hgState.score}/3 — Jij denkt als een echte uitvinder!`:`🎉 ${hgState.score}/3 — You think like a true inventor!`,hgState.score);
+    }
+  };
+}
+
+/* Game 2 — Hyperfocus: zoek de vreemde eend met timer */
+const G2D=[
+  {base:'🌟',odd:'⭐',n:12,cols:4,t:12},
+  {base:'🐱',odd:'🐈',n:16,cols:4,t:10},
+  {base:'😊',odd:'🙂',n:20,cols:5,t:9},
+];
+function game2(box){
+  const nl=lang==='nl';
+  hgState={round:0,max:3,score:0,timerIv:null};
+  const sc=loadScores()[2];
+  const renderR=()=>{
+    const s=G2D[hgState.round];
+    const pos=Math.floor(Math.random()*s.n);
+    const items=Array.from({length:s.n},(_,i)=>i===pos?s.odd:s.base);
+    const scTxt=sc!=null?(nl?` · Record: ${sc}/3`:` · Record: ${sc}/3`):'';
+    box.innerHTML=`<div class="hgame-ttl">🔍 ${nl?'Zoek de vreemde eend!':'Spot the odd one out!'}</div>
+<p>${nl?`Ronde ${hgState.round+1}/${hgState.max}${scTxt}`:`Round ${hgState.round+1}/${hgState.max}${scTxt}`}</p>
+<div style="text-align:right;font-weight:800;font-size:.85rem;color:var(--pink)" id="g2timer">${s.t}s ⏱</div>
+<div class="egrid" style="grid-template-columns:repeat(${s.cols},1fr)">${items.map((e,i)=>`<span onclick="g2tap(this,${i===pos})">${e}</span>`).join('')}</div>`;
+    let left=s.t;
+    const iv=setInterval(()=>{left--;const el=document.getElementById('g2timer');if(el)el.textContent=left+'s ⏱';if(left<=0){clearInterval(iv);window.g2timeout();}},1000);
+    if(hgState.timerIv)clearInterval(hgState.timerIv);
+    hgState.timerIv=iv;hgTimers.push(iv);
+  };
+  renderR();
+  window.g2tap=function(el,correct){
+    if(hgState.timerIv){clearInterval(hgState.timerIv);hgState.timerIv=null;}
+    const nl=lang==='nl';
+    if(correct){
+      el.classList.add('hit');hgState.score++;hgState.round++;
+      if(hgState.round<hgState.max){
+        const btn=document.createElement('button');btn.className='g-tapbtn';btn.style.marginTop='.4rem';
+        btn.textContent=nl?'Volgende ronde →':'Next round →';btn.onclick=renderR;box.appendChild(btn);
+      } else {
+        gWin(box,nl?`🎯 ${hgState.score}/3 — Laserblik-focus!`:`🎯 ${hgState.score}/3 — Laser focus!`,hgState.score);
+      }
+    } else {
+      el.classList.add('miss');
+      hgTimers.push(setTimeout(()=>el.classList.remove('miss'),350));
+      let rem=G2D[hgState.round].t;const ti=document.getElementById('g2timer');if(ti)rem=parseInt(ti)||rem;
+      const iv=setInterval(()=>{rem--;const e=document.getElementById('g2timer');if(e)e.textContent=rem+'s ⏱';if(rem<=0){clearInterval(iv);window.g2timeout();}},1000);
+      hgState.timerIv=iv;hgTimers.push(iv);
+    }
+  };
+  window.g2timeout=function(){
+    const nl=lang==='nl';
+    hgState.round++;
+    if(hgState.round<hgState.max){
+      const p=document.createElement('p');p.style.cssText='color:#EF4444;font-weight:700;margin-top:.3rem';
+      p.textContent=nl?'⏱ Te laat! Volgende ronde...':'⏱ Time up! Next round...';box.appendChild(p);
+      hgTimers.push(setTimeout(renderR,1200));
+    } else {
+      gWin(box,nl?`🎯 ${hgState.score}/3 — ${hgState.score>=2?'Laserblik-focus!':'Oefenen maakt meesters!'}`:`🎯 ${hgState.score}/3 — ${hgState.score>=2?'Laser focus!':'Practice makes perfect!'}`,hgState.score);
+    }
+  };
+}
+
+/* Game 3 — Gevoeligheid: emotieradar met shuffle */
+const G3D={nl:[
+  {scene:'Je vriend valt op het plein. Niemand kijkt.',faces:['😊','😢','😡','😴'],ans:1,why:'😢 je vriend heeft pijn en voelt zich alleen.'},
+  {scene:'Je juf zegt dat je iets heel goed hebt gedaan — voor de hele klas!',faces:['😊','😢','😬','😑'],ans:0,why:'😊 dat voelt fijn en trots!'},
+  {scene:'Iemand pakt jouw lievelingsspeelgoed af zonder te vragen.',faces:['😊','😢','😤','😴'],ans:2,why:'😤 dat is niet eerlijk en dan word je boos!'},
+],en:[
+  {scene:'Your friend falls on the playground. Nobody notices.',faces:['😊','😢','😡','😴'],ans:1,why:'😢 your friend is hurt and feels alone.'},
+  {scene:'Your teacher says you did something really well — in front of the whole class!',faces:['😊','😢','😬','😑'],ans:0,why:'😊 that feels nice and proud!'},
+  {scene:'Someone takes your favourite toy without asking.',faces:['😊','😢','😤','😴'],ans:2,why:'😤 that\'s not fair and makes you angry!'},
+]};
+function game3(box){
+  const nl=lang==='nl',d=G3D[lang];
+  hgState={q:0,score:0};
+  const sc=loadScores()[3];
+  const renderQ=()=>{
+    const q=d[hgState.q];
+    const sh=shuffleOpts(q.faces,q.ans);hgState.curAns=sh.ans;
+    const scTxt=sc!=null?(nl?` · Record: ${sc}/3`:` · Record: ${sc}/3`):'';
+    box.innerHTML=`<div class="hgame-ttl">💗 ${nl?'Emotieradar':'Emotion Radar'}</div>
+<p>${nl?`Scenario ${hgState.q+1}/3${scTxt}:`:`Scenario ${hgState.q+1}/3${scTxt}:`} <em>${q.scene}</em></p>
+<p style="font-weight:700;margin-top:.4rem">${nl?'Welk gezichtje past?':'Which face fits?'}</p>
+<div style="display:flex;gap:.55rem;justify-content:center;margin:.4rem 0;flex-wrap:wrap">
+${sh.opts.map((f,i)=>`<button onclick="g3pick(${i})" style="font-size:2rem;background:none;border:3px solid transparent;border-radius:12px;cursor:pointer;padding:.3rem;transition:border-color .1s" onmouseover="this.style.borderColor='#A855F7'" onmouseout="this.style.borderColor='transparent'">${f}</button>`).join('')}
+</div>`;
+  };
+  renderQ();
+  window.g3pick=function(i){
+    const q=d[hgState.q],nl=lang==='nl',correct=i===hgState.curAns;
+    box.querySelectorAll('button').forEach(b=>b.disabled=true);
+    if(correct)hgState.score++;
+    const fb=document.createElement('p');fb.style.cssText='font-weight:700;margin-top:.35rem';
+    fb.textContent=(correct?(nl?'Goed! ':'Right! '):(nl?'Bijna! ':'Almost! '))+q.why;box.appendChild(fb);
+    hgState.q++;
+    if(hgState.q<d.length){
+      const nxt=document.createElement('button');nxt.className='g-tapbtn';nxt.style.marginTop='.4rem';
+      nxt.textContent=nl?'Volgende →':'Next →';nxt.onclick=renderQ;box.appendChild(nxt);
+    } else {
+      gWin(box,nl?`💗 ${hgState.score}/3 — Hartradar aan!`:`💗 ${hgState.score}/3 — Heart Radar on!`,hgState.score);
+    }
+  };
+}
+
+/* Game 4 — Nieuwsgierigheid: waarom-keten met shuffle */
+const G4D={nl:[
+  {q:'Waarom wordt het \'s nachts donker?',opts:['Omdat de zon slaapt 😴','Omdat de aarde draait 🌍','Omdat het licht wegloopt'],ans:1,fun:'De aarde draait — \'s nachts kijkt jouw kant weg van de zon!'},
+  {q:'Waarom vallen dingen naar beneden?',opts:['Omdat de grond honger heeft','Omdat zwaartekracht alles trekt 🍎','Omdat ze moe zijn'],ans:1,fun:'Zwaartekracht! De aarde trekt alles naar zich toe, ook jou!'},
+  {q:'Waarom heeft de zebra strepen?',opts:['Om mode te zijn 👗','Om insecten te verwarren 🦟','Omdat ze van voetbal houden ⚽'],ans:1,fun:'De strepen verwarren vliegen én roofdieren. Super slim!'},
+],en:[
+  {q:'Why does it get dark at night?',opts:['Because the sun goes to sleep 😴','Because the Earth spins 🌍','Because the light runs away'],ans:1,fun:'The Earth spins — at night your side faces away from the sun!'},
+  {q:'Why do things fall down?',opts:['Because the ground is hungry','Because gravity pulls everything 🍎','Because things get tired'],ans:1,fun:'Gravity! The Earth pulls everything toward it — including you!'},
+  {q:'Why does the zebra have stripes?',opts:['To be fashionable 👗','To confuse insects 🦟','Because they love football ⚽'],ans:1,fun:'The stripes confuse flies and predators. Super clever!'},
+]};
+function game4(box){
+  const nl=lang==='nl',d=G4D[lang];
+  hgState={q:0,score:0};
+  const sc=loadScores()[4];
+  const renderQ=()=>{
+    const q=d[hgState.q];
+    const sh=shuffleOpts(q.opts,q.ans);hgState.curAns=sh.ans;
+    const scTxt=sc!=null?(nl?` · Record: ${sc}/3`:` · Record: ${sc}/3`):'';
+    box.innerHTML=`<div class="hgame-ttl">🔍 ${nl?'Waarom-keten':'Why Chain'}</div>
+<p style="font-weight:700;font-size:.88rem">${nl?`Vraag ${hgState.q+1}/3${scTxt}:`:`Question ${hgState.q+1}/3${scTxt}:`} ${q.q}</p>
+${sh.opts.map((o,i)=>`<button class="g-opt" onclick="g4pick(${i})">${o}</button>`).join('')}`;
+  };
+  renderQ();
+  window.g4pick=function(i){
+    const q=d[hgState.q],nl=lang==='nl',correct=i===hgState.curAns;
+    box.querySelectorAll('.g-opt').forEach((b,j)=>{b.disabled=true;if(j===hgState.curAns)b.classList.add('ok');else if(j===i&&!correct)b.classList.add('no');});
+    if(correct)hgState.score++;
+    const fb=document.createElement('p');fb.style.cssText='font-weight:700;font-size:.8rem;margin-top:.35rem';
+    fb.textContent=(correct?'✅ ':'❌ ')+q.fun;box.appendChild(fb);
+    hgState.q++;
+    if(hgState.q<d.length){
+      const nxt=document.createElement('button');nxt.className='g-tapbtn';nxt.style.marginTop='.45rem';
+      nxt.textContent=nl?'Volgende vraag →':'Next question →';nxt.onclick=renderQ;box.appendChild(nxt);
+    } else {
+      gWin(box,nl?`🔍 ${hgState.score}/3 — Jij vraagt altijd door!`:`🔍 ${hgState.score}/3 — You always want to know why!`,hgState.score);
+    }
+  };
+}
+
+/* Game 5 — Snelheid: reactietest met distractors (5 rondes) */
+function game5(box){
+  const nl=lang==='nl';
+  hgState={round:0,max:5,correct:0,times:[],gone:false,waiting:false,shown:0,isDistractor:false};
+  const sc=loadScores()[5];
+  const renderR=()=>{
+    const r=hgState.round;
+    hgState.isDistractor=r>=2&&Math.random()<0.4;
+    const scTxt=sc!=null?(nl?` · Record: ${sc}/5`:` · Record: ${sc}/5`):'';
+    box.innerHTML=`<div class="hgame-ttl">⚡ ${nl?'Reactietest':'Reaction Test'}</div>
+<p>${nl?`Ronde ${r+1}/${hgState.max}${scTxt}`:`Round ${r+1}/${hgState.max}${scTxt}`}<br><small style="color:#888">${nl?'Tik ⚡ zo snel mogelijk — maar NIET ❌!':'Tap ⚡ fast — but NOT ❌!'}</small></p>
+<div class="react-blob wait" id="g5blob" onclick="g5tap()">⚡</div>
+<p id="g5msg" style="text-align:center;font-size:.8rem;margin:.3rem 0">${nl?'Wacht op het signaal…':'Wait for the signal…'}</p>`;
+    hgState.gone=false;hgState.waiting=true;hgState.shown=0;
+    const delay=800+Math.random()*2000;
+    const tid=setTimeout(()=>{
+      if(!hgState.waiting)return;
+      const blob=document.getElementById('g5blob'),msg=document.getElementById('g5msg');
+      if(blob){
+        blob.classList.remove('wait');blob.classList.add('go');
+        blob.textContent=hgState.isDistractor?'❌':'⚡';
+        if(hgState.isDistractor){blob.style.color='#EF4444';blob.style.fontSize='3rem';}
+      }
+      if(msg)msg.textContent=hgState.isDistractor?(nl?'Niet tikken!':'Don\'t tap!'):(nl?'NU! Tik!':'NOW! Tap!');
+      hgState.shown=Date.now();
+      if(hgState.isDistractor){
+        const autoT=setTimeout(()=>{if(!hgState.gone){hgState.gone=true;window.g5advance(true,0);}},1600);
+        hgTimers.push(autoT);
+      }
+    },delay);
+    hgTimers.push(tid);
+  };
+  renderR();
+  window.g5tap=function(){
+    const blob=document.getElementById('g5blob'),nl=lang==='nl';
+    if(!blob||hgState.gone)return;
+    if(blob.classList.contains('wait')){
+      const msg=document.getElementById('g5msg');if(msg)msg.textContent=nl?'Te vroeg! Wacht op het signaal ⚡':'Too early! Wait for the signal ⚡';
+      hgTimers.forEach(id=>{clearTimeout(id);clearInterval(id);});hgTimers=[];
+      hgTimers.push(setTimeout(renderR,1300));return;
+    }
+    hgState.gone=true;
+    if(hgState.isDistractor){
+      window.g5advance(false,0);
+    } else {
+      const rt=Date.now()-hgState.shown;
+      hgState.times.push(rt);hgState.correct++;
+      window.g5advance(true,rt);
+    }
+  };
+  window.g5advance=function(ok,rt){
+    const nl=lang==='nl';
+    const msg=document.getElementById('g5msg');
+    if(ok&&!hgState.isDistractor&&rt){
+      if(msg)msg.textContent=nl?`⚡ ${rt} ms!`:`⚡ ${rt} ms!`;
+    } else if(!ok&&hgState.isDistractor){
+      if(msg){msg.textContent=nl?'❌ Oeps! Niet tikken op de ❌!':'❌ Oops! Don\'t tap the ❌!';msg.style.color='#EF4444';}
+    } else if(ok&&hgState.isDistractor){
+      if(msg){msg.textContent=nl?'✅ Goed! Je tikte de ❌ niet!':'✅ Good! You didn\'t tap the ❌!';msg.style.color='#10B981';}
+    }
+    hgState.round++;
+    if(hgState.round<hgState.max){
+      hgTimers.push(setTimeout(renderR,1100));
+    } else {
+      const score=hgState.correct;
+      const avg=hgState.times.length?Math.round(hgState.times.reduce((a,b)=>a+b,0)/hgState.times.length):0;
+      const speedTxt=avg?(nl?` · Gem. ${avg} ms`:` · Avg ${avg} ms`):'';
+      const grade=score>=4?(nl?'Bliksembrein! 🏆':'Lightning Brain! 🏆'):score>=3?(nl?'Supersnel! 🚀':'Super fast! 🚀'):(nl?'Goed gedaan! 💪':'Well done! 💪');
+      gWin(box,nl?`⚡ ${score}/${hgState.max} correct${speedTxt} — ${grade}`:`⚡ ${score}/${hgState.max} correct${speedTxt} — ${grade}`,score);
+    }
+  };
+}
+
+/* =================== NEURO INTRO =================== */
+const INTRO_SLIDE_TEXTS = {
+  nl:[
+    'Hoi {name}! 👋 Ik ben Neuro — jouw gids in het Brein Lab.',
+    'Jouw brein is razendsnel en vol energie. Niet stuk — gewoon anders. En anders is gáaf!',
+    'We ontdekken samen hoe jouw brein werkt, jouw superkrachten… en waarom jij geweldig bent! 🚀'
+  ],
+  en:[
+    'Hi {name}! 👋 I’m Neuro — your guide in the Brain Lab.',
+    'Your brain is super fast and full of energy. Not broken — just different. And different is awesome!',
+    'Together we’ll discover how your brain works, your superpowers… and why you’re amazing! 🚀'
+  ]
+};
+
+let introStep = 0;
+let _introMode = 'full'; // 'full' = taal+profiel+slides, 'slides' = alleen slides
+
+function _introSteps(){
+  const texts = INTRO_SLIDE_TEXTS[lang] || INTRO_SLIDE_TEXTS.nl;
+  const steps = _introMode === 'full' ? [{type:'lang'}, {type:'profile'}] : [];
+  texts.forEach(function(txt){ steps.push({type:'slide', text:txt}); });
+  return steps;
+}
+
+function introGenerateStars(){
+  const stars = document.getElementById('introStars');
+  if(!stars || stars.children.length) return;
+  for(var i=0;i<35;i++){
+    var s=document.createElement('div'); s.className='intro-star';
+    var size=1.5+(i*7919%31)/10;
+    var left=(i*2654435761%10000)/100;
+    var top=(i*2246822519%10000)/100;
+    var delay=(i*1597%200)/100;
+    var dur=1.4+(i*1013%16)/10;
+    s.style.cssText='width:'+size+'px;height:'+size+'px;left:'+left+'%;top:'+top+'%;animation-delay:'+delay+'s;animation-duration:'+dur+'s';
+    stars.appendChild(s);
+  }
+}
+
+function introRender(){
+  var steps=_introSteps(), step=steps[introStep];
+  var bubble=document.getElementById('introBubble');
+  var btn=document.getElementById('introBtn');
+  var dots=document.getElementById('introDots');
+  var skip=document.getElementById('introSkip');
+  var lbl=document.getElementById('introNameLbl');
+  var img=document.getElementById('introImg');
+  var nl=lang==='nl';
+
+  var slideSteps=steps.filter(function(s){return s.type==='slide';});
+  var slideIdx=step.type==='slide'?steps.slice(0,introStep+1).filter(function(s){return s.type==='slide';}).length-1:-1;
+
+  if(step.type==='lang'){
+    if(img) img.style.width='min(160px,40vw)';
+    if(lbl) lbl.textContent='Brein Lab';
+    if(dots) dots.innerHTML='';
+    if(skip) skip.style.display='none';
+    if(btn) btn.style.display='none';
+    if(bubble){
+      bubble.classList.remove('form-mode');
+      bubble.style.opacity='0';
+      setTimeout(function(){
+        bubble.innerHTML='<div class="intro-lang-wrap">'
+          +'<button class="intro-lang-card" onclick="setIntroLang(\'nl\',this)"><span class="flag">🇳🇱</span>Nederlands</button>'
+          +'<button class="intro-lang-card" onclick="setIntroLang(\'en\',this)"><span class="flag">🇬🇧</span>English</button>'
+          +'</div>';
+        bubble.style.opacity='1';
+        // markeer huidige taal
+        var cards=bubble.querySelectorAll('.intro-lang-card');
+        cards.forEach(function(c){ if(c.textContent.trim().indexOf(lang==='nl'?'Nederlands':'English')!==-1) c.classList.add('on'); });
+      },150);
+    }
+  } else if(step.type==='profile'){
+    if(img) img.style.width='min(120px,30vw)';
+    if(lbl) lbl.textContent='Neuro';
+    if(dots) dots.innerHTML='';
+    if(skip) skip.style.display='none';
+    if(btn){ btn.style.display='inline-block'; btn.textContent=nl?'Klaar! →':'Done! →'; }
+    if(bubble){
+      bubble.classList.add('form-mode');
+      bubble.style.opacity='0';
+      var curName=(P&&P.name&&P.name!=='Owen')?P.name:'';
+      setTimeout(function(){
+        bubble.innerHTML=
+          '<div class="intro-field"><label>'+(nl?'Hoe heet je?':'What’s your name?')+'</label>'
+          +'<input class="intro-input" id="onbName" type="text" placeholder="'+(nl?'Jouw naam…':'Your name…')+'" value="'+curName+'" autocomplete="off"></div>'
+          +'<div class="intro-field"><label>'+(nl?'Hoe werkt jouw brein?':'How does your brain work?')+'</label>'
+          +'<select class="intro-select" id="onbBrain">'
+          +'<option value="racecar"'+(P.brain==='racecar'?' selected':'')+'>'+(nl?'🏀️ Racewagen — snel en druk':'🏀️ Race car — fast and full throttle')+'</option>'
+          +'<option value="tabs"'+(P.brain==='tabs'?' selected':'')+'>'+(nl?'💻 Tabbladen — dromerig en verstrooid':'💻 Browser tabs — dreamy and distracted')+'</option>'
+          +'</select></div>'
+          +'<div class="intro-field"><label>'+(nl?'Gebruik je medicatie?':'Do you take medication?')+'</label>'
+          +'<select class="intro-select" id="onbMeds">'
+          +'<option value="none"'+(P.meds==='none'?' selected':'')+'>'+(nl?'Nee':'No')+'</option>'
+          +'<option value="stim"'+(P.meds==='stim'?' selected':'')+'>'+(nl?'Ja — stimulerend (bv. Ritalin)':'Yes — stimulant (e.g. Ritalin)')+'</option>'
+          +'<option value="non"'+(P.meds==='non'?' selected':'')+'>'+(nl?'Ja — niet-stimulerend':'Yes — non-stimulant')+'</option>'
+          +'</select></div>';
+        bubble.style.opacity='1';
+        setTimeout(function(){ var el=document.getElementById('onbName'); if(el) el.focus(); },100);
+      },150);
+    }
+  } else {
+    // slide
+    if(img) img.style.width='min(220px,55vw)';
+    if(lbl) lbl.textContent='Neuro';
+    var name=(P&&P.name)?P.name:'';
+    var text=step.text.replace('{name}',name);
+    var isLast=introStep===steps.length-1;
+    if(btn){ btn.style.display='inline-block'; btn.textContent=isLast?(nl?'Laten we gaan! 🚀':'Let’s go! 🚀'):(nl?'Verder →':'Next →'); }
+    if(skip){ skip.style.display=isLast?'none':'block'; skip.textContent=nl?'Overslaan':'Skip'; }
+    if(dots) dots.innerHTML=slideSteps.map(function(_,i){ return '<div class="intro-dot'+(i===slideIdx?' on':'')+'"></div>'; }).join('');
+    if(bubble){
+      bubble.classList.remove('form-mode');
+      bubble.style.opacity='0';
+      setTimeout(function(){ bubble.textContent=text; bubble.style.opacity='1'; },150);
+    }
+  }
+}
+
+function setIntroLang(l, btn){
+  lang=l; P.lang=l; saveProfile();
+  var cards=document.querySelectorAll('.intro-lang-card');
+  cards.forEach(function(c){ c.classList.remove('on'); });
+  if(btn) btn.classList.add('on');
+  setTimeout(function(){ introStep++; introRender(); },300);
+}
+
+function introSaveProfile(){
+  var nameEl=document.getElementById('onbName');
+  var brainEl=document.getElementById('onbBrain');
+  var medsEl=document.getElementById('onbMeds');
+  if(nameEl){ var n=(nameEl.value||'').trim(); if(n) P.name=n; }
+  if(brainEl) P.brain=brainEl.value;
+  if(medsEl)  P.meds=medsEl.value;
+  saveProfile();
+  render();
+}
+
+function introShow(){
+  _introMode='slides';
+  introStep=0;
+  _introOpen();
+}
+
+function introShowFull(){
+  _introMode='full';
+  introStep=0;
+  _introOpen();
+}
+
+function _introOpen(){
+  var ov=document.getElementById('introOv');
+  if(!ov) return;
+  introGenerateStars();
+  ov.classList.remove('hidden','out');
+  ov.style.opacity='1';
+  introRender();
+}
+
+function introNext(){
+  var steps=_introSteps(), step=steps[introStep];
+  if(step.type==='profile') introSaveProfile();
+  if(introStep<steps.length-1){ introStep++; introRender(); }
+  else { introClose(); }
+}
+
+function introClose(){
+  var ov=document.getElementById('introOv');
+  if(!ov) return;
+  ov.classList.add('out');
+  setTimeout(function(){ ov.classList.add('hidden'); },450);
+  try{ localStorage.setItem('breinlabIntroSeen','1'); }catch(e){}
+}
+
+/* =================== BOOT =================== */
+initCalm();
+render();
+try{
+  if(!localStorage.getItem('breinlabIntroSeen')) introShowFull();
+}catch(e){ introShowFull(); }
+</script>
+</body>
+</html>
