@@ -270,6 +270,22 @@ main {
   font-weight: 700;
 }
 
+/* === BREIN LAB === */
+.breinlab-sectie { text-align: center; }
+.breinlab-knop {
+  display: inline-block;
+  padding: 0.5rem 1.2rem;
+  border: 2px dashed #ccc;
+  border-radius: 30px;
+  font-family: var(--lettertype-tekst);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #999;
+  text-decoration: none;
+  transition: border-color 0.2s, color 0.2s;
+}
+.breinlab-knop:hover { border-color: #e8a000; color: #e8a000; }
+
 /* === FOOTER === */
 footer { text-align: center; padding: 1.5rem; font-size: 0.85rem; color: #999; }
 
