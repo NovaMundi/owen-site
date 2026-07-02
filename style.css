@@ -294,3 +294,16 @@ footer { text-align: center; padding: 1.5rem; font-size: 0.85rem; color: #999; }
   .profiel-kaart { flex-direction: column; text-align: center; }
   .profielfoto { width: 100px; height: 100px; }
 }
+
+/* --- Film "De Niet-Pannenkoek" --- */
+.film-kaart { text-align: center; }
+.film-video {
+  width: 100%;
+  max-width: 640px;
+  border-radius: var(--rand-radius, 16px);
+  display: block;
+  margin: 0.6rem auto 0;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  background: #000;
+}
+.film-tekst { margin: 0 auto 0.4rem; max-width: 640px; }
