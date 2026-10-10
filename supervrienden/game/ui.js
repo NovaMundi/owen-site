@@ -56,24 +56,10 @@ function ic(naam, klasse) {
 }
 
 /* Voorlezen is voor Jake geen extraatje maar de manier waarop hij het spel begrijpt.
- * Alleen `lang` zetten is niet genoeg: staat Windows in het Engels, dan leest de
- * standaardstem het Nederlands met Engelse klanken. Daarom zoeken we zelf een
- * Nederlandse stem. Die lijst komt soms pas later binnen, vandaar de listener. */
-var nlStem = null;
-function zoekStem() {
-  if (!('speechSynthesis' in window)) return;
-  var stemmen = window.speechSynthesis.getVoices() || [];
-  nlStem = stemmen.filter(function (s) { return /^nl/i.test(s.lang); })[0] || null;
-}
-if ('speechSynthesis' in window) {
-  zoekStem();
-  window.speechSynthesis.onvoiceschanged = zoekStem;
-}
-
-/* Voorlezen gaat bij voorkeur met ingesproken bestanden en pas anders met de stem van het
- * apparaat. Die systeemstem is namelijk op elke tablet een andere, op sommige Engels, en
- * op een enkele is er helemaal geen Nederlandse stem. Voor een kind dat nog niet leest is
- * dat het verschil tussen wel en niet kunnen spelen.
+ *
+ * Het ging eerst met `speechSynthesis`, de stem die in het apparaat zit. Die is op elke
+ * tablet een andere, op sommige Engels, en op een enkele is er helemaal geen Nederlandse
+ * stem. Nu is alles ingesproken door papa.
  *
  * De ingesproken stukjes zijn vooraf gemaakt met Piper (zie gereedschap/stem/). Welke er
  * klaarstaan weet het spel uit `stem/lijst.js`; dat is een script en geen json, want op
@@ -92,7 +78,6 @@ function heeftClip(sleutel) {
 function stopStem() {
   stemRij = [];
   if (stemNu) { try { stemNu.pause(); } catch (e) {} stemNu = null; }
-  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 }
 
 function volgendeClip() {
@@ -104,24 +89,23 @@ function volgendeClip() {
   stemNu.play().catch(volgendeClip);
 }
 
-/* `tekst` is wat er gezegd moet worden, `sleutels` eventueel de stukjes waaruit het is
- * opgebouwd. Zijn die er allemaal als bestand, dan klinkt het spel op elk apparaat
- * hetzelfde. Zo niet, dan hoor je gewoon de stem van de tablet. */
+/* Alleen papa's stem, of stilte. De robotstem van het apparaat is er helemaal uit.
+ *
+ * Dat is een bewuste keuze en geen bezuiniging: de enige zinnen die niet ingesproken zijn,
+ * zijn zinnen met een wezennaam of een aantal erin ("Vlamklauw raakt Knauw voor 8"). Die
+ * tijdens een gevecht door een robot laten oplezen is eerder irritant dan behulpzaam, en
+ * het wisselen tussen twee stemmen maakt het alleen maar rommeliger. Staat er geen opname
+ * klaar, dan zegt het spel niets.
+ *
+ * `tekst` blijft meegaan omdat het leest als documentatie bij de aanroep: je ziet in de
+ * code wat er klinkt zonder de zinnenlijst erbij te pakken. */
 function spreek(tekst, sleutels) {
   stopStem();
-  if (sleutels) {
-    var lijst = typeof sleutels === 'string' ? [sleutels] : sleutels;
-    if (lijst.length && lijst.every(heeftClip)) {
-      stemRij = lijst.slice();
-      return volgendeClip();
-    }
-  }
-  if (!('speechSynthesis' in window) || !tekst) return;
-  var u = new SpeechSynthesisUtterance(tekst);
-  u.lang = 'nl-NL'; u.rate = 0.95;
-  if (!nlStem) zoekStem();
-  if (nlStem) u.voice = nlStem;
-  window.speechSynthesis.speak(u);
+  if (!sleutels) return;
+  var lijst = typeof sleutels === 'string' ? [sleutels] : sleutels;
+  if (!lijst.length || !lijst.every(heeftClip)) return;
+  stemRij = lijst.slice();
+  volgendeClip();
 }
 Array.prototype.forEach.call(document.querySelectorAll('.luidspreker[data-zeg]'), function (k) {
   k.addEventListener('click', function () { spreek(k.dataset.zeg, k.dataset.sleutel); });
@@ -257,7 +241,8 @@ function tekenVeld() {
           el.tikActie = (function (over) {
             return function () {
               spreek(over === 1 ? 'Nog één keer op pad, dan komt hij uit.'
-                                : 'Hij is nog niet warm genoeg. Ga nog een paar keer op pad.');
+                                : 'Hij is nog niet warm genoeg. Ga nog een paar keer op pad.',
+                     over === 1 ? 'ei-bijna' : 'ei-nietwarm');
             };
           })(ei.nodig - ei.warmte);
         }
@@ -369,7 +354,7 @@ function tekenTas() {
           vak.addEventListener('click', function () {
             gooiEiWeg(i);
             eiWegVraag = -1;
-            spreek('Weg is het ' + naam + '.');
+            spreek('Weg ermee.', 'ei-weg');
             tekenDorp();
           });
         } else {
@@ -382,7 +367,7 @@ function tekenTas() {
         vak.title = 'Dit ' + naam + ' in een nest leggen';
         vak.addEventListener('click', function () {
           if (!legEiInNest(i)) return;
-          spreek('Het ' + naam + ' ligt nu warm.');
+          spreek('Het ei ligt nu warm.', 'ei-warm');
           tekenDorp();
         });
       } else {
@@ -449,7 +434,7 @@ function tekenStal(bakId) {
             e.stopPropagation();
             var buit = laatVrij(i);
             vrijlaatVraag = -1;
-            spreek(w.naam + ' rent de jungle in en laat ' + buit + ' glimstenen achter.');
+            spreek('Hij rent de jungle in en laat glimstenen achter.', 'vrijlaten-weg');
             tekenDorp();
           });
           var zeker = document.createElement('div');
@@ -623,8 +608,9 @@ function tekenDorp() {
     !Object.keys(GEBOUWEN).some(function (s) { return kanBouwen(s); });
   document.getElementById('k-jungle').classList.toggle('wijst', nietsTeDoen);
   document.getElementById('zeg-dorp').onclick = function () {
-    spreek('Jullie zijn in het dorp. Je hebt ' + spel.glim + ' glimstenen. ' +
-      (spel.tas.length ? 'Leg je eieren in de nesten.' : 'Ga op pad om eieren te zoeken.'));
+    /* Stond hier eerst met het aantal glimstenen en een tip erin. Dat kan niet meer nu
+     * alles ingesproken is, en het hoeft ook niet: de tellers staan in beeld. */
+    spreek('Jullie zijn in het dorp.', 'uitleg-dorp');
   };
 }
 
@@ -667,7 +653,7 @@ function tekenBouwen() {
       knop.disabled = !kanBouwen(sleutel);
       knop.addEventListener('click', function () {
         if (bouw(sleutel)) {
-          spreek(g.naam + ' gebouwd!');
+          spreek('Gebouwd!', 'gebouwd');
           tekenBouwen();
         }
       });
@@ -698,7 +684,7 @@ function tekenBouwen() {
       knop.disabled = spel.glim < d.prijs;
     }
     knop.addEventListener('click', function () {
-      if (koopDeco(sleutel)) { spreek(d.naam + ' gekocht! Hij staat in het dorp.'); tekenBouwen(); }
+      if (koopDeco(sleutel)) { spreek('Gekocht!', 'deco-gekocht'); tekenBouwen(); }
     });
     vak.appendChild(knop);
     deco.appendChild(vak);
@@ -937,7 +923,7 @@ function sluitVondst() {
   document.getElementById('vondst').classList.add('verborgen');
 }
 
-function toonVondst(html, zegTekst) {
+function toonVondst(html, zegTekst, sleutel) {
   var vak = document.getElementById('vondst');
   if (vondstKlok) { clearTimeout(vondstKlok); vondstKlok = null; }
   vak.classList.remove('verborgen');
@@ -948,7 +934,7 @@ function toonVondst(html, zegTekst) {
     sluitVondst();
   });
   vak.onclick = sluitVondst;
-  if (zegTekst) spreek(zegTekst);
+  if (zegTekst) spreek(zegTekst, sleutel);
 
   var leesTijd = Math.min(12000, 2600 + vak.textContent.length * 55);
   vondstKlok = setTimeout(function () { vondstKlok = null; sluitVondst(); }, leesTijd);
@@ -964,7 +950,7 @@ function zoek(i) {
   tekenJungle();
 
   if (plek.soort === 'niets') {
-    toonVondst('<p>&#127796; Niks. Alleen een lege schelp en een boze kever.</p>', 'Niks gevonden.');
+    toonVondst('<p>&#127796; Niks. Alleen een lege schelp en een boze kever.</p>', 'Niks gevonden.', 'vondst-niets');
     return;
   }
   if (plek.soort === 'glim') {
@@ -972,7 +958,7 @@ function zoek(i) {
     spel.glim += aantal; bewaar(); tekenBalken();
     var steentjes = aantal === 1 ? 'glimsteen' : 'glimstenen';
     toonVondst('<p>&#128142; <strong>' + aantal + ' ' + steentjes + '!</strong> Daar kan je mee bouwen.</p>',
-      aantal + ' ' + steentjes + ' gevonden.');
+      'Glimstenen gevonden.', 'vondst-glim');
     return;
   }
   if (plek.soort === 'geheim') {
@@ -980,7 +966,7 @@ function zoek(i) {
     bewaar(); tekenBalken();
     toonVondst('<p>&#128081; <strong>Een geheim!</strong><br>' + HINTS[spel.geheimen - 1] +
       '</p><p>Je hebt er nu <strong>' + spel.geheimen + ' van de ' + HINTS.length + '</strong>.</p>',
-      'Een geheim gevonden. ' + HINTS[spel.geheimen - 1]);
+      'Een geheim gevonden.', ['vondst-geheim', 'geheim-' + spel.geheimen]);
     return;
   }
   if (plek.soort === 'sleutel') {
@@ -995,7 +981,7 @@ function zoek(i) {
                      : 'De volgende verdieping staat open.';
     toonVondst('<p>' + ic('icoon-sleutel') + ' <strong>Een Wachterssleutel!</strong></p>' +
       '<p>Je hebt er nu <strong>' + spel.sleutels + '</strong>. ' + zin + '</p>',
-      'Een Wachterssleutel gevonden. ' + zin);
+      'Een Wachterssleutel gevonden.', 'vondst-sleutel');
     return;
   }
   if (plek.soort === 'ei') {
@@ -1003,8 +989,7 @@ function zoek(i) {
       toonVondst('<p>&#129370; Er ligt een ei... maar <strong>je tas zit vol</strong>.</p>' +
         '<p>Ga naar huis om ze in de nesten te leggen. Of gooi thuis bij je tas een ei weg ' +
         'dat je toch niet wil, dan heb je weer plek.</p>',
-        'Er ligt een ei, maar je tas zit vol. Ga naar huis om ze neer te leggen, ' +
-        'of gooi er een weg dat je toch niet wil.');
+        'Er ligt een ei, maar je tas zit vol.', 'vondst-tasvol');
       return;
     }
     var soort = trekEisoort();
@@ -1015,10 +1000,10 @@ function zoek(i) {
       '<p>Hij heeft <strong>' + e.warmte + ' warmte</strong> nodig voor hij uitkomt.' +
       (soort !== 'gewoon' ? ' Hier komt iets sterks uit.' : '') + '</p>' +
       (tasVol() ? '<p><strong>Je tas zit nu vol.</strong> Tijd om naar huis te gaan.</p>' : ''),
-      e.naam + ' gevonden.' + (tasVol() ? ' Je tas zit nu vol.' : ''));
+      'Een ei gevonden.', 'vondst-ei');
     return;
   }
-  toonVondst('<p>&#129503; <strong>Er springt iets uit de struiken!</strong></p>', 'Pas op!');
+  toonVondst('<p>&#129503; <strong>Er springt iets uit de struiken!</strong></p>', 'Pas op!', 'vecht-pasop');
   /* Deze wekker moet je kunnen afzetten. Tikte je binnen die 0,9 seconde op "Naar huis",
    * dan werd je alsnog de arena in getrokken; tikte je een tweede beest aan, dan liepen er
    * twee gevechten door elkaar heen. */
@@ -1190,7 +1175,7 @@ function volgendeUitkomst() {
     gaanKnop.disabled = true;
     w.naam = naamvak.value.trim() || verzinNaam(w);
     laatMeteenGaan(w);
-    spreek(w.naam + ' rent de jungle in en laat ' + vrijlaatOpbrengst(w) + ' glimstenen achter.');
+    spreek('Hij rent de jungle in en laat glimstenen achter.', 'vrijlaten-weg');
     uitkomstRij.shift();
     volgendeUitkomst();
   });
@@ -1210,9 +1195,10 @@ function volgendeUitkomst() {
     tekenIn(c, w, 180, 240);
     var top = Wezen.RANGEN[Wezen.topRang(w)];
     setTimeout(function () {
-      spreek(Wezen.RANGORDE.indexOf(Wezen.topRang(w)) >= 2
-        ? 'Wauw! Een wezen met een ' + top.naam.toLowerCase() + ' onderdeel!'
-        : 'Er is een wezen uitgekomen!');
+      var bijzonder = Wezen.RANGORDE.indexOf(Wezen.topRang(w)) >= 2;
+      spreek(bijzonder ? 'Wauw! Een wezen met een bijzonder onderdeel!'
+                       : 'Er is een wezen uitgekomen!',
+             bijzonder ? 'ei-mooi' : 'ei-uit');
     }, 1700);
   });
 }
@@ -1594,7 +1580,8 @@ function klaarGevecht(gewonnen) {
     verslag.innerHTML = '<div>&#127881; <strong>Gewonnen!</strong> &#128142; ' + buit + ' glimstenen' +
       (ei ? ' en ' + eiPlaatje(ei) + ' een ' + EISOORTEN[ei].naam.toLowerCase() : '') + '.</div>' +
       (tasVol() ? '<div>Je tas zit nu vol. Tijd om naar huis te gaan.</div>' : '');
-    spreek('Gewonnen!' + (ei ? ' En een ei erbij.' : ''));
+    spreek('Gewonnen!' + (ei ? ' En een ei erbij.' : ''),
+      ei ? ['vecht-gewonnen', 'vecht-ei-erbij'] : 'vecht-gewonnen');
     var door = document.createElement('button');
     door.className = 'knop';
     door.textContent = '\u{1F33F} Verder zoeken';
@@ -1761,13 +1748,12 @@ function kiesKlaar() {
       spel.mee[vriend.id] = spel.wezens.length - 1;
       boekBij(zijne);
       bewaar();
-      spreek(vriend.naam + ' komt eraan, en hij heeft ' + zijne.naam + ' bij zich!');
+      spreek('Je supervriend komt eraan met zijn eigen wezen!', 'maatje-komt');
     } else {
       kiesSpeler = 1;
       nieuwKiesWezen();
       tekenKies();
-      spreek(samenSpelen() ? 'Mooi! Nu ' + spelerVan(volgorde[1]).naam + '.'
-                           : 'Mooi! Nu je tweede wezen.');
+      spreek('Mooi! Nu je tweede wezen.', samenSpelen() ? null : 'kies-tweede');
       return;
     }
   }
@@ -1845,7 +1831,9 @@ function tekenIntro() {
 
   document.getElementById('intro-tekst').textContent = s.tekst;
   document.getElementById('k-intro-door').textContent = s.knop;
-  document.getElementById('zeg-intro').onclick = function () { spreek(s.tekst); };
+  document.getElementById('zeg-intro').onclick = function () {
+    spreek(s.tekst, 'intro-' + (introStap + 1));
+  };
 
   var bak = document.getElementById('intro-wezens');
   bak.innerHTML = '';
@@ -1862,7 +1850,7 @@ function tekenIntro() {
     bak.appendChild(vak);
     tekenIn(c, w, Math.round(hoog * 0.78), hoog);
   });
-  spreek(s.tekst);
+  spreek(s.tekst, 'intro-' + (introStap + 1));
 }
 
 function introVerder() {
@@ -2228,7 +2216,11 @@ function tekenGeheim() {
     ? 'De deur gaat open. Daarachter gaat een trap naar beneden, het donker in. Heel diep hoor je iets ademen. Dat is de Oude Wachter. En onder hem is nog een verdieping, en daaronder nog een. Ga maar kijken hoe diep jullie durven.'
     : 'De deur zit op slot. Er zitten zes gaatjes in. Voor elk geheim dat jullie vinden gaat er eentje open. Jullie hebben er ' + spel.geheimen + ' van de ' + HINTS.length + '.';
   document.getElementById('deurtekst').textContent = tekst;
-  document.getElementById('zeg-geheim').onclick = function () { spreek(tekst); };
+  /* De dichte deur noemt in beeld hoeveel geheimen je hebt; ingesproken laten we dat weg,
+     want een getal is niet in te spreken en staat er toch al. */
+  document.getElementById('zeg-geheim').onclick = function () {
+    spreek(tekst, open ? 'deur-open' : 'deur-dicht');
+  };
   var lijst = document.getElementById('hints');
   lijst.innerHTML = '';
   for (var i = 0; i < HINTS.length; i++) {
@@ -2272,7 +2264,7 @@ document.getElementById('k-lade-dicht').addEventListener('click', sluitLade);
 document.getElementById('k-leggen').addEventListener('click', function () {
   var n = legInNesten();
   tekenDorp();
-  spreek(n === 1 ? 'Een ei ligt nu warm.' : n + ' eieren liggen nu warm.');
+  spreek('Het ei ligt nu warm.', n === 1 ? 'ei-warm' : null);
 });
 document.getElementById('k-ei-weg').addEventListener('click', function () {
   eiWegModus = !eiWegModus;
