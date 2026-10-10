@@ -998,7 +998,7 @@
     <div class="paneel">
       <div class="paneelkop">
         <h2>Bouwen</h2>
-        <button class="luidspreker" data-zeg="Hier bouw je het dorp groter. Elk gebouw haalt iets weg wat je nu nog tegenhoudt. Je betaalt met glimstenen die je in de jungle vindt.">&#128266;</button>
+        <button class="luidspreker" data-zeg="Hier bouw je het dorp groter. Elk gebouw haalt iets weg wat je nu nog tegenhoudt. Je betaalt met glimstenen die je in de jungle vindt." data-sleutel="uitleg-bouwen">&#128266;</button>
       </div>
       <p class="zacht">Elk gebouw haalt iets weg wat je nu nog tegenhoudt. Alles wat je bouwt komt in het dorp te staan, en daar mag je het zelf neerzetten waar je wil.</p>
       <div class="bouwrij" id="gebouwen"></div>
@@ -1037,7 +1037,7 @@
     </div>
 
     <div class="hud zweef-boven" id="hud-jungle"></div>
-    <button class="luidspreker zweef-hoek" data-zeg="Dit is een zoekplaat. Er zijn acht plekken waar iets verstopt kan zitten. Kijk goed: een holle boomstam, een struik, stenen, een plas, varens, hangende planten, een boomstronk en een hoge heuvel. Tik erop om daar te zoeken. Je vindt een ei, een glimsteen, een geheim, of er springt een wild wezen tevoorschijn.">&#128266;</button>
+    <button class="luidspreker zweef-hoek" data-zeg="Dit is een zoekplaat. Er zijn acht plekken waar iets verstopt kan zitten. Kijk goed: een holle boomstam, een struik, stenen, een plas, varens, hangende planten, een boomstronk en een hoge heuvel. Tik erop om daar te zoeken. Je vindt een ei, een glimsteen, een geheim, of er springt een wild wezen tevoorschijn." data-sleutel="uitleg-jungle">&#128266;</button>
 
     <div id="vondst" class="vondstkaart verborgen"></div>
 
@@ -1077,7 +1077,7 @@
     <div class="paneel">
       <div class="paneelkop">
         <h2>De Diepte</h2>
-        <button class="luidspreker" data-zeg="Achter de deur gaat het naar beneden. Op elke verdieping staat een andere Wachter, en hoe dieper je komt hoe sterker hij is. Je kan ze niet achter elkaar doen: voor elke volgende verdieping heb je twee Wachterssleutels nodig, en die liggen in de jungle. Elke tocht ligt er eentje. Elke Wachter heeft een schild: dat breekt alleen als jullie allebei in dezelfde ronde op hem slaan. Kijk welk element hij heeft en neem daar het goede wezen voor mee.">&#128266;</button>
+        <button class="luidspreker" data-zeg="Achter de deur gaat het naar beneden. Op elke verdieping staat een andere Wachter, en hoe dieper je komt hoe sterker hij is. Je kan ze niet achter elkaar doen: voor elke volgende verdieping heb je twee Wachterssleutels nodig, en die liggen in de jungle. Elke tocht ligt er eentje. Elke Wachter heeft een schild: dat breekt alleen als jullie allebei in dezelfde ronde op hem slaan. Kijk welk element hij heeft en neem daar het goede wezen voor mee." data-sleutel="uitleg-diepte">&#128266;</button>
       </div>
       <p>Achter de deur gaat het naar beneden. Op elke verdieping staat <strong>een andere Wachter</strong>,
       en hoe dieper je komt hoe sterker hij is.</p>
@@ -1165,7 +1165,7 @@
     <div class="paneel">
       <div class="paneelkop">
         <h2>Wie gaat er spelen?</h2>
-        <button class="luidspreker" data-zeg="Kies een plek om te spelen. Er zijn drie plekken: eentje voor Owen alleen, eentje voor Jake alleen, en eentje om samen te spelen. Elke plek heeft zijn eigen dorp en zijn eigen wezens.">&#128266;</button>
+        <button class="luidspreker" data-zeg="Kies een plek om te spelen. Er zijn drie plekken: eentje voor Owen alleen, eentje voor Jake alleen, en eentje om samen te spelen. Elke plek heeft zijn eigen dorp en zijn eigen wezens." data-sleutel="uitleg-plekken">&#128266;</button>
       </div>
       <p class="zacht">Er zijn drie plekken. Elke plek heeft zijn eigen dorp, zijn eigen
          wezens en zijn eigen boek. Je kan dus allebei een eigen spel hebben én samen een spel.</p>
@@ -1217,6 +1217,10 @@
 
 </div>
 
+<!-- Wat er ingesproken klaarstaat. Een script en geen json, want op file:// mag een
+     pagina niets ophalen. Ontbreekt het bestand, dan valt het spel terug op de stem van
+     het apparaat; het spel werkt dus ook zonder. -->
+<script src="../stem/lijst.js"></script>
 <script src="../wezen.js"></script>
 <script src="spel.js"></script>
 <script src="ui.js"></script>

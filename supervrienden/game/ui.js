@@ -70,9 +70,53 @@ if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = zoekStem;
 }
 
-function spreek(tekst) {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
+/* Voorlezen gaat bij voorkeur met ingesproken bestanden en pas anders met de stem van het
+ * apparaat. Die systeemstem is namelijk op elke tablet een andere, op sommige Engels, en
+ * op een enkele is er helemaal geen Nederlandse stem. Voor een kind dat nog niet leest is
+ * dat het verschil tussen wel en niet kunnen spelen.
+ *
+ * De ingesproken stukjes zijn vooraf gemaakt met Piper (zie gereedschap/stem/). Welke er
+ * klaarstaan weet het spel uit `stem/lijst.js`; dat is een script en geen json, want op
+ * file:// mag een pagina geen bestanden ophalen.
+ *
+ * Een zin wordt in stukjes gezegd: een vast stuk, een naam, een getal. Ontbreekt er ook
+ * maar één stukje, dan gaat de hele zin naar de systeemstem. Half ingesproken en half
+ * robot klinkt kapotter dan helemaal robot. */
+var stemRij = [];
+var stemNu = null;
+
+function heeftClip(sleutel) {
+  return !!(window.STEM_LIJST && STEM_LIJST[sleutel]);
+}
+
+function stopStem() {
+  stemRij = [];
+  if (stemNu) { try { stemNu.pause(); } catch (e) {} stemNu = null; }
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+
+function volgendeClip() {
+  if (!stemRij.length) { stemNu = null; return; }
+  var sleutel = stemRij.shift();
+  stemNu = new Audio('../stem/' + sleutel + '.mp3');
+  stemNu.onended = volgendeClip;
+  stemNu.onerror = volgendeClip;     // één ontbrekend bestand mag de rest niet ophouden
+  stemNu.play().catch(volgendeClip);
+}
+
+/* `tekst` is wat er gezegd moet worden, `sleutels` eventueel de stukjes waaruit het is
+ * opgebouwd. Zijn die er allemaal als bestand, dan klinkt het spel op elk apparaat
+ * hetzelfde. Zo niet, dan hoor je gewoon de stem van de tablet. */
+function spreek(tekst, sleutels) {
+  stopStem();
+  if (sleutels) {
+    var lijst = typeof sleutels === 'string' ? [sleutels] : sleutels;
+    if (lijst.length && lijst.every(heeftClip)) {
+      stemRij = lijst.slice();
+      return volgendeClip();
+    }
+  }
+  if (!('speechSynthesis' in window) || !tekst) return;
   var u = new SpeechSynthesisUtterance(tekst);
   u.lang = 'nl-NL'; u.rate = 0.95;
   if (!nlStem) zoekStem();
@@ -80,7 +124,7 @@ function spreek(tekst) {
   window.speechSynthesis.speak(u);
 }
 Array.prototype.forEach.call(document.querySelectorAll('.luidspreker[data-zeg]'), function (k) {
-  k.addEventListener('click', function () { spreek(k.dataset.zeg); });
+  k.addEventListener('click', function () { spreek(k.dataset.zeg, k.dataset.sleutel); });
 });
 
 /* Elk wezen wordt levend getekend: het lichaam staat stil, maar zijn element beweegt.
@@ -1139,7 +1183,7 @@ function volgendeUitkomst() {
       zekerGevraagd = true;
       gaanKnop.classList.add('bevestig');
       gaanKnop.textContent = 'Zeker weten? Tik nog een keer';
-      spreek('Weet je het zeker? Dan gaat hij de jungle in.');
+      spreek('Weet je het zeker? Dan gaat hij de jungle in.', 'zeker-vrijlaten');
       return;
     }
     klaarKnop.disabled = true;
@@ -1154,7 +1198,7 @@ function volgendeUitkomst() {
   kaart.appendChild(rij);
 
   toon('s-uitkomen');
-  spreek('Er beweegt iets in het ei!');
+  spreek('Er beweegt iets in het ei!', 'ei-beweegt');
 
   speelOnthulling(w, function () {
     kaart.classList.remove('verborgen');
@@ -1322,7 +1366,7 @@ function speelSlag() {
   });
 }
 
-function meld(tekst, zeg) { strijd.verslag.push(tekst); if (zeg) spreek(zeg); }
+function meld(tekst, zeg, sleutel) { strijd.verslag.push(tekst); if (zeg) spreek(zeg, sleutel); }
 function levendeVijanden() { return strijd.vijanden.filter(levend); }
 function levendeHelden() { return strijd.helden.filter(levend); }
 
@@ -1335,7 +1379,7 @@ function volgendeBeurt(eerste) {
     if (strijd.aanDeBeurt >= strijd.helden.length) return vijandenAanZet();
     return volgendeBeurt();
   }
-  if (eerste) meld('Een wild wezen valt aan!', 'Pas op, een wild wezen!');
+  if (eerste) meld('Een wild wezen valt aan!', 'Pas op, een wild wezen!', 'vecht-pasop');
   var speler = spelerVan(held.kant);
   /* Samen: wie van de twee aan zet is. Alleen: twee keer 'Owen is aan de beurt' zegt niks,
      dus dan staat er welk wezen er aan zet is. */
@@ -1527,7 +1571,7 @@ function klaarGevecht(gewonnen) {
     onthoudSchade();
     verslag.innerHTML = '<div>&#127881; <strong>Verjaagd!</strong> Hij liet ' + ic('icoon-glim') +
       ' <strong>10 glimstenen</strong> vallen.</div><div>Daar kunnen jullie een <strong>tentje</strong> van zetten. Dat is het begin van jullie dorp.</div>';
-    spreek('Verjaagd! Hij liet tien glimstenen vallen. Daar kunnen jullie een tentje van zetten.');
+    spreek('Verjaagd! Hij liet tien glimstenen vallen. Daar kunnen jullie een tentje van zetten.', 'vecht-tentje');
     var naarBouw = document.createElement('button');
     naarBouw.className = 'knop';
     naarBouw.textContent = 'Tentje bouwen';
@@ -1567,7 +1611,7 @@ function klaarGevecht(gewonnen) {
     verslag.innerHTML = '<div>&#128148; <strong>Jullie zijn allebei moe.</strong> ' +
       'Terug naar het dorp om uit te rusten. Je verliest niks, hoor.</div>' +
       (spel.dorp.rust < 1 ? '<div>Met een vuurplaats worden jullie thuis weer helemaal beter.</div>' : '');
-    spreek('Jullie zijn moe. Terug naar het dorp.');
+    spreek('Jullie zijn moe. Terug naar het dorp.', 'vecht-moe');
     var terug = document.createElement('button');
     terug.className = 'knop';
     terug.textContent = '\u{1F3E0} Naar het dorp';
@@ -1853,7 +1897,7 @@ function eersteAanval(meegegeven) {
   gekozenDoel = null;
   toon('s-arena');
   tekenArena();
-  meld('Er springt iets uit de struiken! <strong>Verjaag het samen.</strong>', 'Er springt iets uit de struiken. Verjaag het samen!');
+  meld('Er springt iets uit de struiken! <strong>Verjaag het samen.</strong>', 'Er springt iets uit de struiken. Verjaag het samen!', 'vecht-begin');
   volgendeBeurt();
 }
 
@@ -1967,12 +2011,12 @@ function klaarBaas(gewonnen) {
       '<div>Er gaat een trap verder naar beneden. Daar staat een andere Wachter, en die is sterker. ' +
       'De deur daarheen kost ' + sleutelsVoor(niveau + 1) + ' Wachterssleutels; die liggen in de jungle, ' +
       'eentje per tocht.</div>';
-    spreek('Gewonnen! De Wachter wordt weer stil. Jullie krijgen een schat.');
+    spreek('Gewonnen! De Wachter wordt weer stil. Jullie krijgen een schat.', 'baas-gewonnen');
   } else {
     verslag.innerHTML = '<div>&#128148; <strong>De Wachter is te sterk.</strong> Jullie klimmen ' +
       'terug naar boven. Er is niks kapot, hoor.</div>' +
       '<div>Tip: sla allebei op hem in dezelfde ronde, dan breekt zijn schild.</div>';
-    spreek('De Wachter is te sterk. Probeer het nog eens, en sla allebei op hem in dezelfde ronde.');
+    spreek('De Wachter is te sterk. Probeer het nog eens, en sla allebei op hem in dezelfde ronde.', 'baas-testerk');
   }
 
   var terug = document.createElement('button');
@@ -2099,7 +2143,8 @@ function doeKruising() {
   kaart.appendChild(rij);
   vak.appendChild(kaart);
   tekenIn(c, kind, 170, 230);
-  spreek(uit.samen ? 'Een nieuw wezen, met de supervriendenbonus!' : 'Er komt een nieuw wezen uit!');
+  spreek(uit.samen ? 'Een nieuw wezen, met de supervriendenbonus!' : 'Er komt een nieuw wezen uit!',
+    uit.samen ? 'kruis-bonus' : 'kruis-nieuw');
 }
 
 /* ---------- boek ---------- */
