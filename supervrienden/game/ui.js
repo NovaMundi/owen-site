@@ -2332,6 +2332,16 @@ Array.prototype.forEach.call(document.querySelectorAll('.balk'), function (balk)
 });
 try { zetBalkStand(localStorage.getItem(BALK_DICHT) === '1'); } catch (e) { zetBalkStand(false); }
 
+/* Sluit je het tabblad terwijl er nog een wijziging wacht, dan gaat die alsnog de deur
+ * uit. Zonder dit zou de volgende keer op het andere apparaat ten onrechte gevraagd
+ * worden welk dorp je wil. */
+window.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'hidden' && wolkAan() && wijLiepenVooruit()) {
+    if (wolkKlok) { clearTimeout(wolkKlok); wolkKlok = null; }
+    wolkOpslaan();
+  }
+});
+
 zetMisrimpel();
 /* Het veld kan ook van maat veranderen zonder dat het venster dat doet: als het scherm
  * verborgen was, is het nul breed en staan de rondjes nergens. */
@@ -2415,9 +2425,26 @@ function wolkMelding(stand) {
  * minuut bewaard, en dat hoeft niet tien keer de deur uit. */
 function wolkWilOpslaan() {
   if (!wolkAan()) return;
-  spel.lokaalStap = (spel.lokaalStap || 0) + 1;
   if (wolkKlok) clearTimeout(wolkKlok);
   wolkKlok = setTimeout(wolkOpslaan, 2500);
+}
+
+/* Een vingerafdruk van het spel zelf, zonder de velden die over het bijwerken gaan.
+ *
+ * Hiervoor stond hier een tellertje dat bij elke opslag omhoog ging, en dat was te broos:
+ * het spel bewaart ook als er niets veranderd is (bij het verlaten van een scherm
+ * bijvoorbeeld), en dan dacht het ten onrechte dat er gespeeld was en vroeg het welk dorp
+ * je wou. Naar de inhoud kijken kan niet liegen. */
+function spelVingerafdruk(s) {
+  var kopie = {};
+  for (var k in s) if (k !== 'wolkVersie' && k !== 'wolkStempel') kopie[k] = s[k];
+  var t = JSON.stringify(kopie), h = 5381;
+  for (var i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
+  return t.length + '-' + h.toString(36);
+}
+
+function wijLiepenVooruit() {
+  return spelVingerafdruk(spel) !== spel.wolkStempel;
 }
 
 function wolkOpslaan(forceer) {
@@ -2439,7 +2466,7 @@ function wolkOpslaan(forceer) {
     if (!r.ok) throw new Error('mislukt');
     return r.json().then(function (d) {
       spel.wolkVersie = d.versie;
-      spel.lokaalStapBijWolk = spel.lokaalStap || 0;   // vanaf hier lopen we weer gelijk
+      spel.wolkStempel = spelVingerafdruk(spel);       // vanaf hier lopen we weer gelijk
       try { localStorage.setItem(OPSLAG, JSON.stringify(spel)); } catch (e) {}
       wolkMelding('bijgewerkt');
       return true;
@@ -2631,6 +2658,7 @@ function zetOpgehaaldSpel(nr, code, d) {
   herstelSpel();
   spel.wolkCode = code;
   spel.wolkVersie = d.versie || 0;
+  spel.wolkStempel = spelVingerafdruk(spel);
   try { localStorage.setItem(OPSLAG, JSON.stringify(spel)); } catch (e) {}
   zetStand(spel.stand || 'gewoon');
   if (spel.intro && !spel.wezens.length) startKiezen();
@@ -2722,16 +2750,11 @@ function speelPlek(nr) {
     spel = d.spel;
     herstelSpel();
     spel.wolkVersie = hunVersie;
+    spel.wolkStempel = spelVingerafdruk(spel);
     try { localStorage.setItem(OPSLAG, JSON.stringify(spel)); } catch (e) {}
     wolkMelding('bijgewerkt');
     openSpel();
   });
-}
-
-/* Hebben wij sinds de laatste keer bijwerken zelf nog gespeeld? Dat houden we bij met een
- * tellertje dat bij elke opslag omhoog gaat. */
-function wijLiepenVooruit() {
-  return (spel.lokaalStap || 0) > (spel.lokaalStapBijWolk || 0);
 }
 
 function openSpel() {
@@ -2777,7 +2800,7 @@ function toonTweeDorpen(nr, daar) {
     spel = daar.spel;
     herstelSpel();
     spel.wolkVersie = daar.versie || 0;
-    spel.lokaalStap = spel.lokaalStapBijWolk = 0;
+    spel.wolkStempel = spelVingerafdruk(spel);
     try { localStorage.setItem(OPSLAG, JSON.stringify(spel)); } catch (e) {}
     wolkMelding('bijgewerkt');
     openSpel();
