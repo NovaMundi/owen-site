@@ -2267,6 +2267,34 @@ Array.prototype.forEach.call(document.querySelectorAll('.paneel'), function (pan
   kop.appendChild(kruis);
 });
 
+/* Elke zwevende knoppenbalk krijgt een tabje om hem dicht te klappen. Op een tablet of
+ * telefoon is het dorp het halve beeld en de balk de andere helft; soms wil je gewoon
+ * kijken naar wat je gebouwd hebt. De stand geldt voor alle balken tegelijk en wordt
+ * onthouden, want anders moet je hem elke keer opnieuw dichtdoen. */
+var BALK_DICHT = 'supervrienden-balk-dicht';
+
+function zetBalkStand(dicht) {
+  Array.prototype.forEach.call(document.querySelectorAll('.balk'), function (balk) {
+    balk.classList.toggle('dicht', dicht);
+    var tab = balk.querySelector('.klapknop');
+    if (tab) {
+      tab.innerHTML = dicht ? '&#9650;' : '&#9660;';
+      tab.title = dicht ? 'Knoppen laten zien' : 'Knoppen opzij';
+    }
+  });
+  try { localStorage.setItem(BALK_DICHT, dicht ? '1' : '0'); } catch (e) {}
+}
+
+Array.prototype.forEach.call(document.querySelectorAll('.balk'), function (balk) {
+  var tab = document.createElement('button');
+  tab.className = 'klapknop';
+  tab.addEventListener('click', function () {
+    zetBalkStand(!balk.classList.contains('dicht'));
+  });
+  balk.appendChild(tab);
+});
+try { zetBalkStand(localStorage.getItem(BALK_DICHT) === '1'); } catch (e) { zetBalkStand(false); }
+
 zetMisrimpel();
 /* Het veld kan ook van maat veranderen zonder dat het venster dat doet: als het scherm
  * verborgen was, is het nul breed en staan de rondjes nergens. */
