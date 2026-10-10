@@ -452,6 +452,27 @@
                   cursor: pointer; text-decoration: underline; padding: 4px; }
   .plek .wissen:hover { color: #ff9a7a; }
   .plek .wiekiezer { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+  /* Meegaan tussen huizen staat op de kaart zelf en niet in een menu: Owen en Jake spelen
+     bij hun moeder en bij hun vader, dus doorspelen op een ander apparaat hoort het eerste
+     te zijn wat je ziet. */
+  .meeneem { margin-top: 8px; background: none; border: none; cursor: pointer;
+             color: #7e8ea0; font-size: 13px; padding: 5px; font-family: inherit; }
+  .meeneem:hover { color: var(--tekst); }
+  .meeneem.aan { color: #5fd98a; }
+  .meeneemvak { background: rgba(0,0,0,.35); border: 1px solid var(--glasrand);
+                border-radius: 16px; padding: 14px 16px; display: flex;
+                flex-direction: column; align-items: flex-start; }
+  .meeneemvak .watis { font-size: 12px; color: #8b99a9; letter-spacing: .4px;
+                       text-transform: uppercase; margin-bottom: 4px; }
+  .meeneemvak code { font-family: ui-monospace, monospace; font-size: 14px; color: #ffe3a8;
+                     background: rgba(255,201,74,.1); border: 1px solid rgba(255,201,74,.25);
+                     border-radius: 8px; padding: 7px 10px; word-break: break-all;
+                     width: 100%; }
+  .meeneemvak code.groot { font-size: 20px; letter-spacing: 1px; text-align: center; }
+  /* Rechtsonder, klein: je hoeft er niet naar te kijken, maar als er iets hapert zie je het. */
+  .wolkstand { position: fixed; right: 12px; bottom: 10px; z-index: 550; font-size: 12px;
+               color: #7e8ea0; pointer-events: none; font-family: 'Baloo 2', sans-serif; }
+  .wolkstand.let-op { color: #ffb37a; }
 
   /* Stap 2 en 3: wie speelt er, en speel je met een supervriend. Grote knoppen onder
      elkaar, want dit zijn de enige keuzes op het scherm. */
@@ -1159,6 +1180,8 @@
       </div>
     </div>
   </div>
+
+  <div class="wolkstand" id="wolkstand"></div>
 
   <!-- Drie opslagplekken, zoals op een spelcomputer. Dit is het eerste wat je ziet. -->
   <div id="s-plekken" class="verborgen">

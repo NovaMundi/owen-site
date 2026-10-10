@@ -2389,6 +2389,76 @@ if (/[?&]opnieuwtest/.test(location.search)) {
   try { localStorage.removeItem(TEST_OPSLAG); } catch (e) {}
 }
 
+/* ---------- meegaan tussen huizen ----------
+ *
+ * Zie de toelichting bij WOLK in spel.js. Hier staat alleen het heen en weer praten.
+ * Alles is zo gebouwd dat het spel het zonder kan: mislukt er iets, dan merkt een kind er
+ * niets van en wordt het de volgende keer vanzelf opgepakt.
+ */
+var wolkBezig = false;
+var wolkKlok = null;
+var wolkStand = 'uit';      // uit, bijgewerkt, bezig, wacht (nog niet verstuurd), botsing
+
+function wolkAan() { return !!(spel && spel.wolkCode) && !IN_TESTWERELD; }
+
+function wolkMelding(stand) {
+  wolkStand = stand;
+  var el = document.getElementById('wolkstand');
+  if (!el) return;
+  var tekst = { bezig: '☁ bezig…', bijgewerkt: '☁ bijgewerkt',
+                wacht: '☁ wacht op internet', botsing: '⚠ twee dorpen' }[stand];
+  el.textContent = tekst || '';
+  el.className = 'wolkstand' + (stand === 'botsing' ? ' let-op' : '');
+}
+
+/* Opslaan wordt uitgesteld en samengevoegd: tijdens een gevecht wordt er tien keer per
+ * minuut bewaard, en dat hoeft niet tien keer de deur uit. */
+function wolkWilOpslaan() {
+  if (!wolkAan()) return;
+  spel.lokaalStap = (spel.lokaalStap || 0) + 1;
+  if (wolkKlok) clearTimeout(wolkKlok);
+  wolkKlok = setTimeout(wolkOpslaan, 2500);
+}
+
+function wolkOpslaan(forceer) {
+  if (!wolkAan() || wolkBezig) return Promise.resolve(false);
+  wolkBezig = true;
+  wolkMelding('bezig');
+  var code = spel.wolkCode;
+  var versie = spel.wolkVersie || 0;
+  var watWeSturen = JSON.stringify(spel);
+  return fetch(WOLK + '?code=' + encodeURIComponent(code) + (forceer ? '&forceer=1' : ''), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ versie: versie, spel: JSON.parse(watWeSturen) })
+  }).then(function (r) {
+    if (r.status === 409) {
+      /* Iemand anders heeft gespeeld. Niet overschrijven; het keuzescherm beslist. */
+      return r.json().then(function (d) { wolkMelding('botsing'); wolkBotsing = d.hunne; return false; });
+    }
+    if (!r.ok) throw new Error('mislukt');
+    return r.json().then(function (d) {
+      spel.wolkVersie = d.versie;
+      spel.lokaalStapBijWolk = spel.lokaalStap || 0;   // vanaf hier lopen we weer gelijk
+      try { localStorage.setItem(OPSLAG, JSON.stringify(spel)); } catch (e) {}
+      wolkMelding('bijgewerkt');
+      return true;
+    });
+  }).catch(function () {
+    // geen internet of de server ligt eruit: gewoon doorspelen, later opnieuw
+    wolkMelding('wacht');
+    return false;
+  }).then(function (r) { wolkBezig = false; return r; });
+}
+
+var wolkBotsing = null;
+
+function wolkOphalen(code) {
+  return fetch(WOLK + '?code=' + encodeURIComponent(code))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .catch(function () { return null; });
+}
+
 /* ---------- de drie opslagplekken ---------- */
 
 /* Het eerste scherm. Per plek zie je wie er speelt, hoe ver ze zijn en hun twee wezens,
@@ -2408,9 +2478,13 @@ function maakPlekkaart(nr, s) {
   kaart.innerHTML = '<span class="nr">PLEK ' + nr + '</span>';
 
   if (!s) {
-    /* Eén knop, en die start nog niets. Hiervoor stonden hier drie knoppen die ieder
-     * meteen het spel begonnen; dan beantwoordt één tik twee vragen tegelijk (welke plek
-     * én wie speelt er) en kan je nergens meer terug. */
+    /* Twee knoppen, en geen van beide start al iets. Hiervoor stonden hier drie knoppen
+     * die ieder meteen het spel begonnen; dan beantwoordt één tik twee vragen tegelijk
+     * (welke plek én wie speelt er) en kan je nergens meer terug.
+     *
+     * "Spel ophalen" staat hier en niet in een menu. Owen en Jake spelen bij hun moeder en
+     * bij hun vader, en dan moet doorspelen op een ander apparaat het eerste zijn wat je
+     * ziet, niet iets wat je moet gaan zoeken. */
     kaart.innerHTML += '<h3>Leeg</h3>' +
       '<p class="zacht" style="margin:0 0 14px">Hier is nog geen spel.</p>';
     var start = document.createElement('button');
@@ -2418,6 +2492,14 @@ function maakPlekkaart(nr, s) {
     start.textContent = '✨ Nieuw spel';
     start.addEventListener('click', function () { vraagWie(nr); });
     kaart.appendChild(start);
+
+    var haal = document.createElement('button');
+    haal.className = 'knop rustig';
+    haal.style.marginTop = '8px';
+    haal.innerHTML = '☁ Spel ophalen';
+    haal.title = 'Een spel dat je ergens anders bent begonnen';
+    haal.addEventListener('click', function () { vraagOphalen(nr); });
+    kaart.appendChild(haal);
     return kaart;
   }
 
@@ -2455,6 +2537,18 @@ function maakPlekkaart(nr, s) {
   spelen.addEventListener('click', function () { speelPlek(nr); });
   kaart.appendChild(spelen);
 
+  /* Gaat deze plek mee naar het andere huis? Dat staat er gewoon bij, zonder menu. */
+  var mee = document.createElement('button');
+  mee.className = 'meeneem' + (s.wolkCode ? ' aan' : '');
+  mee.innerHTML = s.wolkCode
+    ? '☁ Gaat met je mee'
+    : '☁ Dit spel meenemen';
+  mee.title = s.wolkCode
+    ? 'Laat de link zien om dit spel op een ander apparaat te openen'
+    : 'Zodat je er ook op een ander apparaat mee verder kan';
+  mee.addEventListener('click', function () { toonMeenemen(nr); });
+  kaart.appendChild(mee);
+
   /* Wissen zit achter twee tikken en staat er klein onder. Een spel van weken mag niet
    * verdwijnen door één misklik, en er gaat ook nog een kopie opzij. */
   var wis = document.createElement('button');
@@ -2475,14 +2569,224 @@ function maakPlekkaart(nr, s) {
   return kaart;
 }
 
-/* Een plek openen die al een spel heeft. */
-function speelPlek(nr) {
+/* Een spel ophalen dat ergens anders begonnen is. Je komt hier met een code, of met een
+ * link waar de code al in zit; dan is dit scherm al voor je ingevuld. */
+function vraagOphalen(nr) {
+  nieuwePlek = nr;
+  document.getElementById('wie-kop').textContent = 'Een spel ophalen';
+  document.getElementById('wie-uitleg').innerHTML =
+    'Ben je ergens anders al begonnen? Vul dan de code van dat spel in. ' +
+    'Daarna gaat dit dorp vanzelf met je mee, waar je ook speelt.';
+  document.getElementById('zeg-wie').dataset.zeg =
+    'Een spel ophalen. Vul de code in van een spel dat je ergens anders bent begonnen.';
+
+  var bak = document.getElementById('wie-keuzes');
+  bak.innerHTML = '';
+  var veld = document.createElement('input');
+  veld.type = 'text';
+  veld.className = 'maatjenaam';
+  veld.placeholder = 'bijvoorbeeld vlamklauw-k3m7qp';
+  veld.autocapitalize = 'off';
+  veld.spellcheck = false;
+  bak.appendChild(veld);
+
+  var melding = document.createElement('p');
+  melding.className = 'zacht';
+  melding.style.margin = '10px 0 0';
+  bak.appendChild(melding);
+
+  var knop = document.createElement('button');
+  knop.className = 'knop';
+  knop.style.marginTop = '10px';
+  knop.textContent = 'Ophalen';
+  knop.addEventListener('click', function () {
+    var code = veld.value.trim().toLowerCase();
+    if (code.length < 8) { melding.textContent = 'Die code klopt niet. Kijk hem nog eens na.'; return; }
+    knop.disabled = true;
+    melding.textContent = 'Even zoeken…';
+    wolkOphalen(code).then(function (d) {
+      knop.disabled = false;
+      if (!d || !d.spel) {
+        melding.textContent = 'Bij die code staat geen spel. Kijk de code nog eens na, ' +
+          'of controleer of je internet hebt.';
+        return;
+      }
+      zetOpgehaaldSpel(nr, code, d);
+    });
+  });
+  bak.insertBefore(knop, melding);
+  veld.addEventListener('keydown', function (e) { if (e.key === 'Enter') knop.click(); });
+
+  document.getElementById('k-wie-terug').onclick = function () {
+    toon('s-plekken'); tekenPlekken();
+  };
+  toon('s-wie');
+  veld.focus();
+}
+
+/* Het opgehaalde dorp wordt de inhoud van deze plek, en de plek blijft eraan gekoppeld. */
+function zetOpgehaaldSpel(nr, code, d) {
   kiesSlot(nr);
-  if (!laadSpel()) return tekenPlekken();
+  spel = d.spel;
+  herstelSpel();
+  spel.wolkCode = code;
+  spel.wolkVersie = d.versie || 0;
+  try { localStorage.setItem(OPSLAG, JSON.stringify(spel)); } catch (e) {}
   zetStand(spel.stand || 'gewoon');
   if (spel.intro && !spel.wezens.length) startKiezen();
   else if (spel.intro) { toon('s-dorp'); tekenDorp(); }
   else toon('s-start');
+}
+
+/* De link om dit spel op een ander apparaat te openen. Eén keer openen daar is genoeg;
+ * daarna onthoudt dat apparaat het en hoeft niemand er nog iets voor te doen. */
+function toonMeenemen(nr) {
+  var s = leesSlot(nr);
+  if (!s) return;
+  if (!s.wolkCode) {
+    s.wolkCode = verzinWolkCode();
+    s.wolkVersie = 0;
+    try { localStorage.setItem(slotSleutel(nr), JSON.stringify(s)); } catch (e) {}
+    // meteen naar boven, anders staat er bij de ander nog niets
+    if (huidigSlot === nr && spel) { spel.wolkCode = s.wolkCode; spel.wolkVersie = 0; }
+    var bewaarSlot = huidigSlot, bewaarOpslag = OPSLAG, bewaarSpel = spel;
+    huidigSlot = nr; OPSLAG = slotSleutel(nr); spel = s;
+    wolkOpslaan().then(function () {
+      huidigSlot = bewaarSlot; OPSLAG = bewaarOpslag; spel = bewaarSpel;
+      tekenMeenemen(nr);
+    });
+  }
+  tekenMeenemen(nr);
+}
+
+function tekenMeenemen(nr) {
+  var s = leesSlot(nr);
+  if (!s || !s.wolkCode) return;
+  var link = location.origin + location.pathname + '?spel=' + s.wolkCode;
+
+  document.getElementById('wie-kop').textContent = 'Dit spel gaat met je mee';
+  document.getElementById('wie-uitleg').innerHTML =
+    'Open deze link één keer op het andere apparaat. Daarna onthoudt dat apparaat het en ' +
+    'speel je gewoon verder waar je was, waar je ook bent.';
+  document.getElementById('zeg-wie').dataset.zeg =
+    'Dit spel gaat met je mee. Open de link één keer op het andere apparaat, daarna hoef ' +
+    'je er nooit meer iets voor te doen.';
+
+  var bak = document.getElementById('wie-keuzes');
+  bak.innerHTML = '';
+
+  var vak = document.createElement('div');
+  vak.className = 'meeneemvak';
+  vak.innerHTML = '<span class="watis">De link</span><code>' + link + '</code>' +
+    '<span class="watis" style="margin-top:12px">Of de code, om in te tikken</span>' +
+    '<code class="groot">' + s.wolkCode + '</code>';
+  bak.appendChild(vak);
+
+  var kopieer = document.createElement('button');
+  kopieer.className = 'knop';
+  kopieer.style.marginTop = '12px';
+  kopieer.textContent = '\u{1F4CB} Link kopiëren';
+  kopieer.addEventListener('click', function () {
+    navigator.clipboard.writeText(link).then(function () {
+      kopieer.textContent = '✓ Gekopieerd';
+      setTimeout(function () { kopieer.textContent = '\u{1F4CB} Link kopiëren'; }, 2000);
+    }).catch(function () { kopieer.textContent = 'Kopiëren lukt niet, tik hem over'; });
+  });
+  bak.appendChild(kopieer);
+
+  document.getElementById('k-wie-terug').onclick = function () {
+    toon('s-plekken'); tekenPlekken();
+  };
+  toon('s-wie');
+}
+
+/* Een plek openen die al een spel heeft. Gaat die plek mee tussen huizen, dan wordt eerst
+ * gekeken of er elders gespeeld is. Dat wachten duurt even, maar het is precies het moment
+ * waarop het ertoe doet: je komt thuis van de andere ouder en wil verder waar je was. */
+function speelPlek(nr) {
+  kiesSlot(nr);
+  if (!laadSpel()) return tekenPlekken();
+  if (!wolkAan()) return openSpel();
+
+  wolkMelding('bezig');
+  wolkOphalen(spel.wolkCode).then(function (d) {
+    if (!d || !d.spel) return openSpel();          // geen internet: speel gewoon lokaal
+    var hunVersie = d.versie || 0;
+    var onzeVersie = spel.wolkVersie || 0;
+    if (hunVersie <= onzeVersie) { wolkMelding('bijgewerkt'); return openSpel(); }
+
+    /* Daar is gespeeld sinds wij voor het laatst bijwerkten. Hebben wij ondertussen zelf
+     * ook gespeeld, dan zijn er twee dorpen en kiezen zij. Zo niet, dan nemen we het hunne
+     * gewoon over; dat is wat ze verwachten. */
+    if (wijLiepenVooruit()) return toonTweeDorpen(nr, d);
+    spel = d.spel;
+    herstelSpel();
+    spel.wolkVersie = hunVersie;
+    try { localStorage.setItem(OPSLAG, JSON.stringify(spel)); } catch (e) {}
+    wolkMelding('bijgewerkt');
+    openSpel();
+  });
+}
+
+/* Hebben wij sinds de laatste keer bijwerken zelf nog gespeeld? Dat houden we bij met een
+ * tellertje dat bij elke opslag omhoog gaat. */
+function wijLiepenVooruit() {
+  return (spel.lokaalStap || 0) > (spel.lokaalStapBijWolk || 0);
+}
+
+function openSpel() {
+  zetStand(spel.stand || 'gewoon');
+  if (spel.intro && !spel.wezens.length) startKiezen();
+  else if (spel.intro) { toon('s-dorp'); tekenDorp(); }
+  else toon('s-start');
+}
+
+/* Twee dorpen, en het spel kiest niet zelf. Je ziet ze naast elkaar met hun wezens erbij,
+ * zodat je ook zonder te lezen herkent welke van jou is. */
+function toonTweeDorpen(nr, daar) {
+  document.getElementById('wie-kop').textContent = 'Er zijn twee dorpen';
+  document.getElementById('wie-uitleg').textContent =
+    'Er is op twee plekken gespeeld zonder internet. Welk dorp wil je verder spelen? ' +
+    'Het andere verdwijnt dan.';
+  document.getElementById('zeg-wie').dataset.zeg =
+    'Er zijn twee dorpen. Er is op twee plekken gespeeld zonder internet. ' +
+    'Welk dorp wil je verder spelen?';
+
+  var bak = document.getElementById('wie-keuzes');
+  bak.innerHTML = '';
+
+  function kaartje(titel, s, wat) {
+    var b = s.boek || {};
+    var gezien = 0;
+    ['kop', 'lijf', 'poten', 'extra', 'element'].forEach(function (sl) {
+      if (b[sl]) gezien += Object.keys(b[sl]).filter(function (k) { return b[sl][k]; }).length;
+    });
+    var knop = document.createElement('button');
+    knop.className = 'wiekeuze';
+    knop.innerHTML = '<span class="em">\u{1F3D5}</span><span><b>' + titel + '</b><span>' +
+      (s.wezens || []).length + ' wezens &middot; ' + (s.glim || 0) + ' glimstenen &middot; ' +
+      'boek ' + gezien + '/64 &middot; diepte ' + (s.diepte || 0) + '</span></span>';
+    knop.addEventListener('click', wat);
+    return knop;
+  }
+
+  bak.appendChild(kaartje('Het dorp op dit apparaat', spel, function () {
+    wolkOpslaan(true).then(function () { openSpel(); });   // het onze wint
+  }));
+  bak.appendChild(kaartje('Het dorp van het andere apparaat', daar.spel, function () {
+    spel = daar.spel;
+    herstelSpel();
+    spel.wolkVersie = daar.versie || 0;
+    spel.lokaalStap = spel.lokaalStapBijWolk = 0;
+    try { localStorage.setItem(OPSLAG, JSON.stringify(spel)); } catch (e) {}
+    wolkMelding('bijgewerkt');
+    openSpel();
+  }));
+
+  document.getElementById('k-wie-terug').onclick = function () {
+    toon('s-plekken'); tekenPlekken();
+  };
+  toon('s-wie');
 }
 
 /* Terug naar het keuzescherm, zonder herladen: zo blijft het ook op file:// werken en
@@ -2831,6 +3135,27 @@ Wezen.laadAlles(function () {
 
   /* Hun bestaande dorp stond nog onder de oude sleutel. Dat wordt plek 1. */
   verhuisOudSpel();
+
+  /* Een link met een spel erin: ?spel=vlamklauw-k3m7qp. Zo koppel je een apparaat bij de
+   * andere ouder in één keer, zonder iets over te tikken. Staat het spel er al, dan ga je
+   * daar gewoon verder; anders komt het in de eerste vrije plek. */
+  var uitLink = (location.search.match(/[?&]spel=([a-z0-9-]+)/i) || [])[1];
+  if (uitLink) {
+    uitLink = uitLink.toLowerCase();
+    for (var p = 1; p <= AANTAL_SLOTS; p++) {
+      var bestaand = leesSlot(p);
+      if (bestaand && bestaand.wolkCode === uitLink) return speelPlek(p);
+    }
+    var vrij = 0;
+    for (var q = 1; q <= AANTAL_SLOTS; q++) if (!leesSlot(q)) { vrij = q; break; }
+    toon('s-plekken');
+    tekenPlekken();
+    if (!vrij) return vraagOphalen(1);   // alles vol: laat zelf kiezen waar het heen gaat
+    return wolkOphalen(uitLink).then(function (d) {
+      if (d && d.spel) zetOpgehaaldSpel(vrij, uitLink, d);
+      else vraagOphalen(vrij);
+    });
+  }
 
   /* Open je het spel opnieuw, dan ga je verder waar je was. Alleen als er nog nergens
    * iets staat, of je komt net van het plekkenscherm, kies je eerst. */

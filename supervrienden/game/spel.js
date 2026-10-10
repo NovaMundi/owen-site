@@ -411,7 +411,40 @@ var spel = null;
 
 function bewaar() {
   try { localStorage.setItem(OPSLAG, JSON.stringify(spel)); } catch (e) {}
+  // en, als deze plek meegaat tussen huizen, even later ook naar de wolk
+  if (typeof wolkWilOpslaan === 'function') wolkWilOpslaan();
 }
+
+/* ---------- het dorp gaat mee tussen huizen ----------
+ *
+ * Owen en Jake wonen deels bij hun moeder en deels bij hun vader. Een dorp dat op één
+ * apparaat vastzit wordt dan twee aparte dorpen. Een plek kan daarom gekoppeld worden aan
+ * een code; dan staat er een kopie op de server en pikt elk gekoppeld apparaat die op.
+ *
+ * Drie regels die daarbij gelden:
+ *   1. De opslag op het apparaat blijft de bron. Geen internet is geen probleem: je speelt
+ *      gewoon door en het loopt later vanzelf bij. Een kind mag nooit een foutmelding of
+ *      een laadscherm zien omdat de wifi hapert.
+ *   2. Er wordt nooit stil iets overschreven. Heeft er iemand anders gespeeld sinds jouw
+ *      laatste keer, dan laat het spel allebei de dorpen zien en kiezen zij.
+ *   3. Koppelen gebeurt één keer per apparaat, via een link. Daarna hoeft niemand er ooit
+ *      nog iets voor te doen.
+ */
+var WOLK = 'https://jakevanpelt.com/.netlify/functions/supervrienden';
+
+/* Een code die leesbaar is maar niet te raden: twee woorden uit het spel plus zes tekens
+ * uit een alfabet zonder letters die op elkaar lijken. */
+var CODE_TEKENS = 'abcdefghjkmnpqrstuvwxyz23456789';
+
+function verzinWolkCode() {
+  var voor = NAAM_VOOR[kies(Object.keys(NAAM_VOOR))];
+  var achter = NAAM_ACHTER.poten[kies(Object.keys(NAAM_ACHTER.poten))];
+  var staart = '';
+  for (var i = 0; i < 6; i++) staart += CODE_TEKENS[Math.floor(Math.random() * CODE_TEKENS.length)];
+  return (kies(voor) + kies(achter)).toLowerCase() + '-' + staart;
+}
+
+function wolkLeesbaar(code) { return code; }
 
 function laadSpel() {
   try {
