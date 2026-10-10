@@ -78,19 +78,38 @@ function hetKind() {
   return k || SPELERS[0];
 }
 
+/* Speelt er een supervriend mee? Dan is de tweede plek van hem, met een eigen naam en een
+ * eigen kleur. Bewust niet groen en niet oranje: een supervriend komt niet in de plaats
+ * van je broer. */
+function heeftMaatje() { return !samenSpelen() && !!(spel.maatje && spel.maatje.naam); }
+
 function spelerVan(id) {
   var basis = SPELERS.filter(function (s) { return s.id === id; })[0] || SPELERS[0];
   if (samenSpelen()) return { id: basis.id, naam: basis.naam, emoji: basis.emoji, kleur: basis.id };
   var k = hetKind();
-  return { id: id, naam: k.naam, emoji: k.emoji, kleur: k.id,
-           plek: id === 'owen' ? 1 : 2, alleen: true };
+  if (id === k.id) return { id: id, naam: k.naam, emoji: k.emoji, kleur: k.id, plek: 1 };
+  if (heeftMaatje()) {
+    return { id: id, naam: spel.maatje.naam, emoji: '\u{1F49C}', kleur: 'maatje',
+             plek: 2, maatje: true };
+  }
+  // alleen, zonder supervriend: allebei de plekken zijn van hetzelfde kind
+  return { id: id, naam: k.naam, emoji: k.emoji, kleur: k.id, plek: 2, alleen: true };
+}
+
+/* De volgorde waarin de twee plekken aan de beurt komen. Speelt Jake alleen, dan moet hij
+ * eerst, niet de plek die toevallig 'owen' heet. */
+function spelerVolgorde() {
+  if (samenSpelen()) return [SPELERS[0].id, SPELERS[1].id];
+  var k = hetKind();
+  return [k.id, k.id === 'owen' ? 'jake' : 'owen'];
 }
 
 function plekOmschrijving(s) {
   if (!s) return 'Leeg';
-  if (s.wie === 'owen') return 'Owen alleen';
-  if (s.wie === 'jake') return 'Jake alleen';
-  return 'Owen en Jake samen';
+  if (s.wie === 'samen' || !s.wie) return 'Owen en Jake samen';
+  var naam = s.wie === 'owen' ? 'Owen' : 'Jake';
+  // met een supervriend hoort zijn naam erbij: daaraan herken je jouw spel
+  return s.maatje && s.maatje.naam ? naam + ' en ' + s.maatje.naam : naam + ' alleen';
 }
 
 /* Vóór iets wist, gaat er eerst een kopie opzij. Een spel van weken mag niet verdwijnen
@@ -428,6 +447,8 @@ function lapWezenOp(w) {
 function herstelSpel() {
   // een spel van voor de opslagplekken was altijd een samen-spel
   if (spel.wie !== 'owen' && spel.wie !== 'jake') spel.wie = 'samen';
+  // een supervriend hoort alleen bij een spel in je eentje
+  if (spel.wie === 'samen' || !spel.maatje || !spel.maatje.naam) spel.maatje = null;
   if (typeof spel.diepte !== 'number') spel.diepte = 0;
   if (typeof spel.sleutels !== 'number') spel.sleutels = 0;
   if (!spel.wachters || typeof spel.wachters !== 'object') spel.wachters = {};
@@ -497,6 +518,7 @@ function nieuwSpel(wie) {
   spel = {
     stand: 'gewoon', intro: false,
     wie: wie || 'samen',   // 'owen', 'jake' of 'samen': wie er op deze plek speelt
+    maatje: null,          // bij alleen spelen: de supervriend die de tweede plek vult
     geheimen: 0, gewonnen: 0, glim: 0, zone: 0, diepte: 0,
     sleutels: 0,      // Wachterssleutels: hiermee open je de volgende verdieping
     wachters: {},     // per verdieping de Wachter die daar staat, eenmaal gerold

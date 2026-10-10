@@ -1,6 +1,6 @@
 /* Schermen en knoppen van het spel. Gewoon script, geen module: moet werken op file://. */
 
-var SCHERMEN = ['s-laden','s-plekken','s-start','s-intro','s-dorp','s-bouwen','s-zone','s-jungle','s-arena','s-uitkomen','s-kruisen','s-boek','s-geheim','s-diepte','s-kies','s-opslag'];
+var SCHERMEN = ['s-laden','s-plekken','s-wie','s-start','s-intro','s-dorp','s-bouwen','s-zone','s-jungle','s-arena','s-uitkomen','s-kruisen','s-boek','s-geheim','s-diepte','s-kies','s-opslag'];
 
 /* Elk scherm heeft zijn eigen achtergrondkunst. Eén vaste laag achter alles, zodat de
  * panelen er als glas overheen liggen in plaats van als losse kaartjes op een vlakke kleur. */
@@ -436,11 +436,11 @@ function tekenStal(bakId) {
          jouw eigen team, allebei in jouw kleur, met een 1 en een 2 erop. */
       var p = spelerVan(s.id);
       var knop = document.createElement('button');
-      knop.className = 'meeknop ' + (p.alleen ? p.kleur : s.id) + (spel.mee[s.id] === i ? ' aan' : '');
-      knop.innerHTML = p.alleen ? String(p.plek) : s.emoji;
+      knop.className = 'meeknop ' + p.kleur + (spel.mee[s.id] === i ? ' aan' : '');
+      knop.innerHTML = p.alleen ? String(p.plek) : p.emoji;
       knop.title = p.alleen
         ? (w.naam || 'dit wezen') + ' op plek ' + p.plek + ' van je team'
-        : s.naam + ' neemt ' + (w.naam || 'dit wezen') + ' mee';
+        : p.naam + ' neemt ' + (w.naam || 'dit wezen') + ' mee';
       knop.addEventListener('click', function (e) {
         e.stopPropagation();
         neemMee(s.id, i);
@@ -462,8 +462,10 @@ function tekenStal(bakId) {
     : samenSpelen()
       ? 'Alle wezens zijn van jullie samen. Tik op het groene hartje als Owen hem meeneemt, ' +
         'op het oranje als Jake hem meeneemt.'
-      : 'Je neemt er twee mee op pad. Tik op de <strong>1</strong> of de <strong>2</strong> ' +
-        'om te kiezen wie er in je team staan.';
+      : heeftMaatje()
+        ? 'Tik op het hartje om te kiezen wie jij meeneemt en wie ' + spel.maatje.naam + ' meeneemt.'
+        : 'Je neemt er twee mee op pad. Tik op de <strong>1</strong> of de <strong>2</strong> ' +
+          'om te kiezen wie er in je team staan.';
 }
 
 /* Een rij van vier stipjes, één per lichaamsdeel, in de kleur van zijn rang.
@@ -546,7 +548,8 @@ function toonLade(welke) {
   document.getElementById('lade-wezens').classList.toggle('verborgen', welke !== 'wezens');
   document.getElementById('lade-tas').classList.toggle('verborgen', welke !== 'tas');
   if (welke === 'wezens') {
-    document.getElementById('stal-kop').textContent = samenSpelen() ? 'Jullie wezens' : 'Je wezens';
+    document.getElementById('stal-kop').textContent =
+      (samenSpelen() || heeftMaatje()) ? 'Jullie wezens' : 'Je wezens';
     tekenStal('stal-owen');
   } else {
     tekenTas();          // zet zelf de uitleg en de knoppen goed
@@ -1085,7 +1088,7 @@ function volgendeUitkomst() {
   var wie = document.createElement('p');
   wie.className = 'zacht';
   wie.style.margin = '10px 0 4px';
-  wie.innerHTML = samenSpelen()
+  wie.innerHTML = (samenSpelen() || heeftMaatje())
     ? beurt.emoji + ' <strong>' + beurt.naam + '</strong> mag hem een naam geven.'
     : beurt.emoji + ' Geef hem een naam.';
   kaart.insertBefore(wie, naamvak);
@@ -1325,7 +1328,7 @@ function volgendeBeurt(eerste) {
   var speler = spelerVan(held.kant);
   /* Samen: wie van de twee aan zet is. Alleen: twee keer 'Owen is aan de beurt' zegt niks,
      dus dan staat er welk wezen er aan zet is. */
-  document.getElementById('t-beurt').textContent = samenSpelen()
+  document.getElementById('t-beurt').textContent = (samenSpelen() || heeftMaatje())
     ? speler.emoji + ' ' + speler.naam + ' is aan de beurt'
     : speler.emoji + ' ' + (held.naam || 'Jouw wezen') + ' is aan de beurt';
   tekenArena();
@@ -1607,10 +1610,12 @@ function nieuwKiesWezen() {
 }
 
 function tekenKies() {
-  var speler = spelerVan(SPELERS[kiesSpeler].id);
+  var speler = spelerVan(spelerVolgorde()[kiesSpeler]);
   document.getElementById('kies-beurt').textContent = samenSpelen()
     ? speler.emoji + '  ' + speler.naam + ', dit wordt jouw wezen'
-    : speler.emoji + '  Dit wordt je ' + (kiesSpeler === 0 ? 'eerste' : 'tweede') + ' wezen';
+    : heeftMaatje()
+      ? speler.emoji + '  ' + speler.naam + ', dit wordt jouw wezen'
+      : speler.emoji + '  Dit wordt je ' + (kiesSpeler === 0 ? 'eerste' : 'tweede') + ' wezen';
   document.getElementById('kies-regel').innerHTML =
     'Eentje mag <strong style="color:#5fd98a">beter</strong> zijn (die met het sterretje). ' +
     'Kies je een tweede, dan gaat de vorige terug naar gewoon.';
@@ -1676,7 +1681,8 @@ function tekenKies() {
 function kiesKlaar() {
   var naam = document.getElementById('kies-naam').value.trim() || verzinNaam(kiesWezen);
   kiesWezen.naam = naam;
-  var speler = SPELERS[kiesSpeler];
+  var volgorde = spelerVolgorde();
+  var speler = spelerVan(volgorde[kiesSpeler]);
   // beide startwezens komen in dezelfde stal; `van` houdt alleen bij wie hem bedacht heeft
   var nieuw = maakWezen(kiesWezen);
   nieuw.van = speler.id;
@@ -1687,11 +1693,28 @@ function kiesKlaar() {
   bewaar();
 
   if (kiesSpeler === 0) {
-    kiesSpeler = 1;
-    nieuwKiesWezen();
-    tekenKies();
-    spreek('Mooi! Nu Jake.');
-    return;
+    /* Een supervriend komt niet met lege handen: hij brengt zijn eigen wezen mee. Dat is
+     * leuker dan in je eentje twee wezens samenstellen, en het scheelt de helft van het
+     * klikwerk voordat het spel begint. */
+    if (heeftMaatje()) {
+      var vriend = spelerVan(volgorde[1]);
+      var zijne = wezenUitRangen({ gewoon: 70, ongewoon: 30 }, '', null);
+      zijne.naam = verzinNaam(zijne, [nieuw.naam]);
+      zijne.van = vriend.id;
+      zijne.schade = 0;
+      spel.wezens.push(zijne);
+      spel.mee[vriend.id] = spel.wezens.length - 1;
+      boekBij(zijne);
+      bewaar();
+      spreek(vriend.naam + ' komt eraan, en hij heeft ' + zijne.naam + ' bij zich!');
+    } else {
+      kiesSpeler = 1;
+      nieuwKiesWezen();
+      tekenKies();
+      spreek(samenSpelen() ? 'Mooi! Nu ' + spelerVan(volgorde[1]).naam + '.'
+                           : 'Mooi! Nu je tweede wezen.');
+      return;
+    }
   }
   // allebei klaar: eerst het stripje, daarna pas het gevecht
   spel.verhaal = 'eerstegevecht';
@@ -1801,7 +1824,8 @@ function eersteAanval(meegegeven) {
   vijand.kant = 'wild';
   vijand.levens = maxLevens(vijand);
 
-  var helden = SPELERS.map(function (s) {
+  var helden = spelerVolgorde().map(function (id) {
+    var s = { id: id };
     var w = meeWezen(s.id);
     w.kant = s.id; w.schade = 0;
     w.levens = maxLevens(w);
@@ -1879,7 +1903,8 @@ function naarBaas(niveau) {
   var baas = baasVan(niveau);
   baas.levens = maxLevens(baas);
 
-  var helden = SPELERS.map(function (s) {
+  var helden = spelerVolgorde().map(function (id) {
+    var s = { id: id };
     var w = meeWezen(s.id);
     w.kant = s.id;
     if (typeof w.schade !== 'number') w.schade = 0;
@@ -2037,7 +2062,7 @@ function doeKruising() {
   var wie = document.createElement('p');
   wie.className = 'zacht';
   wie.style.margin = '10px 0 4px';
-  wie.innerHTML = samenSpelen()
+  wie.innerHTML = (samenSpelen() || heeftMaatje())
     ? beurt.emoji + ' <strong>' + beurt.naam + '</strong> mag hem een naam geven.'
     : beurt.emoji + ' Geef hem een naam.';
   kaart.appendChild(wie);
@@ -2185,6 +2210,8 @@ document.getElementById('k-vrijlaten').addEventListener('click', function () {
 });
 document.getElementById('k-tas').addEventListener('click', function () { wisselLade('tas'); });
 document.getElementById('k-plekken').addEventListener('click', naarPlekken);
+/* Een spel dat nog niet begonnen is mag je laten staan; het staat al in de plek. */
+document.getElementById('k-start-terug').addEventListener('click', naarPlekken);
 document.getElementById('k-lade-dicht').addEventListener('click', sluitLade);
 document.getElementById('k-leggen').addEventListener('click', function () {
   var n = legInNesten();
@@ -2289,19 +2316,16 @@ function maakPlekkaart(nr, s) {
   kaart.innerHTML = '<span class="nr">PLEK ' + nr + '</span>';
 
   if (!s) {
+    /* Eén knop, en die start nog niets. Hiervoor stonden hier drie knoppen die ieder
+     * meteen het spel begonnen; dan beantwoordt één tik twee vragen tegelijk (welke plek
+     * én wie speelt er) en kan je nergens meer terug. */
     kaart.innerHTML += '<h3>Leeg</h3>' +
-      '<p class="zacht" style="margin:0 0 12px">Wie gaat hier spelen?</p>';
-    var kiezer = document.createElement('div');
-    kiezer.className = 'wiekiezer';
-    [['owen', '\u{1F49A} Owen alleen'], ['jake', '\u{1F9E1} Jake alleen'],
-     ['samen', '\u{1F49A}\u{1F9E1} Samen']].forEach(function (keus) {
-      var knop = document.createElement('button');
-      knop.className = 'knop' + (keus[0] === 'samen' ? '' : ' rustig');
-      knop.textContent = keus[1];
-      knop.addEventListener('click', function () { startOpPlek(nr, keus[0]); });
-      kiezer.appendChild(knop);
-    });
-    kaart.appendChild(kiezer);
+      '<p class="zacht" style="margin:0 0 14px">Hier is nog geen spel.</p>';
+    var start = document.createElement('button');
+    start.className = 'knop';
+    start.textContent = '✨ Nieuw spel';
+    start.addEventListener('click', function () { vraagWie(nr); });
+    kaart.appendChild(start);
     return kaart;
   }
 
@@ -2378,14 +2402,114 @@ function naarPlekken() {
   tekenPlekken();
 }
 
-/* Een lege plek beginnen: wie er speelt staat vanaf nu in het spel zelf. */
-function startOpPlek(nr, wie) {
-  kiesSlot(nr);
+/* Stap 2 en 3 van de start. Pas aan het eind hiervan bestaat er een spel. */
+var nieuwePlek = null;
+
+function maakWieKeuze(em, titel, uitleg, wat) {
+  var knop = document.createElement('button');
+  knop.className = 'wiekeuze';
+  knop.innerHTML = '<span class="em">' + em + '</span><span><b>' + titel + '</b>' +
+    '<span>' + uitleg + '</span></span>';
+  knop.addEventListener('click', wat);
+  return knop;
+}
+
+function vraagWie(nr) {
+  nieuwePlek = nr;
+  document.getElementById('wie-kop').textContent = 'Wie gaat er spelen?';
+  document.getElementById('wie-uitleg').textContent =
+    'Dit wordt plek ' + nr + '. Je kan hierna nog terug.';
+  document.getElementById('zeg-wie').dataset.zeg =
+    'Wie gaat er spelen? Owen alleen, Jake alleen, of Owen en Jake samen.';
+  var bak = document.getElementById('wie-keuzes');
+  bak.innerHTML = '';
+  bak.appendChild(maakWieKeuze('\u{1F49A}', 'Owen alleen',
+    'Een spel helemaal voor Owen.', function () { vraagMaatje('owen'); }));
+  bak.appendChild(maakWieKeuze('\u{1F9E1}', 'Jake alleen',
+    'Een spel helemaal voor Jake.', function () { vraagMaatje('jake'); }));
+  bak.appendChild(maakWieKeuze('\u{1F49A}\u{1F9E1}', 'Owen en Jake samen',
+    'Om de beurt een wezen maken en samen vechten.', function () { beginSpel('samen', null); }));
+  document.getElementById('k-wie-terug').onclick = function () {
+    toon('s-plekken'); tekenPlekken();
+  };
+  toon('s-wie');
+}
+
+/* Alleen spelen gaat nog steeds met twee wezens, want daar hangt het halve gevecht aan:
+ * het schild van een Wachter breekt alleen als er twee in dezelfde ronde slaan. De vraag
+ * is dus niet óf er een tweede is, maar van wie hij is. Een supervriend met een eigen naam
+ * is leuker dan een tweede plek van jezelf, en die brengt zijn eigen wezen mee — dat
+ * scheelt ook de helft van het klikwerk voor je begint. */
+var MAATJE_NAMEN = ['Vonk', 'Pluis', 'Tika', 'Bram', 'Zara', 'Nox', 'Juul', 'Pepe'];
+
+function vraagMaatje(wie) {
+  var kind = SPELERS.filter(function (s) { return s.id === wie; })[0];
+  document.getElementById('wie-kop').textContent = kind.naam + ', speel je met een supervriend?';
+  document.getElementById('wie-uitleg').textContent =
+    'Je gaat altijd met twee wezens op pad. Je kan ze allebei zelf maken, of een ' +
+    'supervriend meenemen die zijn eigen wezen meebrengt.';
+  document.getElementById('zeg-wie').dataset.zeg =
+    kind.naam + ', speel je met een supervriend? Je gaat altijd met twee wezens op pad. ' +
+    'Je kan ze allebei zelf maken, of een supervriend meenemen die zijn eigen wezen meebrengt.';
+
+  var bak = document.getElementById('wie-keuzes');
+  bak.innerHTML = '';
+
+  var metKnop = maakWieKeuze('\u{1F49C}', 'Met een supervriend',
+    'Jij maakt één wezen, je supervriend brengt er zelf een mee. Je mag hem een naam geven.',
+    function () { toonNaamveld(); });
+  bak.appendChild(metKnop);
+
+  var zonder = maakWieKeuze('\u{1F464}', 'Alleen ik',
+    'Jij maakt allebei de wezens, en ze zijn allebei van jou.',
+    function () { beginSpel(wie, null); });
+  bak.appendChild(zonder);
+
+  function toonNaamveld() {
+    bak.innerHTML = '';
+    var vak = document.createElement('div');
+    vak.className = 'wiekeuze';
+    vak.style.cursor = 'default';
+    vak.innerHTML = '<span class="em">\u{1F49C}</span><span style="flex:1"><b>Hoe heet je supervriend?</b></span>';
+    bak.appendChild(vak);
+    var veld = document.createElement('input');
+    veld.type = 'text';
+    veld.className = 'maatjenaam';
+    veld.maxLength = 14;
+    veld.value = kies(MAATJE_NAMEN);     // alvast iets, want een leeg veld is een drempel
+    bak.appendChild(veld);
+    var klaar = document.createElement('button');
+    klaar.className = 'knop';
+    klaar.style.marginTop = '10px';
+    klaar.textContent = 'Dat is hem!';
+    klaar.addEventListener('click', function () {
+      beginSpel(wie, { naam: veld.value.trim() || kies(MAATJE_NAMEN) });
+    });
+    bak.appendChild(klaar);
+    veld.addEventListener('keydown', function (e) { if (e.key === 'Enter') klaar.click(); });
+    veld.focus(); veld.select();
+    document.getElementById('k-wie-terug').onclick = function () { vraagMaatje(wie); };
+  }
+
+  document.getElementById('k-wie-terug').onclick = function () { vraagWie(nieuwePlek); };
+  toon('s-wie');
+}
+
+/* Hier bestaat het spel pas. Alles daarvoor was nog terug te draaien. */
+function beginSpel(wie, maatje) {
+  kiesSlot(nieuwePlek);
   nieuwSpel(wie);
+  spel.maatje = maatje;
   spel.plekken = nieuwePlekken();
   bewaar();
   zetStand('gewoon');
   toon('s-start');
+}
+
+/* Voor de testopstellingen, die geen keuzescherm doorlopen. */
+function startOpPlek(nr, wie) {
+  nieuwePlek = nr;
+  beginSpel(wie, null);
 }
 
 /* ---------- bewaren en terugzetten (alleen voor papa, via ?opslag) ---------- */
