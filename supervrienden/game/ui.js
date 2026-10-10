@@ -2449,6 +2449,10 @@ function wijLiepenVooruit() {
 
 function wolkOpslaan(forceer) {
   if (!wolkAan() || wolkBezig) return Promise.resolve(false);
+  /* Is er niets veranderd, dan hoeft er ook niets de deur uit. Het spel bewaart ook bij het
+   * openen en bij het wisselen van scherm; zonder deze stop ging de versie bij elke keer
+   * openen omhoog, en dan staat er verkeer op de lijn voor een dorp dat gelijk is gebleven. */
+  if (!forceer && !wijLiepenVooruit()) { wolkMelding('bijgewerkt'); return Promise.resolve(true); }
   wolkBezig = true;
   wolkMelding('bezig');
   var code = spel.wolkCode;
