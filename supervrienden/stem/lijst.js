@@ -135,5 +135,105 @@ var STEM_LIJST = {
   "tekst": "Gebouwd!",
   "stem": "eigen opname",
   "bron": "34106@1791628161708"
+ },
+ "intro-1": {
+  "tekst": "Jullie ruimteschip landt op een vreemde planeet.",
+  "stem": "eigen opname",
+  "bron": "60188@315442800000"
+ },
+ "intro-2": {
+  "tekst": "Voorzichtig stappen jullie naar buiten. Wat is het hier raar!",
+  "stem": "eigen opname",
+  "bron": "72746@315442800000"
+ },
+ "intro-3": {
+  "tekst": "Er springt iets uit de struiken!",
+  "stem": "eigen opname",
+  "bron": "49562@315442800000"
+ },
+ "vondst-ei": {
+  "tekst": "Een ei! Die gaat in je tas.",
+  "stem": "eigen opname",
+  "bron": "55358@315442800000"
+ },
+ "vondst-glim": {
+  "tekst": "Glimstenen gevonden! Daar kan je mee bouwen.",
+  "stem": "eigen opname",
+  "bron": "65984@315442800000"
+ },
+ "vecht-ei-erbij": {
+  "tekst": "En een ei erbij.",
+  "stem": "eigen opname",
+  "bron": "41834@315442800000"
+ },
+ "kies-tweede": {
+  "tekst": "Mooi! Nu je tweede wezen.",
+  "stem": "eigen opname",
+  "bron": "45698@315442800000"
+ },
+ "vrijlaten-weg": {
+  "tekst": "Hij rent de jungle in en laat glimstenen achter.",
+  "stem": "eigen opname",
+  "bron": "61154@315442800000"
+ },
+ "deco-gekocht": {
+  "tekst": "Gekocht! Hij staat nu in het dorp.",
+  "stem": "eigen opname",
+  "bron": "58256@315442800000"
+ },
+ "ei-weg": {
+  "tekst": "Weg ermee.",
+  "stem": "eigen opname",
+  "bron": "29276@315442800000"
+ },
+ "maatje-komt": {
+  "tekst": "Je supervriend komt eraan, en hij heeft zijn eigen wezen bij zich!",
+  "stem": "eigen opname",
+  "bron": "71780@315442800000"
+ },
+ "geheim-1": {
+  "tekst": "Een kras in een boom. Het lijkt wel een deur.",
+  "stem": "eigen opname",
+  "bron": "66950@315442800000"
+ },
+ "geheim-2": {
+  "tekst": "Een veer. Maar dan van metaal.",
+  "stem": "eigen opname",
+  "bron": "60188@315442800000"
+ },
+ "geheim-3": {
+  "tekst": "Hele grote voetstappen. En dan ineens niet meer.",
+  "stem": "eigen opname",
+  "bron": "78542@315442800000"
+ },
+ "geheim-4": {
+  "tekst": "Een stukje van een kaart, met een kruisje erop.",
+  "stem": "eigen opname",
+  "bron": "52460@315442800000"
+ },
+ "geheim-5": {
+  "tekst": "Een geluid uit de grond. Alsof er iets ademt.",
+  "stem": "eigen opname",
+  "bron": "77576@315442800000"
+ },
+ "geheim-6": {
+  "tekst": "Een sleutel van steen. Hij past nergens op. Of toch?",
+  "stem": "eigen opname",
+  "bron": "99794@315442800000"
+ },
+ "deur-open": {
+  "tekst": "De deur gaat open. Daarachter gaat een trap naar beneden, het donker in. Heel diep hoor je iets ademen. Dat is de Oude Wachter. En onder hem is nog een verdieping, en daaronder nog een. Ga maar kijken hoe diep jullie durven.",
+  "stem": "eigen opname",
+  "bron": "310382@315442800000"
+ },
+ "deur-dicht": {
+  "tekst": "De deur zit op slot. Er zitten zes gaatjes in. Voor elk geheim dat jullie vinden gaat er eentje open.",
+  "stem": "eigen opname",
+  "bron": "124910@315442800000"
+ },
+ "ei-nietwarm": {
+  "tekst": "Hij is nog niet warm genoeg. Ga nog een paar keer op pad.",
+  "stem": "eigen opname",
+  "bron": "59222@315442800000"
  }
 };
