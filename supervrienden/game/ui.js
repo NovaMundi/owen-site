@@ -613,6 +613,11 @@ function tekenBouwen() {
       // niet te koop, maar ook niet af: die krijg je zodra het tentje er staat
       knop.textContent = 'Hoort bij het tentje';
       knop.disabled = true;
+    } else if (sleutel !== 'tent' && !tentjeStaatEr()) {
+      // op slot tot het tentje er staat, en zeg waaróm: anders lijkt de knop kapot
+      knop.textContent = '\u{1F512} Eerst het tentje';
+      knop.disabled = true;
+      vak.classList.add('wacht');
     } else {
       knop.textContent = (nu ? 'Groter maken' : 'Bouwen') + ' \u{1F48E} ' + prijs;
       knop.disabled = !kanBouwen(sleutel);
@@ -640,8 +645,14 @@ function tekenBouwen() {
       (aantal ? '<div class="daantal">je hebt er ' + aantal + '</div>' : '');
     var knop = document.createElement('button');
     knop.className = 'knop';
-    knop.innerHTML = 'Koop ' + ic('icoon-glim') + ' ' + d.prijs;
-    knop.disabled = spel.glim < d.prijs;
+    // versiering is leuk, maar niet voordat er een dorp staat om te versieren
+    if (!tentjeStaatEr()) {
+      knop.innerHTML = '\u{1F512} Eerst het tentje';
+      knop.disabled = true;
+    } else {
+      knop.innerHTML = 'Koop ' + ic('icoon-glim') + ' ' + d.prijs;
+      knop.disabled = spel.glim < d.prijs;
+    }
     knop.addEventListener('click', function () {
       if (koopDeco(sleutel)) { spreek(d.naam + ' gekocht! Hij staat in het dorp.'); tekenBouwen(); }
     });
@@ -2240,6 +2251,22 @@ window.addEventListener('resize', function () {
   if (!document.getElementById('s-arena').classList.contains('verborgen')) zetStrijdvloer();
   if (!document.getElementById('s-jungle').classList.contains('verborgen')) plaatsZoekplekken();
 });
+/* Elk paneel met een terugknop onderaan krijgt er een kruisje bovenin bij, dat precies
+ * hetzelfde doet. In het bouwmenu moest je anders eerst door de hele lijst met gebouwen en
+ * versiering heen scrollen voordat je weer naar het dorp kon. Hier in één keer voor alle
+ * schermen geregeld, zodat een nieuw scherm met een terugknop het vanzelf ook heeft. */
+Array.prototype.forEach.call(document.querySelectorAll('.paneel'), function (paneel) {
+  var kop = paneel.querySelector('.paneelkop');
+  var terug = paneel.querySelector('.knoprij .knop.rustig[id$="-terug"]');
+  if (!kop || !terug) return;
+  var kruis = document.createElement('button');
+  kruis.className = 'sluitknop';
+  kruis.innerHTML = '&#10005;';
+  kruis.title = terug.textContent.replace(/^\s*←\s*/, '').trim() || 'Sluiten';
+  kruis.addEventListener('click', function () { terug.click(); });
+  kop.appendChild(kruis);
+});
+
 zetMisrimpel();
 /* Het veld kan ook van maat veranderen zonder dat het venster dat doet: als het scherm
  * verborgen was, is het nul breed en staan de rondjes nergens. */

@@ -56,6 +56,13 @@
   .paneel p { font-size: 16px; line-height: 1.55; color: var(--tekst); }
   .paneel p.zacht { color: var(--zacht); }
   .paneelkop { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  /* Een kruisje bovenin elk paneel dat lang genoeg is om te scrollen. Zonder dit moest je
+     in het bouwmenu eerst helemaal naar beneden om weer naar het dorp te kunnen. */
+  .sluitknop { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%;
+               border: 1px solid var(--glasrand); cursor: pointer;
+               background: rgba(0,0,0,.4); color: var(--tekst); font-size: 20px; line-height: 1;
+               display: flex; align-items: center; justify-content: center; }
+  .sluitknop:hover { background: rgba(0,0,0,.65); border-color: rgba(255,255,255,.45); }
   .paneelkop h2 { font-size: clamp(19px, 3.6vw, 26px); margin: 0; flex: 1;
                   text-shadow: 0 2px 10px rgba(0,0,0,.6); }
 
@@ -317,6 +324,8 @@
   .bouwrij { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 12px; }
   .gebouw { border-radius: 16px; padding: 12px 14px; border: 1px solid var(--glasrand);
             background: linear-gradient(rgba(255,255,255,.09), rgba(255,255,255,.02)); }
+  /* Wacht op het tentje: zichtbaar aanwezig, maar duidelijk nog niet aan de beurt. */
+  .gebouw.wacht { opacity: .5; }
   .gebouw h3 { margin: 0 0 2px; font-size: 18px; display: flex; align-items: center; gap: 8px; }
   .gebouw .gic { width: 38px; height: 38px; object-fit: contain;
                  filter: drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
@@ -578,8 +587,13 @@
   .kaartje canvas { width: 100%; height: auto; display: block; margin: 0 auto;
                     filter: drop-shadow(0 7px 9px rgba(0,0,0,.5)); }
   /* Geselecteerd is wit, niet goud. Goud is de kleur van legendarisch, en een aangetikt
-     kaartje zag er daardoor precies zo uit als het zeldzaamste wezen in het spel. */
-  .kaartje.aan { box-shadow: 0 0 0 3px #fff, 0 10px 22px rgba(0,0,0,.5); }
+     kaartje zag er daardoor precies zo uit als het zeldzaamste wezen in het spel.
+
+     Met een `box-shadow` werkte dit alleen bij gewone wezens: de rangen hieronder zetten
+     zelf ook een box-shadow (de gloed om een zeldzaam kaartje) en die staan later in het
+     blad, dus die wonnen en de witte rand verdween precies bij de wezens die je het
+     zorgvuldigst uitkiest. Een `outline` botst nergens mee en blijft dus altijd staan. */
+  .kaartje.aan { outline: 3px solid #fff; outline-offset: 1px; }
   .kaartje .naam { font-family: 'Baloo 2', sans-serif; font-size: 14px; }
   .kaartje .cijfers { font-size: 11.5px; color: var(--zacht); }
   /* linksboven, want rechtsboven zit in de vrijlaatstand de knop die hem anders afdekt,

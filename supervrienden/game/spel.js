@@ -574,6 +574,8 @@ function veldWeg(id) {
 
 function koopDeco(sleutel) {
   var d = DECORATIES[sleutel];
+  // versiering is leuk, maar niet voordat er een dorp is om te versieren
+  if (!tentjeStaatEr()) return null;
   if (!d || spel.glim < d.prijs) return null;
   spel.glim -= d.prijs;
   return veldToevoegen(sleutel);
@@ -838,7 +840,16 @@ function helemaalKlaar(sleutel) {
   return spel.dorp[sleutel] >= GEBOUWEN[sleutel].max;
 }
 
+/* Het tentje is het begin van het dorp, en het verhaal hangt eraan: daarmee krijg je je
+ * eerste nest en je tas, en zonder die twee kan je niets met een ei. Na het eerste gevecht
+ * heb je 10 glimstenen, en daar kon je ook een kruishut (10) of versiering van kopen. Dat
+ * is een doodlopende keuze: kruisen kost daarna zelf ook glimstenen, dus je stond met een
+ * hut die je niet kon gebruiken, geen nest en geen tas. Tot het tentje er staat is het dus
+ * de enige knop die iets doet. */
+function tentjeStaatEr() { return spel.dorp.tent >= 1; }
+
 function kanBouwen(sleutel) {
+  if (sleutel !== 'tent' && !tentjeStaatEr()) return false;
   var prijs = bouwPrijs(sleutel);
   return prijs !== null && spel.glim >= prijs;
 }
