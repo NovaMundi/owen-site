@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supervrienden en het geheim van de baas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --owen: #45d884; --owen-diep: #0f5c38;
+    --jake: #ff8a5c; --jake-diep: #7a2f14;
+    --goud: #ffc94a; --goud-diep: #8a5f00;
+    --tekst: #eef3fb; --zacht: #a6b7cb;
+    --glas: rgba(14, 22, 32, .78);
+    --glasrand: rgba(255, 255, 255, .16);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; min-height: 100%;
+    font-family: 'Nunito', system-ui, sans-serif; font-weight: 700;
+    color: var(--tekst); background: #070b10;
+    padding: 0 0 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: 'Baloo 2', 'Nunito', sans-serif; font-weight: 800; }
+
+  /* achtergrondlaag, één voor het hele spel */
+  #achtergrond { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: #070b10; }
+  #achtergrond img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .5s; }
+  #achtergrond img.aan { opacity: 1; }
+  #achtergrond .waas {
+    position: absolute; inset: 0;
+    /* Net genoeg om de tekst leesbaar te houden, niet zoveel dat de kunst wegvalt. Er lag
+       hier eerst nog een tweede donkere laag overheen; samen met de glazen panelen bleef er
+       van het schilderij zo weinig over dat vijf schermen op elkaar gingen lijken. */
+    background:
+      radial-gradient(130% 90% at 50% 12%, rgba(0,0,0,0) 38%, rgba(4,8,13,.30) 78%, rgba(4,8,13,.62) 100%);
+  }
+
+  .scherm { position: relative; z-index: 1; max-width: 1020px; margin: 0 auto; padding: 14px 12px 0; }
+  .verborgen { display: none !important; }
+
+  /* glazen panelen */
+  .paneel {
+    background: var(--glas);
+    backdrop-filter: blur(14px) saturate(1.25);
+    -webkit-backdrop-filter: blur(14px) saturate(1.25);
+    border: 1px solid var(--glasrand);
+    border-radius: 20px;
+    box-shadow: 0 18px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1);
+    padding: 16px 18px; margin-bottom: 14px;
+  }
+  .paneel p { font-size: 16px; line-height: 1.55; color: var(--tekst); }
+  .paneel p.zacht { color: var(--zacht); }
+  .paneelkop { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .paneelkop h2 { font-size: clamp(19px, 3.6vw, 26px); margin: 0; flex: 1;
+                  text-shadow: 0 2px 10px rgba(0,0,0,.6); }
+
+  .titel { text-align: center; font-size: clamp(30px, 7vw, 62px); line-height: 1; margin: 18px 0 2px;
+           background: linear-gradient(#fff5d6, var(--goud) 55%, #e08b1f);
+           -webkit-background-clip: text; background-clip: text; color: transparent;
+           filter: drop-shadow(0 4px 14px rgba(0,0,0,.7)); letter-spacing: .5px; }
+  .ondertitel { text-align: center; color: #cfe0f2; font-size: clamp(13px,3vw,18px);
+                margin-bottom: 18px; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+
+  /* knoppen */
+  .knop {
+    font-family: 'Baloo 2', sans-serif; font-size: 18px; color: #2a1c00;
+    padding: 12px 20px; border-radius: 14px; border: 1px solid rgba(255,255,255,.3);
+    background: linear-gradient(#ffe08a, var(--goud) 45%, #e5a01c);
+    box-shadow: 0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.55);
+    cursor: pointer; transition: transform .1s, box-shadow .1s, filter .1s;
+  }
+  .knop:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .knop:active { transform: translateY(2px); box-shadow: 0 2px 8px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.4); }
+  .knop.rustig { color: var(--tekst); background: linear-gradient(rgba(255,255,255,.17), rgba(255,255,255,.07));
+                 border-color: var(--glasrand); box-shadow: 0 5px 14px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.16); }
+  .knop.rustig:hover { background: linear-gradient(rgba(255,255,255,.24), rgba(255,255,255,.12)); }
+  /* tweede tik nodig: duidelijk zichtbaar dat er nu echt iets gebeurt */
+  .knop.rustig.bevestig { background: linear-gradient(#ff9a7a, #e4512a);
+                          color: #2a0c04; border-color: rgba(255,180,150,.7); }
+  .knop.blauw { color: #04212e; background: linear-gradient(#b6ecff, #5ec8ef 45%, #2b9ecb); }
+  .knop:disabled { filter: grayscale(.85) brightness(.75); cursor: default; transform: none; }
+  .knoprij { display: flex; gap: 10px; flex-wrap: wrap; }
+  .groot { display: block; width: 100%; font-size: 24px; padding: 16px; }
+
+  .luidspreker { flex-shrink: 0; width: 40px; height: 40px; font-size: 17px; border-radius: 50%;
+                 border: 1px solid var(--glasrand); color: var(--tekst);
+                 background: linear-gradient(rgba(255,255,255,.18), rgba(255,255,255,.06));
+                 cursor: pointer; }
+  .luidspreker:hover { background: linear-gradient(rgba(255,255,255,.26), rgba(255,255,255,.12)); }
+
+  /* HUD bovenin */
+  .hud { display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+         background: var(--glas); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+         border: 1px solid var(--glasrand); border-radius: 999px;
+         box-shadow: 0 10px 26px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1);
+         padding: 6px 14px; margin-bottom: 14px; font-family: 'Baloo 2', sans-serif; font-size: 16px; }
+  .hud .pil { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; }
+  .hud .pil.vol { background: rgba(255,90,60,.22); color: #ffb7a2; }
+  .hud .ic { width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
+  .hud b { color: #fff; }
+
+  .ic { width: 22px; height: 22px; object-fit: contain; vertical-align: -5px; }
+
+  /* Het dorp is geen paneel in een pagina maar het hele scherm. Een speelveld in een
+     kadertje op een achtergrond van hetzelfde dorp is twee keer hetzelfde en voelt klein. */
+  #s-dorp { position: fixed; inset: 0; z-index: 2; }
+  .veld { position: absolute; inset: 0; overflow: hidden; background: #10211a; touch-action: none; }
+  .veld .veldachter { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .ding { position: absolute; transform: translate(-50%, -100%); cursor: grab;
+          user-select: none; -webkit-user-select: none; touch-action: none; }
+  .ding > img { display: block; width: 100%; pointer-events: none;
+                filter: drop-shadow(0 8px 10px rgba(0,0,0,.55)); }
+  .ding.pakt { cursor: grabbing; }
+  .ding.pakt > img { filter: drop-shadow(0 0 16px rgba(255,201,74,.9)) drop-shadow(0 10px 12px rgba(0,0,0,.6)); }
+  /* De voorrand van het nest is apart getekend en ligt als eigen laag óver het ei heen.
+     Zo ligt het ei echt in de kom. Een geknipt nest gaf een platte snijrand. */
+  .ding .nestvoorrand { position: absolute; left: 50%; top: 21.5%; transform: translate(-50%, -50%);
+                        width: 95%; pointer-events: none;
+                        filter: drop-shadow(0 4px 6px rgba(0,0,0,.4)); }
+  /* het ei staat in de kom en wordt onderaan door de voorrand afgedekt */
+  .ding .eiop { position: absolute; left: 50%; top: 22%; transform: translate(-50%, -50%);
+                width: 26%; pointer-events: none; filter: drop-shadow(0 5px 8px rgba(0,0,0,.55)); }
+  /* Een ei dat klaar is komt niet vanzelf uit: het wiebelt en gloeit tot er iemand op tikt. */
+  .ding.klaar { cursor: pointer; }
+  /* De gloed zit op het ei zelf. Hij stond eerst als eigen laag áchter het nest (z-index -1)
+     en was daardoor vrijwel onzichtbaar, terwijl dit het enige signaal is dat zegt "hier moet
+     je nu tikken". Op het ei ligt hij vóór de voorrand en zie je hem wel. */
+  .ding.klaar .eiop { animation: wiebel .7s ease-in-out infinite; transform-origin: 50% 80%;
+                      filter: drop-shadow(0 5px 8px rgba(0,0,0,.55))
+                              drop-shadow(0 0 14px rgba(255,201,74,1))
+                              drop-shadow(0 0 34px rgba(255,201,74,.75)); }
+  @keyframes wiebel { 0%,100%{transform:translate(-50%,-50%) rotate(-8deg)} 50%{transform:translate(-50%,-50%) rotate(8deg)} }
+  .ding .warm { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%);
+                width: 88%; height: 7px; border-radius: 999px; background: rgba(0,0,0,.6);
+                border: 1px solid rgba(255,255,255,.18); overflow: hidden; pointer-events: none; }
+  .ding .warm span { display: block; height: 100%; border-radius: 999px;
+                     background: linear-gradient(90deg, #ff8a3d, #ffd34d);
+                     box-shadow: 0 0 9px rgba(255,170,60,.9); transition: width .4s; }
+  .ding .weg { position: absolute; top: -10px; right: -10px; width: 26px; height: 26px; border-radius: 50%;
+               border: 1px solid rgba(255,255,255,.4); background: #d6402a; color: #fff;
+               font-family: 'Baloo 2', sans-serif; font-size: 15px; line-height: 1; cursor: pointer;
+               box-shadow: 0 3px 8px rgba(0,0,0,.6); }
+  .tip { margin: 8px 0 0; font-size: 14px; }
+
+  /* Alles wat in het dorp over het veld heen zweeft. Geen panelen meer: het veld is het scherm. */
+  .zweef-boven { position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+                 margin: 0; z-index: 500; max-width: calc(100% - 120px); }
+  .zweef-hoek { position: absolute; top: 12px; right: 14px; z-index: 500; }
+  /* De tip hoort bij de balk zelf. Los over het veld botste hij met de bovenbalk of met
+     wat de jongens net hadden neergezet. */
+  .veldtip { margin: 0 0 4px; font-size: 13.5px; color: #c8d6e6; text-align: center;
+             pointer-events: none; }
+  .balk { position: absolute; left: 50%; transform: translateX(-50%); bottom: 12px; z-index: 600;
+          display: flex; flex-direction: column; padding: 8px 12px 9px; border-radius: 24px;
+          background: var(--glas); backdrop-filter: blur(14px) saturate(1.25);
+          -webkit-backdrop-filter: blur(14px) saturate(1.25);
+          border: 1px solid var(--glasrand);
+          box-shadow: 0 16px 38px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12);
+          /* vaste breedte, anders krimpt de balk mee met het afbreken en komen er twee
+             knoppen per regel te staan in plaats van zoveel als er passen */
+          width: min(780px, calc(100% - 20px)); }
+  /* Afbreken naar een tweede regel in plaats van buiten beeld schuiven: op een tablet in
+     portret passen acht knoppen niet naast elkaar, en een scrollbalk zie je daar niet. */
+  .balkknoppen { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+                 align-items: flex-end; }
+  .balk .menuknop { min-width: 84px; padding: 7px 6px 6px; font-size: 14px; }
+  .balk .menuknop img { width: 46px; height: 46px; }
+  /* Op pad is de motor van het spel, de rest is bijzaak. Acht even grote, even felle knoppen
+     laten een kind van zes niet zien waar het moet beginnen. */
+  .balk .menuknop.eerst { min-width: 104px; font-size: 16px; padding: 9px 8px 7px;
+                          border-color: rgba(255,201,74,.55);
+                          background: linear-gradient(rgba(255,201,74,.22), rgba(255,201,74,.07)); }
+  .balk .menuknop.eerst img { width: 58px; height: 58px; }
+  /* de lade: wezens en tas zitten onder een knop, niet permanent in beeld */
+  .lade { position: absolute; left: 50%; transform: translateX(-50%); bottom: 132px; z-index: 700;
+          width: min(960px, calc(100% - 24px)); max-height: calc(100% - 200px); overflow-y: auto;
+          background: var(--glas); backdrop-filter: blur(16px) saturate(1.25);
+          -webkit-backdrop-filter: blur(16px) saturate(1.25);
+          border: 1px solid var(--glasrand); border-radius: 22px; padding: 14px 18px 16px;
+          box-shadow: 0 22px 54px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.1); }
+  .lade h2 { margin: 0 0 8px; font-size: 21px; }
+  .ladedicht { position: absolute; top: 10px; right: 12px; width: 34px; height: 34px;
+               border-radius: 50%; border: 1px solid var(--glasrand); color: var(--tekst);
+               background: linear-gradient(rgba(255,255,255,.18), rgba(255,255,255,.06));
+               font-size: 16px; cursor: pointer; }
+
+  /* Grote icoonknoppen. Jake leest nog niet, dus het plaatje doet het werk en het
+     woordje eronder is alleen voor Owen en papa. */
+  .menurij { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 10px; }
+  .menuknop { display: flex; flex-direction: column; align-items: center; gap: 2px;
+              padding: 10px 6px 8px; border-radius: 18px; cursor: pointer;
+              border: 1px solid var(--glasrand); color: var(--tekst);
+              background: linear-gradient(rgba(255,255,255,.14), rgba(255,255,255,.04));
+              box-shadow: 0 8px 20px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.15);
+              font-family: 'Baloo 2', sans-serif; font-size: 15px;
+              transition: transform .12s, box-shadow .12s, filter .12s; }
+  .menuknop img { width: 58px; height: 58px; object-fit: contain;
+                  filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
+  .menuknop:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(0,0,0,.5), 0 0 20px rgba(255,201,74,.25); }
+  .menuknop:active { transform: translateY(2px); }
+  .menuknop:disabled { filter: grayscale(1) brightness(.6); cursor: default; transform: none; }
+  .menuknop.wijst { animation: wijsAan 1.4s ease-in-out infinite; }
+  @keyframes wijsAan {
+    0%,100% { box-shadow: 0 8px 20px rgba(0,0,0,.45), 0 0 10px rgba(255,201,74,.4); }
+    50%     { box-shadow: 0 8px 20px rgba(0,0,0,.45), 0 0 30px rgba(255,201,74,1); }
+  }
+
+  /* startscherm: je eerste wezen samenstellen */
+  .kiesbank { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 18px; align-items: start; }
+  .kiespodium { border-radius: 18px; border: 1px solid var(--glasrand);
+                background: rgba(7,11,16,.92); z-index: 2;
+                padding: 6px; position: sticky; top: 10px; }
+  /* Eén kolom op een smal scherm. Het podium mag dan niet meer blijven plakken: het staat
+     boven de keuzerijen in plaats van ernaast, en plakte dus dwars over de onderdelen heen
+     terwijl je scrolde. Deze regel moet ná de basisregel staan, anders wint die laatste. */
+  @media (max-width: 720px) {
+    .kiesbank { grid-template-columns: 1fr; }
+    .kiespodium { position: static; }
+  }
+  .kiespodium canvas { width: 100%; height: auto; display: block; }
+  .kiesrij { margin-bottom: 12px; }
+  .kiesrij h3 { margin: 0 0 6px; font-size: 16px; color: var(--goud); }
+  .kiesopties { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
+  .kiesoptie { position: relative; border-radius: 14px; padding: 6px 4px 5px; cursor: pointer;
+               border: 1px solid var(--glasrand); background: linear-gradient(rgba(255,255,255,.1), rgba(255,255,255,.03));
+               font-size: 12px; color: var(--tekst); text-align: center; }
+  .kiesoptie img { width: 100%; height: 54px; object-fit: contain; display: block;
+                   filter: drop-shadow(0 4px 7px rgba(0,0,0,.5)); }
+  .kiesoptie.aan { border-color: #fff; box-shadow: 0 0 0 2px #fff; }
+  .kiesoptie.beter { border-color: #5fd98a; }
+  .kiesoptie.beter .ster { position: absolute; top: -7px; right: -5px; font-size: 14px; }
+  .kiesoptie:hover { background: linear-gradient(rgba(255,255,255,.18), rgba(255,255,255,.07)); }
+
+  .tasrij { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .tasvak { width: 46px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,.3); border: 1px dashed rgba(255,255,255,.2); }
+  .tasvak.vol { border-style: solid; border-color: var(--glasrand); background: rgba(255,255,255,.08); }
+  .tasvak img { width: 32px; filter: drop-shadow(0 3px 6px rgba(0,0,0,.7)); }
+  /* een ei in de tas is een knop: jij kiest welke het nest in gaat */
+  button.tasvak { cursor: pointer; padding: 0; transition: transform .12s, box-shadow .12s; }
+  button.tasvak:disabled { cursor: default; opacity: .45; }
+  .tasvak.kanleggen:hover { transform: translateY(-3px);
+                            box-shadow: 0 0 0 2px rgba(255,248,214,.6), 0 8px 16px rgba(0,0,0,.5); }
+  .tasvak.gaatweg { border-color: rgba(255,120,100,.75); }
+  .tasvak.gaatweg:hover { transform: translateY(-3px);
+                          box-shadow: 0 0 0 2px rgba(255,120,100,.8), 0 8px 16px rgba(0,0,0,.5); }
+  .tasvak.vraagt { border-color: #ff8a6b; background: rgba(120,30,16,.6); }
+  .tasvak .weggooi { font-size: 22px; color: #ffd9cd; }
+  /* het schatei deelt het gouden plaatje maar krijgt een eigen violette gloed */
+  .schatei { filter: hue-rotate(-55deg) saturate(1.5) drop-shadow(0 0 8px rgba(220,120,255,.9)); }
+
+  /* gebouwen */
+  .bouwrij { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 12px; }
+  .gebouw { border-radius: 16px; padding: 12px 14px; border: 1px solid var(--glasrand);
+            background: linear-gradient(rgba(255,255,255,.09), rgba(255,255,255,.02)); }
+  .gebouw h3 { margin: 0 0 2px; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+  .gebouw .gic { width: 38px; height: 38px; object-fit: contain;
+                 filter: drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
+  .gebouw .niveau { font-family: 'Baloo 2', sans-serif; font-size: 14px; color: var(--goud); }
+  .gebouw .wat { font-size: 13.5px; line-height: 1.45; color: var(--zacht); margin: 5px 0 9px; }
+  .gebouw.max { border-color: rgba(69,216,132,.5); }
+
+  .decorij { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+  .decovak { border-radius: 16px; padding: 10px 8px; text-align: center; border: 1px solid var(--glasrand);
+             background: linear-gradient(rgba(255,255,255,.09), rgba(255,255,255,.02)); }
+  .decovak img { width: 100%; height: 74px; object-fit: contain; display: block;
+                 filter: drop-shadow(0 5px 8px rgba(0,0,0,.5)); }
+  .decovak .dnaam { font-family: 'Baloo 2', sans-serif; font-size: 15px; margin: 5px 0 1px; }
+  .decovak .daantal { font-size: 12px; color: var(--goud); margin-bottom: 5px; }
+  .decovak .knop { font-size: 15px; padding: 8px 12px; width: 100%; margin-top: 5px; }
+  .decovak .knop .ic { width: 16px; height: 16px; vertical-align: -3px; }
+
+  /* Het stripje: drie geschilderde beelden met hun eigen wezens erop getekend. */
+  #s-intro { position: fixed; inset: 0; z-index: 2; }
+  .introwezen { position: absolute; transform: translate(-50%, -100%); pointer-events: none;
+                animation: introKomt .5s ease-out both; }
+  .introwezen canvas { display: block; filter: drop-shadow(0 14px 16px rgba(0,0,0,.55)); }
+  @keyframes introKomt { from { opacity: 0; transform: translate(-50%, -94%) }
+                         to   { opacity: 1; transform: translate(-50%, -100%) } }
+  /* het wezen dat uit de struiken springt komt van rechts aanzetten */
+  .introwezen.springt { animation: introSpringt .55s cubic-bezier(.2,1.4,.4,1) both; }
+  @keyframes introSpringt { from { opacity: 0; transform: translate(10%, -118%) scale(.75) }
+                            to   { opacity: 1; transform: translate(-50%, -100%) scale(1) } }
+
+  .plekknop { position: fixed; left: 12px; top: 12px; z-index: 600;
+              background: var(--glas); backdrop-filter: blur(14px);
+              -webkit-backdrop-filter: blur(14px);
+              border: 1px solid var(--glasrand); border-radius: 999px; cursor: pointer;
+              color: var(--tekst); font-family: 'Baloo 2', sans-serif; font-size: 14px;
+              padding: 7px 14px; box-shadow: 0 8px 20px rgba(0,0,0,.45); }
+  .plekknop:hover { background: rgba(255,255,255,.18); }
+
+  /* De drie opslagplekken. Grote kaarten, want dit is het eerste wat een kind ziet. */
+  .plekkenlijst { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap: 14px; }
+  .plek { background: rgba(0,0,0,.33); border: 2px solid var(--glasrand); border-radius: 20px;
+          padding: 16px; display: flex; flex-direction: column; align-items: center;
+          text-align: center; }
+  .plek .nr { font-family: 'Baloo 2', sans-serif; font-size: 13px; color: #8b99a9;
+              letter-spacing: 1px; }
+  .plek h3 { font-family: 'Baloo 2', sans-serif; margin: 2px 0 8px; font-size: 21px; }
+  .plek .wiezijn { font-size: 30px; line-height: 1; margin-bottom: 8px; }
+  .plek .cijfers { font-size: 14px; color: #a6b7cb; line-height: 1.7; margin-bottom: 12px; }
+  .plek .cijfers b { color: #ffc94a; }
+  .plek .teampje { display: flex; gap: 4px; justify-content: center; margin-bottom: 10px;
+                   min-height: 62px; align-items: flex-end; }
+  .plek .teampje canvas { display: block; }
+  .plek .knop { width: 100%; }
+  .plek .knoprij { width: 100%; flex-direction: column; gap: 8px; }
+  .plek.leeg { border-style: dashed; }
+  .plek.owen { border-color: rgba(95,217,138,.55); }
+  .plek.jake { border-color: rgba(255,167,74,.55); }
+  .plek.samen { border-color: rgba(255,201,74,.5); }
+  .plek .wissen { background: none; border: none; color: #7e8ea0; font-size: 13px;
+                  cursor: pointer; text-decoration: underline; padding: 4px; }
+  .plek .wissen:hover { color: #ff9a7a; }
+  .plek .wiekiezer { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+
+  /* Papa-schermen: bewaren en terugzetten. */
+  .opslagvak { background: rgba(0,0,0,.35); border: 1px solid var(--glasrand);
+               border-radius: 14px; padding: 14px 16px; font-size: 15px; line-height: 1.7; }
+  .opslagvak b { color: #ffc94a; }
+  .kopierij { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+              background: rgba(0,0,0,.3); border: 1px solid var(--glasrand);
+              border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; font-size: 14px; }
+  .kopierij span { color: #a6b7cb; }
+  /* Linksboven zichtbaar dat je in de testwereld zit, niet in het dorp van de jongens. */
+  .testvlag { position: fixed; left: 10px; top: 10px; z-index: 9000;
+              background: rgba(120,30,16,.88); color: #ffd9cd; font-size: 12px;
+              font-weight: 700; letter-spacing: .4px; padding: 5px 11px; border-radius: 999px;
+              border: 1px solid rgba(255,150,120,.55); pointer-events: none; }
+
+  /* De jungle is een zoekplaat. De acht plekken zijn in het schilderij zelf geschilderd;
+     eroverheen liggen alleen onzichtbare zoekrondjes. Daarom wordt deze achtergrond
+     passend getoond en niet bijgesneden: een plek die buiten beeld valt, kan je niet
+     vinden. De zwarte randen die dat oplevert worden gevuld met een vage, uitvergrote
+     kopie van dezelfde plaat. */
+  #s-jungle { position: fixed; inset: 0; z-index: 2; }
+  #jungle-veld { background: #07120f; }
+  #jungle-waas { position: absolute; inset: -6%; width: 112%; height: 112%;
+                 object-fit: cover; filter: blur(34px) brightness(.45) saturate(.8); }
+  /* top en height worden vanuit het script gezet (de band tussen de balken), dus bottom los.
+     De plaat krijgt zachte hoeken en een rand, zodat de ruimte ernaast eruitziet als een
+     lijst om een schilderij en niet als een plaat die te klein is. */
+  #jungle-achter { object-fit: contain !important; bottom: auto;
+                   border-radius: 18px; }
+  #jungle-lijst { position: absolute; pointer-events: none; border-radius: 18px;
+                  box-shadow: 0 0 0 1px rgba(255,255,255,.10),
+                              0 26px 60px rgba(0,0,0,.55),
+                              inset 0 0 70px rgba(0,0,0,.33); }
+
+  .zoekplek { position: absolute; border: none; padding: 0; cursor: pointer;
+              border-radius: 50%; background: transparent;
+              -webkit-tap-highlight-color: transparent;
+              transition: background .18s, box-shadow .18s; }
+  /* niets te zien tot je er met de muis overheen gaat: zoeken is het spel. Wél meteen
+     duidelijk zodra je er bent, want op een warme jungle valt een flauw schijnsel weg. */
+  /* 'screen' laat de verf eronder oplichten in plaats van er een wit vlek op te leggen:
+     de plek zelf gloeit, het ziet er niet uit als een knop die erover ligt */
+  .zoekplek:hover { mix-blend-mode: screen;
+                    background: radial-gradient(circle,
+                      rgba(255,244,196,.62) 0%, rgba(255,230,150,.30) 48%,
+                      rgba(255,230,150,0) 72%); }
+  /* het duwtje als er een tijdje niets gebeurt, zodat niemand vastloopt */
+  .zoekplek.tip { mix-blend-mode: screen; animation: plekTip 1.6s ease-in-out infinite; }
+  @keyframes plekTip { 0%, 100% { background: radial-gradient(circle,
+                          rgba(255,244,196,0) 0%, rgba(255,230,150,0) 72%); }
+                       50%      { background: radial-gradient(circle,
+                          rgba(255,244,196,.46) 0%, rgba(255,230,150,.20) 48%,
+                          rgba(255,230,150,0) 72%); } }
+  /* al doorzocht: een klein vinkje op de plek zelf, zodat je ziet waar je al keek */
+  .zoekplek.gezocht { cursor: default;
+                      background: radial-gradient(circle, rgba(2,10,8,.46) 0%,
+                                  rgba(2,10,8,.18) 50%, rgba(2,10,8,0) 72%); }
+  .zoekplek.gezocht::after { content: '\2713'; position: absolute; left: 50%; top: 50%;
+                      transform: translate(-50%, -50%);
+                      width: 30px; height: 30px; line-height: 30px; border-radius: 50%;
+                      font-size: 17px; color: #d9fff0;
+                      background: rgba(6,24,19,.74); border: 1px solid rgba(190,255,230,.38); }
+  /* een tik naast een plek geeft een rimpeltje: je ziet dat het spel je tik zag */
+  .mis { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px;
+         border-radius: 50%; pointer-events: none; z-index: 650;
+         border: 2px solid rgba(255,255,255,.55); animation: misRing .5s ease-out forwards; }
+  @keyframes misRing { from { transform: scale(.25); opacity: .85 }
+                       to   { transform: scale(1);   opacity: 0 } }
+
+  /* De vondst verschijnt midden in beeld in plaats van onder het raster, want daar keek
+     niemand naar op het moment dat er iets gevonden werd. */
+  .vondstkaart { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%);
+                 z-index: 700; width: min(440px, calc(100% - 32px)); text-align: center;
+                 background: var(--glas); backdrop-filter: blur(16px) saturate(1.25);
+                 -webkit-backdrop-filter: blur(16px) saturate(1.25);
+                 border: 1px solid var(--glasrand); border-radius: 22px; padding: 16px 18px;
+                 box-shadow: 0 22px 54px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.12);
+                 /* eigen keyframes: `wiptIn` zet alleen een scale en gooide daarmee de
+                    centrering uit de transform, waardoor de kaart half buiten beeld viel */
+                 animation: vondstIn .4s cubic-bezier(.2,1.5,.4,1); }
+  @keyframes vondstIn {
+    0%   { transform: translate(-50%, -50%) scale(.5); opacity: 0 }
+    100% { transform: translate(-50%, -50%) scale(1);  opacity: 1 }
+  }
+  .vondstkaart p { margin: 0 0 6px; font-size: 16px; line-height: 1.5; }
+  .vondstkaart p:last-child { margin-bottom: 0; }
+  /* De kaart ligt midden over de zoekplaat, dus hij moet weg kunnen. Hij gaat ook vanzelf,
+     en een tik op de kaart zelf doet hem dicht; dit kruisje is er voor wie het zoekt. */
+  .vondstkaart { cursor: pointer; }
+  .vondstweg { position: absolute; right: 6px; top: 6px; width: 32px; height: 32px;
+               border-radius: 50%; border: 1px solid var(--glasrand); cursor: pointer;
+               background: rgba(0,0,0,.4); color: var(--tekst); font-size: 15px;
+               line-height: 1; display: flex; align-items: center; justify-content: center; }
+  .vondstweg:hover { background: rgba(0,0,0,.65); border-color: rgba(255,255,255,.4); }
+
+  /* vechters */
+  /* De arena vult het hele scherm, net als het dorp. De vechters staan midden op het zand
+     dat in de achtergrond geschilderd is; `zetStrijdvloer()` rekent die hoogte uit, want de
+     achtergrond wordt bijgesneden en dan klopt een vast percentage niet. */
+  #s-arena { position: fixed; inset: 0; z-index: 2; }
+  .strijdvloer { position: absolute; left: 50%; top: 70%; transform: translate(-50%, -100%);
+                 z-index: 300; display: flex; align-items: flex-end; justify-content: center;
+                 gap: clamp(46px, 12vw, 220px); }
+  .partij { display: flex; gap: 16px; align-items: flex-end; }
+  /* meeschalen met het venster: vier vechters naast elkaar moeten ook op een tablet passen */
+  .vechter { position: relative; width: clamp(92px, 9vw, 150px); text-align: center; }
+  .vechter canvas { width: 100%; height: auto; display: block;
+                    filter: drop-shadow(0 12px 14px rgba(0,0,0,.55)); }
+  .vechter.dood { opacity: .3; filter: grayscale(1); }
+  /* Welk beest je hebt aangetikt moet je kunnen zien: de supervriendenbonus leunt er volledig
+     op dat Owen en Jake hetzelfde beest kiezen, en dat was nergens zichtbaar. */
+  .vechter.doel .naamplaat { outline: 3px solid #fff; outline-offset: 2px; }
+  .vechter.doel canvas, .vechter.doel .baasbeeld {
+    filter: drop-shadow(0 12px 14px rgba(0,0,0,.55)) drop-shadow(0 0 12px rgba(255,255,255,.9)); }
+
+  /* Een klap moet je zien gebeuren, niet alleen lezen. De aanvaller doet een uitval naar
+     voren, de geraakte deinst terug en flitst wit op. */
+  .vechter.valtaan           { animation: uitvalR .44s cubic-bezier(.3,1.4,.5,1); }
+  .vechter.wild.valtaan      { animation-name: uitvalL; }
+  @keyframes uitvalR { 0% { transform: translateX(0) }   34% { transform: translateX(34px) }
+                       52% { transform: translateX(28px) } 100% { transform: translateX(0) } }
+  @keyframes uitvalL { 0% { transform: translateX(0) }   34% { transform: translateX(-34px) }
+                       52% { transform: translateX(-28px) } 100% { transform: translateX(0) } }
+  .vechter.geraakt           { animation: schudR .42s ease-out .14s; }
+  .vechter.wild.geraakt      { animation-name: schudL; }
+  @keyframes schudR { 0% { transform: translateX(0) rotate(0) }
+                      18% { transform: translateX(11px) rotate(4deg) }
+                      40% { transform: translateX(-7px) rotate(-3deg) }
+                      65% { transform: translateX(4px) rotate(2deg) }
+                      100% { transform: translateX(0) rotate(0) } }
+  @keyframes schudL { 0% { transform: translateX(0) rotate(0) }
+                      18% { transform: translateX(-11px) rotate(-4deg) }
+                      40% { transform: translateX(7px) rotate(3deg) }
+                      65% { transform: translateX(-4px) rotate(-2deg) }
+                      100% { transform: translateX(0) rotate(0) } }
+  .vechter.geraakt canvas, .vechter.geraakt .baasbeeld { animation: raakflits .42s ease-out .14s; }
+  @keyframes raakflits { 0%, 100% { filter: drop-shadow(0 12px 14px rgba(0,0,0,.55)); }
+                         22% { filter: drop-shadow(0 12px 14px rgba(0,0,0,.55)) brightness(2.2) saturate(.3); }
+                         60% { filter: drop-shadow(0 12px 14px rgba(0,0,0,.55)) brightness(1.3); } }
+  /* de inslag zelf: een ring die openklapt op het moment dat de uitval aankomt */
+  .bots { position: absolute; left: 50%; top: 54%; width: 12px; height: 12px; margin: -6px 0 0 -6px;
+          border-radius: 50%; pointer-events: none; z-index: 5;
+          box-shadow: 0 0 0 2px rgba(255,255,255,.95), 0 0 22px 7px rgba(255,205,110,.9);
+          animation: botsUit .42s ease-out .14s forwards; opacity: 0; }
+  @keyframes botsUit { 0% { transform: scale(.25); opacity: 1 }
+                       100% { transform: scale(7.5); opacity: 0 } }
+  /* helpen is het tegenovergestelde van slaan, dus een groene gloed in plaats van een klap */
+  .vechter.geholpen canvas { animation: hulpgloed .9s ease-out; }
+  @keyframes hulpgloed { 0%, 100% { filter: drop-shadow(0 12px 14px rgba(0,0,0,.55)); }
+                         40% { filter: drop-shadow(0 12px 14px rgba(0,0,0,.55))
+                                       drop-shadow(0 0 16px rgba(95,217,138,.95)); } }
+  /* De naam mag niet afgeknipt worden: die hebben ze zelf bedacht. Het plaatje eronder
+     bepaalt de breedte, dus het plaatje mag over de buren heen steken zolang de tekst past. */
+  .naamplaat { font-family: 'Baloo 2', sans-serif; font-size: 13px; color: var(--tekst);
+               background: var(--glas); border: 1px solid var(--glasrand); border-radius: 999px;
+               padding: 2px 9px; margin-bottom: 4px; white-space: nowrap;
+               width: max-content; max-width: 46vw; margin-left: auto; margin-right: auto;
+               position: relative; z-index: 5; }
+  .balkje { height: 10px; border-radius: 999px; background: rgba(0,0,0,.55);
+            border: 1px solid rgba(255,255,255,.16); overflow: hidden; }
+  .balkje span { display: block; height: 100%; border-radius: 999px;
+                 background: linear-gradient(90deg, #2fae6a, #6ff0a7);
+                 box-shadow: 0 0 10px rgba(80,230,150,.6); transition: width .35s; }
+  .vechter.wild .balkje span { background: linear-gradient(90deg, #c2381a, #ff7a4d);
+                               box-shadow: 0 0 10px rgba(255,110,70,.6); }
+  .verslag { background: rgba(4,8,13,.72); border: 1px solid var(--glasrand); border-radius: 14px;
+             padding: 10px 14px; font-size: 15px; line-height: 1.5; min-height: 52px; }
+  .verslag b, .verslag strong { color: var(--goud); }
+  /* in de arena zit het verslag al in een glazen balk, dus geen kaartje in een kaartje */
+  .arenabalk { width: min(820px, calc(100% - 24px)); }
+  .arenabalk .verslag { background: none; border: none; padding: 2px 6px 8px; min-height: 0;
+                        text-align: center; }
+  .arenabalk .knoprij { justify-content: center; }
+
+  /* wezenkaartjes */
+  .stal { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 10px; }
+  .kaartje { position: relative; border-radius: 16px; padding: 7px 5px 6px; text-align: center; cursor: pointer;
+             background: linear-gradient(rgba(255,255,255,.10), rgba(255,255,255,.03));
+             border: 1px solid var(--glasrand); transition: transform .12s, box-shadow .12s; }
+  .kaartje:hover { transform: translateY(-3px); box-shadow: 0 14px 26px rgba(0,0,0,.45); }
+  .kaartje canvas { width: 100%; height: auto; display: block; margin: 0 auto;
+                    filter: drop-shadow(0 7px 9px rgba(0,0,0,.5)); }
+  /* Geselecteerd is wit, niet goud. Goud is de kleur van legendarisch, en een aangetikt
+     kaartje zag er daardoor precies zo uit als het zeldzaamste wezen in het spel. */
+  .kaartje.aan { box-shadow: 0 0 0 3px #fff, 0 10px 22px rgba(0,0,0,.5); }
+  .kaartje .naam { font-family: 'Baloo 2', sans-serif; font-size: 14px; }
+  .kaartje .cijfers { font-size: 11.5px; color: var(--zacht); }
+  /* linksboven, want rechtsboven zit in de vrijlaatstand de knop die hem anders afdekt,
+     en juist dit merkje zegt uit wat voor ei hij kwam */
+  .kaartje .merk { position: absolute; top: -8px; left: -6px; width: 26px;
+                   filter: drop-shadow(0 2px 5px rgba(0,0,0,.8)); }
+  .kaartje .gewond { position: absolute; left: 5px; top: 4px; font-size: 15px; }
+  /* wie neemt dit wezen mee op tocht: één knopje per speler, in zijn eigen kleur */
+  /* Dit zijn de knopjes die ze elke tocht gebruiken, dus ze moeten met een vinger te raken
+     zijn: 44 pixels breed in plaats van 30. */
+  .meekiezer { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
+  .meeknop { width: 44px; height: 38px; border-radius: 11px; font-size: 16px; line-height: 1;
+             cursor: pointer; border: 1px solid var(--glasrand); color: var(--tekst);
+             background: rgba(255,255,255,.07); filter: grayscale(1) opacity(.55);
+             transition: filter .12s, transform .12s; }
+  .meeknop:hover { filter: none; transform: translateY(-1px); }
+  .meeknop.aan { filter: none; }
+  .meeknop.owen.aan { border-color: var(--owen); background: rgba(69,216,132,.22); }
+  .meeknop.jake.aan { border-color: var(--jake); background: rgba(255,138,92,.22); }
+
+  /* zeldzaamheid: rand in de kleur van de hoogste rang, plus vier stipjes per deel */
+  .kaartje.rang-ongewoon      { border-color: #5fd98a; }
+  .kaartje.rang-zeldzaam      { border-color: #5bb8ff; box-shadow: 0 0 14px rgba(91,184,255,.3); }
+  .kaartje.rang-superzeldzaam { border-color: #c57bff; box-shadow: 0 0 16px rgba(197,123,255,.38); }
+  .kaartje.rang-legendarisch  { border-color: #ffc94a; box-shadow: 0 0 20px rgba(255,201,74,.5); }
+  .kaartje.ultiem { animation: ultiemGloed 1.8s ease-in-out infinite; }
+  @keyframes ultiemGloed {
+    0%,100% { box-shadow: 0 0 18px rgba(255,201,74,.45); }
+    50%     { box-shadow: 0 0 34px rgba(255,201,74,.95); }
+  }
+  /* Wie dit wezen meeneemt, als ring om de kaart heen. Na de rangregels, zodat de rand zelf
+     de zeldzaamheid blijft tonen: dat zijn twee verschillende dingen en allebei nuttig. */
+  .kaartje.mee-owen { box-shadow: 0 0 0 3px var(--owen), 0 0 20px rgba(69,216,132,.45); }
+  .kaartje.mee-jake { box-shadow: 0 0 0 3px var(--jake), 0 0 20px rgba(255,138,92,.45); }
+
+  /* vrijlaten: alleen wie niet weg kan vervaagt. Het spel wijst niemand aan. */
+  .kaartje.blijft { opacity: .45; }
+  .kaartje .weg { position: absolute; top: -8px; right: -7px; width: 26px; height: 26px;
+                  border-radius: 50%; border: 1px solid rgba(255,255,255,.4); background: #2f7d4a;
+                  color: #fff; font-family: 'Baloo 2', sans-serif; font-size: 15px; line-height: 1;
+                  cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,.6); }
+  /* De bevestiging mag niet op dezelfde pixel zitten als de eerste tik, anders bevestig je
+     hem met precies de dubbeltik waar hij tegen moet beschermen. */
+  .kaartje .weg.ja { position: static; display: block; width: 100%; height: 30px;
+                     border-radius: 10px; background: #d6402a; margin-top: 5px; }
+  .kaartje.vraagt { border-color: var(--goud); box-shadow: 0 0 20px rgba(255,201,74,.55); }
+  .kaartje .zekervraag { font-family: 'Baloo 2', sans-serif; font-size: 12.5px; color: var(--goud);
+                         margin-top: 4px; line-height: 1.3; }
+  .kaartje .zekervraag span { color: var(--zacht); }
+  .kaartje .zekervraag .ic { width: 13px; height: 13px; vertical-align: -2px; }
+
+  .rangrij { display: flex; gap: 3px; justify-content: center; margin: 3px 0 1px; }
+  .rangrij .stip { width: 9px; height: 9px; border-radius: 50%;
+                   border: 1px solid rgba(0,0,0,.45); box-shadow: 0 0 5px currentColor; }
+
+  .rangbalk { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 2px; }
+  .rangregel { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .rangregel .vlag { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .rangregel .deel { flex: 1; }
+  .rangregel .rnaam { font-family: 'Baloo 2', sans-serif; }
+
+  /* boek */
+  .boekrij { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 9px; }
+  .boekvak { border-radius: 14px; padding: 7px 4px; text-align: center; font-size: 12.5px;
+             border: 1px solid var(--glasrand);
+             background: linear-gradient(rgba(255,255,255,.1), rgba(255,255,255,.03)); }
+  .boekvak img { width: 100%; height: 58px; object-fit: contain; display: block;
+                 filter: drop-shadow(0 4px 7px rgba(0,0,0,.5)); }
+  .boekvak.onbekend { background: rgba(0,0,0,.35); color: #8b99a9; border-style: dashed; }
+  .boekvak.onbekend .vraag { font-size: 32px; line-height: 58px; color: #7f8d9e; }
+  .boekvak .vraag { font-size: 32px; line-height: 58px; }
+  .boekvak .brang { font-family: 'Baloo 2', sans-serif; font-size: 11.5px; margin-top: 2px; }
+  .boekvak.onbekend .brang { opacity: .5; }
+
+  input[type=text] { width: 100%; font-family: 'Baloo 2', sans-serif; font-size: 18px; padding: 11px 13px;
+                     border-radius: 13px; border: 1px solid var(--glasrand); color: var(--tekst);
+                     background: rgba(0,0,0,.42); }
+  input[type=text]::placeholder { color: #68788a; }
+  input[type=text]:focus { outline: 2px solid var(--goud); }
+
+  .deur { text-align: center; margin: 6px 0 10px; }
+  .deur img { width: 92px; filter: drop-shadow(0 8px 18px rgba(0,0,0,.7)); }
+  .deur.open img { filter: drop-shadow(0 0 26px rgba(255,201,74,.9)); }
+  .hintlijst { list-style: none; padding: 0; margin: 10px 0 0; }
+  .hintlijst li { border-radius: 12px; padding: 9px 13px; margin-bottom: 7px; font-size: 15px;
+                  border: 1px solid var(--glasrand);
+                  background: linear-gradient(rgba(255,255,255,.1), rgba(255,255,255,.03)); }
+  .hintlijst li.leeg { color: #8b99a9; font-style: italic; background: rgba(0,0,0,.3); border-style: dashed; }
+
+  /* de diepte */
+  .dieptelijst { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .verdieping { border-radius: 16px; padding: 12px 10px; text-align: center; border: 1px solid var(--glasrand);
+                background: linear-gradient(rgba(255,255,255,.1), rgba(255,255,255,.03));
+                font-family: 'Baloo 2', sans-serif; font-size: 16px; }
+  .verdieping .nr { display: block; font-size: 26px; color: var(--goud); }
+  .verdieping .el { display: block; font-size: 24px; margin: 2px 0; }
+  .verdieping .wat { font-family: 'Nunito', sans-serif; font-size: 12.5px; color: var(--zacht); }
+  .verdieping.gehaald { border-color: rgba(69,216,132,.55); }
+  .verdieping.nu { border-color: var(--goud); box-shadow: 0 0 22px rgba(255,201,74,.4); cursor: pointer; }
+  .verdieping.nu:hover { transform: translateY(-3px); }
+  .verdieping.op-slot { background: rgba(0,0,0,.35); color: #8b99a9; border-style: dashed; }
+
+  .vechter.baas { width: clamp(150px, 17vw, 260px); }
+  .vechter.baas .baasbeeld, .vechter.baas canvas { width: 100%; display: block;
+                             filter: drop-shadow(0 14px 16px rgba(0,0,0,.6)) drop-shadow(0 0 22px rgba(90,200,255,.45)); }
+  /* De Wachter in de dieptelijst: klein voorproefje van wie daar beneden staat. */
+  .verdieping .wachterkijk { display: block; width: 74px; margin: 8px auto 0;
+                             filter: drop-shadow(0 6px 10px rgba(0,0,0,.6)); }
+  .verdieping.op-slot .wachterkijk { filter: grayscale(.9) brightness(.5); }
+  .verdieping .slot { margin-top: 8px; font-size: 13px; color: #cfdbe9; }
+  .verdieping .slot img { width: 15px; vertical-align: -3px; }
+  .verdieping .slot span { color: #8b99a9; }
+  .schildbalk { height: 8px; border-radius: 999px; background: rgba(0,0,0,.55); overflow: hidden;
+                border: 1px solid rgba(255,255,255,.2); margin-top: 3px; }
+  .schildbalk span { display: block; height: 100%; background: linear-gradient(90deg,#7fd4ff,#c9f0ff);
+                     box-shadow: 0 0 9px rgba(140,220,255,.9); }
+
+  .zonerij { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap: 12px; }
+  .zone { border-radius: 16px; padding: 16px 12px; text-align: center; cursor: pointer;
+          font-family: 'Baloo 2', sans-serif; font-size: 17px; border: 1px solid var(--glasrand);
+          background: linear-gradient(rgba(255,255,255,.1), rgba(255,255,255,.03));
+          transition: transform .12s, box-shadow .12s; }
+  .zone:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(0,0,0,.45); }
+  .zone .em { display: block; font-size: 34px; filter: drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
+  .zone.aan { border-color: var(--goud); box-shadow: 0 0 22px rgba(255,201,74,.35); }
+  .zone.op-slot { background: rgba(0,0,0,.35); color: #8b99a9; cursor: default; border-style: dashed; }
+  .zone.op-slot:hover { transform: none; box-shadow: none; }
+
+  .glans { text-align: center; }
+  .glans canvas { filter: drop-shadow(0 0 30px rgba(255,201,74,.45)) drop-shadow(0 14px 18px rgba(0,0,0,.6)); }
+
+  h3.kopje { margin: 14px 0 7px; font-size: 17px; color: var(--goud); letter-spacing: .3px; }
+  h3.kopje:first-child { margin-top: 0; }
+
+  /* ---------- het ei dat opengaat ----------
+     De spanning zit hem in het wachten: eerst wiebelt het ei, dan scheurt het, dan knalt
+     het open, en pas daarna lichten de vier rangen één voor één op. Zo weet je tot het
+     laatste stipje nog niet of je er een goeie hebt. */
+  /* Het doek gaat uit tijdens de onthulling. Een licht ei op een zonnige jungle valt weg;
+     met een donkere achtergrond is het ei het enige wat er is, en dat is het punt. */
+  .onthul { text-align: center; padding: 6vh 0 0; position: relative; z-index: 1; }
+  .onthul::before {
+    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(circle at 50% 34%, rgba(4,8,13,.55), rgba(4,8,13,.93) 70%);
+    animation: doekUit .5s ease-out;
+  }
+  @keyframes doekUit { from { opacity: 0 } to { opacity: 1 } }
+  .eiplek { position: relative; width: min(230px, 54vw); aspect-ratio: 3 / 4; margin: 0 auto; }
+  .eiplek .stralen {
+    position: absolute; inset: -60%; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle, rgba(255,226,150,.55), rgba(255,200,90,0) 62%);
+    opacity: 0; animation: stralenAan 2.3s ease-in forwards;
+  }
+  @keyframes stralenAan { 0% { opacity: 0; transform: scale(.4) } 55% { opacity: .35 }
+                          88% { opacity: .9; transform: scale(1.1) } 100% { opacity: 0; transform: scale(1.4) } }
+  .eiplek .grootei { position: relative; width: 100%; height: 100%; object-fit: contain;
+                     transform-origin: 50% 85%;
+                     filter: drop-shadow(0 14px 18px rgba(0,0,0,.7));
+                     animation: eiWiebel 2.3s ease-in-out forwards; }
+  @keyframes eiWiebel {
+    0%, 6%   { transform: rotate(0deg) }
+    11%      { transform: rotate(-6deg) }   16% { transform: rotate(6deg) }
+    24%      { transform: rotate(-4deg) }   30% { transform: rotate(4deg) }
+    42%      { transform: rotate(-10deg) }  49% { transform: rotate(10deg) }
+    62%      { transform: rotate(-8deg) }   68% { transform: rotate(8deg) }
+    78%      { transform: rotate(-14deg) scale(1.04) }
+    85%      { transform: rotate(14deg) scale(1.07) }
+    93%      { transform: rotate(0deg) scale(1.16) }
+    100%     { transform: rotate(0deg) scale(0); opacity: 0 }
+  }
+  /* de scheuren: twee dunne lichtlijnen die op de juiste tel verschijnen */
+  .eiplek .scheur { position: absolute; left: 50%; width: 5px; background: #fff7dd;
+                    box-shadow: 0 0 14px 4px rgba(255,228,150,.95); opacity: 0;
+                    transform-origin: 50% 0; pointer-events: none; }
+  .eiplek .scheur.een  { top: 30%; height: 20%; transform: translateX(-50%) rotate(16deg);
+                         animation: scheurAan .25s ease-out .95s forwards; }
+  .eiplek .scheur.twee { top: 46%; height: 24%; transform: translateX(-180%) rotate(-22deg);
+                         animation: scheurAan .25s ease-out 1.6s forwards; }
+  @keyframes scheurAan { from { opacity: 0 } to { opacity: 1 } }
+  /* de knal op het moment dat het ei verdwijnt */
+  .eiplek .knal { position: absolute; left: 50%; top: 48%; width: 16px; height: 16px;
+                  margin: -8px 0 0 -8px; border-radius: 50%; opacity: 0; pointer-events: none;
+                  box-shadow: 0 0 0 3px #fff, 0 0 40px 14px rgba(255,214,120,.95);
+                  animation: knalUit .5s ease-out 2.1s forwards; }
+  @keyframes knalUit { 0% { opacity: 1; transform: scale(.3) } 100% { opacity: 0; transform: scale(9) } }
+  .onthultekst { font-family: 'Baloo 2', sans-serif; font-size: clamp(17px, 3vw, 23px);
+                 color: var(--goud); margin: 16px 0 0; text-shadow: 0 2px 10px rgba(0,0,0,.8); }
+
+  /* de kaart springt tevoorschijn waar het ei stond */
+  .wipt { animation: wiptIn .5s cubic-bezier(.2,1.5,.4,1); }
+  @keyframes wiptIn { 0% { transform: scale(.45); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
+  /* de rangen lichten één voor één op, van kop naar extra */
+  .rangbalk.traag .rangregel { opacity: 0; animation: rangAan .4s ease-out forwards; }
+  .rangbalk.traag .rangregel:nth-child(1) { animation-delay: .15s }
+  .rangbalk.traag .rangregel:nth-child(2) { animation-delay: .55s }
+  .rangbalk.traag .rangregel:nth-child(3) { animation-delay: .95s }
+  .rangbalk.traag .rangregel:nth-child(4) { animation-delay: 1.35s }
+  @keyframes rangAan { 0% { opacity: 0; transform: translateX(-14px) scale(.9) }
+                       60% { opacity: 1; transform: translateX(0) scale(1.06) }
+                       100% { opacity: 1; transform: translateX(0) scale(1) } }
+  /* een goede vangst mag even stralen */
+  .uitkomstkaart.mooi { animation: mooiGloed 1.6s ease-in-out 1.7s 2; }
+  @keyframes mooiGloed { 0%,100% { box-shadow: 0 18px 40px rgba(0,0,0,.45) }
+                         50% { box-shadow: 0 18px 40px rgba(0,0,0,.45), 0 0 44px rgba(255,201,74,.8) } }
+</style>
+</head>
+<body>
+
+<div id="achtergrond">
+  <img id="bg-img" alt="">
+  <div class="waas"></div>
+</div>
+
+<div class="scherm">
+
+  <div id="s-laden">
+    <h1 class="titel">Supervrienden</h1>
+    <p class="ondertitel">en het geheim van de baas</p>
+    <div class="paneel"><p id="laadtekst">De wezens worden wakker gemaakt...</p></div>
+  </div>
+
+  <!-- START -->
+  <div id="s-start" class="verborgen">
+    <h1 class="titel">Supervrienden</h1>
+    <p class="ondertitel">en het geheim van de baas</p>
+    <div class="paneel">
+      <div class="paneelkop">
+        <h2>Het verhaal</h2>
+        <button class="luidspreker" data-zeg="Jullie ruimteschip is geland op een vreemde planeet vol jungle. Jullie bouwen hier een dorp. In de jungle zoek je eieren en glimstenen. De eieren leg je thuis in een nest, en als je blijft spelen worden ze warm en komen ze uit. Met glimstenen bouw je je dorp groter. En ergens zit de baas verstopt.">&#128266;</button>
+      </div>
+      <p>Jullie ruimteschip is geland op een vreemde planeet vol jungle. Hier bouwen jullie een <strong>dorp</strong>.</p>
+      <p>In de jungle zoek je <strong>eieren</strong> en <strong>glimstenen</strong>. Je tas is klein, dus je kan maar een paar eieren tegelijk meenemen.</p>
+      <p>Thuis leg je de eieren in een <strong>nest</strong>. Een ei komt niet uit door te wachten, maar doordat jullie dóórspelen. Elke keer dat je zoekt worden alle eieren warmer.</p>
+      <p class="zacht">Met glimstenen bouw je het dorp groter: meer nesten, een grotere tas, een vuurplaats, een kruishut en een uitkijktoren naar nieuwe gebieden.</p>
+    </div>
+    <div class="paneel">
+      <div class="paneelkop"><h2>Hoe moeilijk?</h2></div>
+      <div class="knoprij">
+        <button class="knop" id="k-gewoon">&#127918; Gewone stand</button>
+        <button class="knop rustig" id="k-moeilijk">&#128293; Moeilijke stand</button>
+      </div>
+    </div>
+    <button class="knop groot" id="k-begin">Landen! &#128760;</button>
+  </div>
+
+  <!-- EERSTE WEZEN KIEZEN -->
+  <div id="s-kies" class="verborgen">
+    <h1 class="titel" style="font-size:clamp(24px,5vw,40px)">Kies je eerste wezen</h1>
+    <p class="ondertitel" id="kies-beurt"></p>
+    <div class="paneel">
+      <div class="kiesbank">
+        <div class="kiespodium"><canvas id="kies-podium"></canvas></div>
+        <div id="kies-sleuven"></div>
+      </div>
+      <p class="zacht" id="kies-regel" style="margin:12px 0 0"></p>
+      <div style="margin-top:12px">
+        <input type="text" id="kies-naam" placeholder="Hoe heet hij?">
+      </div>
+      <div class="knoprij" style="margin-top:12px">
+        <button class="knop" id="k-kies-klaar">Dit wordt hem!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTRO: drie stripplaatjes tussen de keuze en het eerste gevecht -->
+  <div id="s-intro" class="verborgen">
+    <div class="veld" id="intro-veld">
+      <img class="veldachter" id="intro-achter" alt="">
+      <div id="intro-wezens"></div>
+    </div>
+    <button class="luidspreker zweef-hoek" id="zeg-intro">&#128266;</button>
+    <div class="balk arenabalk">
+      <p class="veldtip" id="intro-tekst"></p>
+      <div class="knoprij" style="justify-content:center">
+        <button class="knop" id="k-intro-door"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DORP: vult het hele scherm, alles zweeft erover heen -->
+  <div id="s-dorp" class="verborgen">
+    <div class="veld" id="veld">
+      <img class="veldachter" id="veld-achter" alt="">
+      <div class="dingen" id="dingen"></div>
+    </div>
+
+    <div class="hud zweef-boven" id="hud-dorp"></div>
+    <button class="luidspreker zweef-hoek" id="zeg-dorp">&#128266;</button>
+    <!-- Klein en linksboven: je wisselt hooguit één keer per keer spelen van plek, dus het
+         hoort niet tussen de knoppen waar je de hele tijd op drukt. -->
+    <button class="plekknop" id="k-plekken" title="Naar een andere plek">&#128194; <span id="k-plekken-wie">Plek</span></button>
+
+    <div class="lade verborgen" id="lade">
+      <button class="ladedicht" id="k-lade-dicht">&#10006;</button>
+      <div id="lade-wezens" class="verborgen">
+        <h2 id="stal-kop">Jullie wezens</h2>
+        <p class="zacht" id="stal-uitleg" style="margin:0 0 10px"></p>
+        <div id="stal-owen"></div>
+        <div class="knoprij" style="margin-top:12px">
+          <button class="knop rustig" id="k-vrijlaten">&#127811; Eentje vrijlaten</button>
+        </div>
+      </div>
+      <div id="lade-tas" class="verborgen">
+        <h2>In je tas</h2>
+        <p class="zacht" id="tas-uitleg" style="margin:0 0 10px"></p>
+        <div class="tasrij" id="tas"></div>
+        <div class="knoprij" style="margin-top:14px">
+          <button class="knop" id="k-leggen">Alle eieren neerleggen</button>
+          <button class="knop rustig" id="k-ei-weg">&#10006; Een ei weggooien</button>
+          <button class="knop rustig" id="k-opruimen">&#10006; Versiering weghalen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="balk">
+      <p class="veldtip" id="veldtip">Sleep alles naar de plek die je het mooist vindt.</p>
+      <div class="balkknoppen">
+      <button class="menuknop eerst" id="k-jungle"><img src="../onderdelen/menu-pad.webp" alt=""><span>Op pad</span></button>
+      <button class="menuknop" id="k-wezens"><img src="../onderdelen/menu-wezens.webp" alt=""><span>Wezens</span></button>
+      <button class="menuknop" id="k-tas"><img src="../onderdelen/menu-tas.webp" alt=""><span>Tas</span></button>
+      <button class="menuknop" id="k-bouwen"><img src="../onderdelen/menu-bouw.webp" alt=""><span>Bouwen</span></button>
+      <button class="menuknop" id="k-kruisen"><img src="../onderdelen/menu-kruis.webp" alt=""><span>Kruisen</span></button>
+      <button class="menuknop" id="k-boek"><img src="../onderdelen/menu-boek.webp" alt=""><span>Boek</span></button>
+      <button class="menuknop" id="k-geheim"><img src="../onderdelen/menu-deur.webp" alt=""><span>De deur</span></button>
+      <button class="menuknop verborgen" id="k-diepte"><img src="../onderdelen/menu-diepte.webp" alt=""><span>De Diepte</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOUWEN -->
+  <div id="s-bouwen" class="verborgen">
+    <div class="hud" id="hud-bouw"></div>
+    <div class="paneel">
+      <div class="paneelkop">
+        <h2>Bouwen</h2>
+        <button class="luidspreker" data-zeg="Hier bouw je het dorp groter. Elk gebouw haalt iets weg wat je nu nog tegenhoudt. Je betaalt met glimstenen die je in de jungle vindt.">&#128266;</button>
+      </div>
+      <p class="zacht">Elk gebouw haalt iets weg wat je nu nog tegenhoudt. Alles wat je bouwt komt in het dorp te staan, en daar mag je het zelf neerzetten waar je wil.</p>
+      <div class="bouwrij" id="gebouwen"></div>
+      <h3 class="kopje">Versiering</h3>
+      <p class="zacht" style="margin-top:0">Dit doet niks voor het spel. Het maakt het dorp van jullie. Je mag er zoveel kopen als je wil.</p>
+      <div class="decorij" id="versiering"></div>
+      <div class="knoprij" style="margin-top:16px">
+        <button class="knop rustig" id="k-bouw-terug">&#8592; Terug naar het dorp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZONE -->
+  <div id="s-zone" class="verborgen">
+    <div class="hud" id="hud-zone"></div>
+    <div class="paneel">
+      <div class="paneelkop">
+        <h2>Waar gaan jullie heen?</h2>
+        <button class="luidspreker" data-zeg="Hoe verder weg, hoe gevaarlijker, maar ook hoe beter de eieren.">&#128266;</button>
+      </div>
+      <p class="zacht">Hoe verder weg, hoe gevaarlijker. Maar ook hoe betere eieren je vindt.</p>
+      <div class="zonerij" id="zones"></div>
+      <div class="knoprij" style="margin-top:16px">
+        <button class="knop rustig" id="k-zone-terug">&#8592; Terug</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JUNGLE: een plek waar je rondkijkt, niet een lijstje knoppen -->
+  <div id="s-jungle" class="verborgen">
+    <div class="veld" id="jungle-veld">
+      <img id="jungle-waas" alt="">
+      <img class="veldachter" id="jungle-achter" alt="">
+      <div id="jungle-lijst"></div>
+      <div class="plekken" id="plekken"></div>
+    </div>
+
+    <div class="hud zweef-boven" id="hud-jungle"></div>
+    <button class="luidspreker zweef-hoek" data-zeg="Dit is een zoekplaat. Er zijn acht plekken waar iets verstopt kan zitten. Kijk goed: een holle boomstam, een struik, stenen, een plas, varens, hangende planten, een boomstronk en een hoge heuvel. Tik erop om daar te zoeken. Je vindt een ei, een glimsteen, een geheim, of er springt een wild wezen tevoorschijn.">&#128266;</button>
+
+    <div id="vondst" class="vondstkaart verborgen"></div>
+
+    <div class="balk arenabalk">
+      <p class="veldtip" id="jungle-kop">Waar zoeken jullie?</p>
+      <div class="knoprij" style="justify-content:center">
+        <button class="knop" id="k-terug-dorp">&#127968; Naar huis</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARENA: vult het hele scherm, de vechters staan midden op het zand -->
+  <div id="s-arena" class="verborgen">
+    <div class="hud zweef-boven"><span class="pil" id="t-ronde">Ronde 1</span><span class="pil" id="t-beurt"></span></div>
+    <div class="strijdvloer">
+      <div class="partij" id="partij-helden"></div>
+      <div class="partij" id="partij-wild"></div>
+    </div>
+    <div class="balk arenabalk">
+      <div class="verslag" id="verslag"></div>
+      <div class="knoprij" id="acties"></div>
+    </div>
+  </div>
+
+  <!-- DE DIEPTE -->
+  <div id="s-diepte" class="verborgen">
+    <div class="hud" id="hud-diepte"></div>
+    <div class="paneel">
+      <div class="paneelkop">
+        <h2>De Diepte</h2>
+        <button class="luidspreker" data-zeg="Achter de deur gaat het naar beneden. Op elke verdieping staat een andere Wachter, en hoe dieper je komt hoe sterker hij is. Je kan ze niet achter elkaar doen: voor elke volgende verdieping heb je twee Wachterssleutels nodig, en die liggen in de jungle. Elke tocht ligt er eentje. Elke Wachter heeft een schild: dat breekt alleen als jullie allebei in dezelfde ronde op hem slaan. Kijk welk element hij heeft en neem daar het goede wezen voor mee.">&#128266;</button>
+      </div>
+      <p>Achter de deur gaat het naar beneden. Op elke verdieping staat <strong>een andere Wachter</strong>,
+      en hoe dieper je komt hoe sterker hij is.</p>
+      <p class="zacht">Je kan ze niet achter elkaar doen. Voor elke volgende verdieping heb je
+      <strong>2 Wachterssleutels</strong> nodig. Die liggen in de jungle: elke tocht ligt er eentje.</p>
+      <p class="zacht">Hij heeft een <strong>schild</strong>. Dat breekt alleen als jullie
+      <strong>allebei in dezelfde ronde</strong> op hem slaan. Kijk welk element hij heeft en neem
+      daar het goede wezen voor mee.</p>
+      <div class="dieptelijst" id="dieptelijst"></div>
+      <div class="knoprij" style="margin-top:16px">
+        <button class="knop rustig" id="k-diepte-terug">&#8592; Terug naar het dorp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- UITKOMEN -->
+  <div id="s-uitkomen" class="verborgen">
+    <h1 class="titel" style="font-size:clamp(26px,5.5vw,44px)">Er komt iets uit!</h1>
+    <div class="onthul" id="onthul">
+      <div class="eiplek">
+        <div class="stralen"></div>
+        <img class="grootei" id="groot-ei" alt="">
+        <span class="scheur een"></span>
+        <span class="scheur twee"></span>
+        <div class="knal"></div>
+      </div>
+      <p class="onthultekst" id="onthultekst">Er beweegt iets...</p>
+    </div>
+    <div class="paneel uitkomstkaart verborgen" id="uitkomen-kaart"></div>
+  </div>
+
+  <!-- KRUISEN -->
+  <div id="s-kruisen" class="verborgen">
+    <div class="hud" id="hud-kruis"></div>
+    <div class="paneel">
+      <div class="paneelkop">
+        <h2>De kruishut</h2>
+        <button class="luidspreker" data-zeg="Kies twee wezens. Er komt een nieuw wezen uit met stukjes van allebei. Kruis er eentje van Owen met eentje van Jake, dan wordt het kind extra sterk.">&#128266;</button>
+      </div>
+      <p class="zacht" id="kruis-uitleg"></p>
+      <div id="kruis-stal"></div>
+      <div id="kruis-uit" style="margin-top:14px"></div>
+      <div class="knoprij" style="margin-top:14px">
+        <button class="knop" id="k-kruis-doe" disabled>Kruisen!</button>
+        <button class="knop rustig" id="k-kruis-terug">&#8592; Terug</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOEK -->
+  <div id="s-boek" class="verborgen">
+    <div class="hud" id="hud-boek"></div>
+    <div class="paneel">
+      <div class="paneelkop">
+        <h2>Het boek</h2>
+        <button class="luidspreker" data-zeg="In dit boek staat alles wat jullie al ooit gezien hebben. De grijze vakjes met een vraagteken moeten jullie nog vinden.">&#128266;</button>
+      </div>
+      <p class="zacht">Alles wat jullie al ooit gezien hebben. De grijze vakjes moeten jullie nog vinden.</p>
+      <div id="boekvakken"></div>
+      <div class="knoprij" style="margin-top:16px">
+        <button class="knop rustig" id="k-boek-terug">&#8592; Terug</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GEHEIM -->
+  <div id="s-geheim" class="verborgen">
+    <div class="paneel">
+      <div class="paneelkop">
+        <h2>De geheime deur</h2>
+        <button class="luidspreker" id="zeg-geheim">&#128266;</button>
+      </div>
+      <div class="deur" id="deur"></div>
+      <p id="deurtekst"></p>
+      <ul class="hintlijst" id="hints"></ul>
+      <div class="knoprij" style="margin-top:12px">
+        <button class="knop verborgen" id="k-geheim-diepte">&#128510; De trap af</button>
+        <button class="knop rustig" id="k-geheim-terug">&#8592; Terug naar het dorp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drie opslagplekken, zoals op een spelcomputer. Dit is het eerste wat je ziet. -->
+  <div id="s-plekken" class="verborgen">
+    <div class="paneel">
+      <div class="paneelkop">
+        <h2>Wie gaat er spelen?</h2>
+        <button class="luidspreker" data-zeg="Kies een plek om te spelen. Er zijn drie plekken: eentje voor Owen alleen, eentje voor Jake alleen, en eentje om samen te spelen. Elke plek heeft zijn eigen dorp en zijn eigen wezens.">&#128266;</button>
+      </div>
+      <p class="zacht">Er zijn drie plekken. Elke plek heeft zijn eigen dorp, zijn eigen
+         wezens en zijn eigen boek. Je kan dus allebei een eigen spel hebben én samen een spel.</p>
+      <div id="plekkenlijst" class="plekkenlijst"></div>
+    </div>
+  </div>
+
+  <!-- Alleen bereikbaar via index.html?opslag. Geen knop in het spel: de jongens hoeven
+       hier niets mee te kunnen, en per ongeluk iets terugzetten is onherstelbaar. -->
+  <div id="s-opslag" class="verborgen">
+    <div class="paneel">
+      <h2>Voortgang bewaren</h2>
+      <p class="zacht">Dit scherm is voor papa. Het dorp van Owen en Jake staat in deze browser.
+         Bewaar het als bestand en je kan het altijd terugzetten, ook op een andere computer.</p>
+      <div id="opslag-nu" class="opslagvak"></div>
+      <div class="knoprij" style="margin-top:14px">
+        <button class="knop" id="k-opslag-download">&#128190; Bewaar als bestand</button>
+        <label class="knop rustig" for="opslag-bestand" style="cursor:pointer">&#128194; Zet een bestand terug</label>
+        <input type="file" id="opslag-bestand" accept=".json,application/json" style="display:none">
+      </div>
+      <p class="zacht" id="opslag-melding" style="margin-top:12px"></p>
+
+      <h2 style="margin-top:22px">Kopieën die het spel zelf maakte</h2>
+      <p class="zacht">Voor het spel iets wist, legt het eerst een kopie opzij. De laatste drie
+         blijven staan.</p>
+      <div id="opslag-kopieen"></div>
+
+      <div class="knoprij" style="margin-top:18px">
+        <button class="knop rustig" id="k-opslag-terug">&#8592; Naar het spel</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="../wezen.js"></script>
+<script src="spel.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

@@ -307,3 +307,21 @@ footer { text-align: center; padding: 1.5rem; font-size: 0.85rem; color: #999; }
   background: #000;
 }
 .film-tekst { margin: 0 auto 0.4rem; max-width: 640px; }
+
+/* --- Supervrienden, het spel van Owen en Jake --- */
+.super-kaart { text-align: center; }
+.super-tekst { margin: 0 auto 0.9rem; max-width: 640px; }
+.super-knop {
+  display: inline-block;
+  padding: 0.85rem 1.8rem;
+  border-radius: 999px;
+  background: linear-gradient(#ffe08a, #ffc94a 45%, #e5a01c);
+  color: #2a1c00;
+  font-family: var(--lettertype-kop, var(--lettertype-tekst));
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 6px 18px rgba(229,160,28,.4);
+  transition: transform .15s, box-shadow .15s;
+}
+.super-knop:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(229,160,28,.5); }
