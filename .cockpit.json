@@ -2,5 +2,5 @@
   "health": "green",
   "stage": "live",
   "next": "Testsessie Planeetmakers met de jongens op de Galaxy-tablets: laten spelen, \"Wat wil jij erbij?\" laten kiezen, fps in ?sandbox=1 bekijken",
-  "note": "Planeetmakers zelfstandige ronde: getekende icoontjes, logo, ingesproken stem, geluid en muziek (Higgsfield, ~80 credits), kleistijl-gebouwen, keuzekaarten, zuinig-regeling, bugreview verwerkt"
+  "note": "Planeetmakers mierennest: oorlog (leger naar de grens) en reizigers zichtbaar, geschiedenisgrafiek in verhaalboek, 10 fixes uit bugreview (o.a. XSS)"
 }
