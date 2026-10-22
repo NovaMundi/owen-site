@@ -621,6 +621,8 @@ export function stap(w, basisRegios, dt, nu) {
       let cap = Math.max(K * 0.01, K - gebruikt);
       const drukDoor = K > 0 ? Math.min(1, gebruikt / K) : 0; // hoeveel anderen hier wegeten
       if (g.oorlog) cap *= 0.8;
+      // Het kind hielp (antwoord op een gebed): een tijdje meer ruimte om te leven.
+      if (soort.zegen && w.jaar < soort.zegen.tot) cap *= soort.zegen.soort === 'feest' ? 1.05 : 1.25;
       // Een groep die lang apart leeft, past zich langzaam aan zijn plek aan (wie past, blijft over).
       if (g.apart) cap *= 1 + 0.5 * Math.min(1, g.apart / APART_NA);
       // Een oerwoud zit vol wilde dieren, maar is lastig voor de heerser zolang die geen metaal heeft.
@@ -1086,6 +1088,26 @@ export function wonder(w, soort, nu = Date.now()) {
   return true;
 }
 
+// ---------- Zegen: het kind beantwoordt een gebed ----------
+// Nooit verplicht: wie niet antwoordt, merkt niets (het volk redt zich zelf, alleen langzamer).
+// Wie wel helpt, ziet het meteen: blije gezichtjes en een verhaal met het kind als oorzaak.
+const ZEGEN_JAREN = 2500;
+export function zegen(w, id, soort, nu = Date.now()) {
+  const s = w.soorten[id];
+  if (!s || s.uitgestorven !== null) return false;
+  s.zegen = { soort, tot: w.jaar + ZEGEN_JAREN };
+  const m = meervoud(s.naam);
+  const tekst = {
+    water: `Jij stuurde regen. Nu hebben de ${m} genoeg te drinken!`,
+    eten: `Jij liet fruit groeien. Nu hebben de ${m} genoeg te eten!`,
+    warmte: `Jij gaf de ${m} fijn weer. Nu hebben ze het goed!`,
+    feest: `Jij gaf de ${m} een feest. Ze dansten de hele nacht!`,
+  }[soort];
+  if (!tekst) return false;
+  verhaal(w, s, 3, '🙏', tekst, nu);
+  return true;
+}
+
 // ---------- Temmen ----------
 // Een slim volk met akkers en een wild dier dat in dezelfde gebieden woont: soms raken ze aan
 // elkaar gewend. Het dier wordt een huisdier: het helpt mee, krijgt eten en een stal, en wordt
@@ -1528,9 +1550,10 @@ export function meters(w, basisRegios, id) {
     warmte += g.pop * klem((klimaatFit(s, r) - 0.3) / 0.5);
     temp += g.pop * r.temp;
   }
-  const m = { eten: eten / som, water: water / som, warmte: warmte / som };
+  const m = { eten: eten / som, water: water / som, warmte: warmte / som, koud: false };
   const lief = 0.55 - s.genen.kou * 0.45 + s.genen.hitte * 0.4;
   const koud = temp / som < lief;
+  m.koud = koud;
   const naam = meervoud(s.naam);
   const vol = s.verlies && (s.verlies.concurrentie || 0) > (s.verlies.honger || 0);
   m.zinnen = {
@@ -1538,6 +1561,12 @@ export function meters(w, basisRegios, id) {
     water: m.water > 0.66 ? `Er is genoeg water voor de ${naam}.` : m.water > 0.33 ? `Het water is soms op, omdat het droog is waar ze wonen.` : `De ${naam} hebben dorst, omdat het heel droog is waar ze wonen.`,
     warmte: m.warmte > 0.66 ? `De ${naam} vinden het lekker warm, niet te heet en niet te koud.` : `Het is ${m.warmte > 0.33 ? 'een beetje' : 'veel'} te ${koud ? 'koud' : 'heet'} voor de ${naam}${s.tech.includes('vuur') || !koud ? '.' : '. Vuur zou helpen!'}`,
   };
+  // Geholpen door het kind? Dan zie (en hoor) je dat ook.
+  const z = s.zegen && w.jaar < s.zegen.tot ? s.zegen.soort : null;
+  m.zegen = z;
+  if (z === 'water') (m.water = Math.max(m.water, 0.75)), (m.zinnen.water = `Dankzij jouw regen hebben de ${naam} genoeg water.`);
+  if (z === 'eten') (m.eten = Math.max(m.eten, 0.75)), (m.zinnen.eten = `Dankzij jouw fruit hebben de ${naam} genoeg te eten.`);
+  if (z === 'warmte') (m.warmte = Math.max(m.warmte, 0.75)), (m.zinnen.warmte = `Dankzij jouw fijne weer hebben de ${naam} het goed.`);
   return m;
 }
 

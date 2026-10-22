@@ -192,6 +192,9 @@ function toonPlaneet(p) {
 function ruimOp() {
   sessie++;
   clearTimeout(hdTimer);
+  clearTimeout(gebedTimer);
+  document.getElementById('gebed')?.remove();
+  wezens.bidt = null;
   clearTimeout(fotoTimer);
   for (const p of [snel, hd]) {
     if (!p) continue;
@@ -565,6 +568,7 @@ async function begin(id) {
     wezenIds = (recept.wezens || []).map((w) => w.id).join(',');
     werkJaarBij();
     if (weg && weg.nieuws.length) toonWeg(weg);
+    planGebed(mijn);
     if (recept.klaar) planHD(0);
   } else {
     startGeboorte();
@@ -1938,6 +1942,106 @@ function toonVerlies(e) {
   stem.aan = was;
 }
 
+// ================= Gebed =================
+// Eén keer per bezoek roept een volk het kind aan: "Grote Jake, het is zo droog!" Het kind kan
+// helpen (en ziet dan meteen wat het deed), of "Nu niet" zeggen. Niet antwoorden heeft nooit
+// gevolgen, het verloopt niet, er komt geen teller of rood bolletje (panelgesprek 2).
+let gebedTimer = null;
+let gebedGedaan = null; // voor welke planeet er dit bezoek al gebeden is
+const GAVEN = {
+  water: { icoon: '🌧️', knop: 'Regen sturen', vraag: 'het is zo droog. Wil je regen sturen?' },
+  eten: { icoon: '🍎', knop: 'Fruit laten groeien', vraag: 'we hebben honger. Wil je fruit laten groeien?' },
+  koud: { icoon: '☀️', knop: 'Zonnetje geven', vraag: 'het is zo koud. Wil je de zon laten schijnen?' },
+  heet: { icoon: '🍃', knop: 'Koel briesje', vraag: 'het is zo heet. Wil je een koel briesje sturen?' },
+  feest: { icoon: '🎆', knop: 'Feest geven', vraag: 'het gaat zo goed met ons. Mogen we een feest?' },
+};
+function planGebed(mijn) {
+  clearTimeout(gebedTimer);
+  if (gebedGedaan === wie) return;
+  gebedTimer = setTimeout(() => probeerGebed(mijn), 50000 + Math.random() * 50000);
+}
+function kiesGebed() {
+  const kandidaten = [];
+  for (const wz of recept.wezens || []) {
+    const s = leven.w && leven.w.soorten[wz.id];
+    if (!s || s.uitgestorven !== null || s.afkomst) continue;
+    const m = leven.meters(wz.id);
+    if (!m || m.zegen) continue;
+    const [nood, waarde] = [['eten', m.eten], ['water', m.water], ['warmte', m.warmte]].sort((a, b) => a[1] - b[1])[0];
+    kandidaten.push({ wz, nood: waarde < 0.5 ? (nood === 'warmte' ? (m.koud ? 'koud' : 'heet') : nood) : 'feest', waarde });
+  }
+  if (!kandidaten.length) return null;
+  // Wie het het zwaarst heeft, roept het eerst.
+  kandidaten.sort((a, b) => a.waarde - b.waarde);
+  return kandidaten[0];
+}
+function probeerGebed(mijn, nu = false) {
+  if (mijn !== undefined && mijn !== sessie) return;
+  const druk = !wie || geboorte || !$('#weg').hidden || document.getElementById('verlies') || document.getElementById('tekentafel')?.offsetParent || document.getElementById('wezenkaart-groot') || document.getElementById('ontdekkingsboom') || document.getElementById('gebed') || stem.bezig;
+  if (druk && !nu) return void (gebedTimer = setTimeout(() => probeerGebed(mijn), 20000));
+  const g = kiesGebed();
+  if (!g) return;
+  gebedGedaan = wie;
+  toonGebed(g);
+}
+function toonGebed({ wz, nood }) {
+  const gave = GAVEN[nood];
+  const s = leven.w.soorten[wz.id];
+  const zinnen = [`Grote ${naamVan(wie)}, ${gave.vraag}`];
+  wezens.bidt = wz.id;
+  const d = wezens.willekeurigDier(wz.id);
+  if (d) bezoek(d, wz);
+  const el = document.createElement('section');
+  el.id = 'gebed';
+  el.innerHTML = `<img src="${veilig(beeldVan(wz).open)}" alt="">
+    <div class="gebed-tekst"><small>🙏 De ${veilig(meervoud(wz.naam))} roepen jou</small><span></span></div>
+    <div class="gebed-knoppen">
+      <button class="gebed-ja"><span>${gave.icoon}</span><small>${gave.knop}</small></button>
+      <button class="gebed-nee"><span>🙈</span><small>Nu niet</small></button>
+    </div>`;
+  el.querySelector('.gebed-tekst span').textContent = zinnen[0];
+  document.body.appendChild(el);
+  geluid.plop();
+  stem.zeg(zinnen[0]);
+  const klaar = () => {
+    wezens.bidt = null;
+    el.remove();
+  };
+  el.querySelector('.gebed-nee').onclick = () => {
+    geluid.klik();
+    klaar();
+    stem.zeg('Dat is goed. Ze redden zich wel.');
+  };
+  el.querySelector('.gebed-ja').onclick = () => {
+    klaar();
+    beantwoordGebed(wz, nood, s);
+  };
+}
+function beantwoordGebed(wz, nood, s) {
+  const soort = nood === 'koud' || nood === 'heet' ? 'warmte' : nood;
+  // Meteen iets te zien bij de wezens zelf.
+  const d = volg && volg.mesh ? volg : wezens.willekeurigDier(wz.id);
+  const plek = new THREE.Vector3();
+  if (d) d.mesh.getWorldPosition(plek);
+  else plek.copy(camera.position).multiplyScalar(0.5);
+  const omhoog = plek.clone().normalize().multiplyScalar(0.12 * recept.grootte);
+  if (soort === 'water') {
+    maakStorm(true);
+    geluid.zwiep();
+  }
+  const kleuren = { water: ['#5ac8fa', '#9fe3ff'], eten: ['#ff5050', '#9cff8a', '#ffd34d'], warmte: nood === 'koud' ? ['#ffd34d', '#ffb13a'] : ['#9cff8a', '#c9f7ff'], feest: ['#ffd34d', '#ff5fb0', '#5ac8fa', '#9cff8a', '#c9a8ff'] }[soort];
+  const keer = soort === 'feest' ? 8 : 4;
+  for (let i = 0; i < keer; i++) {
+    setTimeout(() => {
+      const p = plek.clone().add(omhoog).add(new THREE.Vector3().randomDirection().multiplyScalar(0.05 * recept.grootte));
+      vuurwerk.knal(p, kleuren[i % kleuren.length]);
+      if (soort === 'feest') geluid.knal();
+      else geluid.pling(i + 2);
+    }, 200 + i * 350);
+  }
+  setTimeout(() => leven.zegen(wz.id, soort), 1600);
+}
+
 // Live nieuws terwijl je speelt: een kaartje bovenin, het grote nieuws wordt voorgelezen.
 function toonNieuws(lijst) {
   if (leven.bezig || !wie) return;
@@ -2463,7 +2567,7 @@ renderer.setAnimationLoop((nu) => {
   zuinig.meet(dt);
 });
 
-window.__maker = { camera, controls, wezens, leven, beschaving, weer, maakStorm, get planeet() { return planeet; }, get recept() { return recept; }, get volg() { return volg; } }; // alleen voor testen
+window.__maker = { gebed: () => probeerGebed(undefined, true), camera, controls, wezens, leven, beschaving, weer, maakStorm, get planeet() { return planeet; }, get recept() { return recept; }, get volg() { return volg; } }; // alleen voor testen
 // Geopend via een koppel-link (?familie=...)? Dan hoort dit apparaat voortaan bij de familie.
 if (wolk.koppelUitLink()) setTimeout(() => toonMelding('☁️ Gekoppeld! De planeten komen eraan...', 3500), 300);
 $('#kiesknop').addEventListener('click', () => {

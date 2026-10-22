@@ -2,7 +2,7 @@
 // gegaan terwijl niemand keek, rekent elke paar seconden verder en houdt wezens en gebouwen
 // in beeld gelijk met wat er werkelijk gebeurt.
 
-import { meervoud, wonder, nieuweWereld, voegSoortToe, vertrekSoort, terugSoort, stap, inhalen, soortInfo, stormKans, jarenTussen, snelBezig, meld, meters } from './sim.js';
+import { zegen, meervoud, wonder, nieuweWereld, voegSoortToe, vertrekSoort, terugSoort, stap, inhalen, soortInfo, stormKans, jarenTussen, snelBezig, meld, meters } from './sim.js';
 import { maakRegios } from './regio.js';
 import { sleutel } from '../opslag.js';
 
@@ -260,6 +260,17 @@ export class Leven {
     if (stil) return; // stond er al bij het openen
     meld(this.w, 2, '🌉', `De ${meervoud(s.naam)} bouwden een brug over het water! Nu kunnen ze droog naar de overkant.`);
     this.meldNieuws();
+  }
+
+  // Het kind beantwoordde een gebed.
+  zegen(id, soort) {
+    if (!this.w) return false;
+    const ok = zegen(this.w, id, soort);
+    if (ok) {
+      this.meldNieuws();
+      this.toon();
+    }
+    return ok;
   }
 
   // Het kind deed iets groots: zien de gelovige wezens het als een wonder?

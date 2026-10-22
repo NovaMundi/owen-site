@@ -624,14 +624,19 @@ export class WezensLaag {
     const pos = this.iconen.geometry.attributes.position, cel = this.iconen.geometry.attributes.cel, mt = this.iconen.geometry.attributes.maat;
     let ic = 0;
     for (const s of this.soorten.values()) {
-      for (const d of s.dieren) {
-        if (ic >= MAX_ICONEN || !d.taak || !d.mesh.visible || d.geboren < 0) continue;
-        const bij = !d.taak.doel || d.taak.doel.dot(d.dir) > Math.cos(0.006);
+      const bidt = s.w.id === this.bidt;
+      for (let k = 0; k < s.dieren.length; k++) {
+        const d = s.dieren[k];
+        if (ic >= MAX_ICONEN || !d.mesh.visible || d.geboren < 0) continue;
+        // Een gebed aan het kind: een paar van hen laten een 🙏-wolkje zien.
+        const roept = bidt && k % 3 === 0;
+        if (!roept && !d.taak) continue;
+        const bij = roept || !d.taak.doel || d.taak.doel.dot(d.dir) > Math.cos(0.006);
         if (!bij && !ONDERWEG.has(d.taak.soort)) continue;
         const p = d.mesh.position;
         const hoog = d.maat * 1.35 + 0.002 + Math.sin(this.tijd * 2 + d.fase) * d.maat * 0.06;
         pos.setXYZ(ic, p.x + d.dir.x * hoog, p.y + d.dir.y * hoog, p.z + d.dir.z * hoog);
-        cel.setX(ic, d.taak.icoon);
+        cel.setX(ic, roept ? 3 : d.taak.icoon);
         mt.setX(ic, Math.max(0.004, d.maat * 0.55));
         ic++;
       }
