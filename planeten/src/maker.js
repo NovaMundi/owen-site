@@ -20,6 +20,7 @@ import * as K from './keuzes.js';
 import { lees, schrijf, mediaKlaar, SANDBOX } from './opslag.js';
 import { icoon } from './iconen.js';
 import { openKiezen } from './kiezen.js';
+import { toonWezenKaart } from './wezenkaart.js';
 
 // ================= Opslag =================
 const OPSLAG = 'planeetmakers-v1';
@@ -95,6 +96,8 @@ const beschaving = new BeschavingLaag();
 houder.add(beschaving.groep);
 // ?tijd=60 in de adresbalk laat de tijd 60 keer sneller gaan (om te testen).
 const snelheid = Math.max(1, Number(new URLSearchParams(location.search).get('tijd')) || 1);
+// De wezens weten waar hun huizen, vuren, tempels en bouwplaatsen zijn (voor hun taken).
+wezens.dorp = beschaving;
 const leven = new Leven({ wezens, beeld: beschaving, snelheid, opNieuws: (lijst) => toonNieuws(lijst), opNieuweSoort: (s) => nieuweSoortErbij(s), opBewaard: (w) => wolk.planStuur(w, 60000) });
 let wezenIds = '';
 
@@ -956,6 +959,7 @@ const PANELEN = {
           // Meteen een storm laten zien, zodat je weet wat het doet.
           maakStorm(true);
           stem.zeg('Nu komen er vaker stormen. Maar niet altijd!');
+          leven.wonder('storm');
         }
         wijzig();
       }, { aan: recept.onweer })
@@ -1044,6 +1048,7 @@ const PANELEN = {
         opslaan();
         geluid.geboorte();
         stem.zeg(`Daar is ${w.naam}! Kijk, hij leeft!`);
+        setTimeout(() => leven.wonder('wezen'), 4000);
         if (gereedschap === 'wezens') toonPaneel('wezens', false);
         // Even wachten tot ze geplaatst zijn, dan erheen vliegen.
         setTimeout(() => {
@@ -1064,6 +1069,8 @@ const PANELEN = {
           : `${rolTekst(info)} · 👪 ${telTekst(info.totaal)} · ${info.tijdperk.icoon} ${info.tijdperk.naam}`;
       kaart.innerHTML = `<img src="${beeldVan(w).open}" alt=""><div class="wezen-info"><b></b><span>${stand}</span></div>`;
       kaart.querySelector('b').textContent = w.naam;
+      kaart.querySelector('img').classList.add('tikbaar');
+      kaart.querySelector('img').addEventListener('click', () => openKaart(w));
       const knoppen = document.createElement('div');
       knoppen.className = 'wezen-knoppen';
       // Elke knop heeft een woordje eronder; lang drukken leest het voor.
@@ -1158,6 +1165,8 @@ const PANELEN = {
           <div class="soort-tech">${tech + slaapt || '<span class="dim">Nog niets ontdekt</span>'}</div>
         </div>`;
       kaart.querySelector('b').textContent = meervoud(wz.naam);
+      kaart.querySelector('img').classList.add('tikbaar');
+      kaart.querySelector('img').addEventListener('click', () => openKaart(wz));
       // Drie gezichtjes: eten, water, warmte. Tikken leest voor hoe het gaat en waarom.
       const m = !dood && leven.meters(wz.id);
       if (m) {
@@ -1373,6 +1382,7 @@ function vasthouden(knopEl, richting) {
   const start = (e) => {
     e.preventDefault();
     if (gieten === 0) bewaarStap();
+    if (richting > 0) leven.wonder('water');
     gieten = richting;
     knopEl.classList.add('ingedrukt');
   };
@@ -1556,12 +1566,14 @@ function dep(r, eerste) {
     p.t = 'h';
     p.a = penseel.richting * (penseel.groot ? 0.07 : 0.09);
     if (eerste || Math.random() < 0.3) penseel.richting > 0 ? geluid.rommel() : geluid.schep();
+    if (eerste) leven.wonder(penseel.richting > 0 ? 'berg' : 'kuil');
   } else if (penseel.gum) {
     p.t = 'g';
   } else {
     p.t = 'v';
     p.k = penseel.kleur;
     if (eerste || Math.random() < 0.25) geluid.kwast();
+    if (eerste) leven.wonder('verf');
   }
   recept.penseel = [...recept.penseel, p];
   wijzig();
@@ -1674,6 +1686,21 @@ function kiesHuid(w) {
     const v = $('#vraag');
     v.querySelector('.ja').hidden = false;
     v.querySelector('.nee').textContent = 'Nee';
+  });
+}
+
+// De grote kaart van een wezen (zie wezenkaart.js).
+function openKaart(w) {
+  toonWezenKaart({
+    wezen: w,
+    leven,
+    maker: wie,
+    opBezoek: () => {
+      sluitPaneel();
+      const d = wezens.willekeurigDier(w.id);
+      if (d) bezoek(d, w);
+    },
+    opGeluid: () => maakGeluid(w, 1),
   });
 }
 
@@ -1958,6 +1985,7 @@ function feest() {
   recept.klaar = true;
   opslaan();
   sluitPaneel();
+  leven.wonder('feest');
   clearTimeout(hdTimer);
   geluid.fanfare();
   const naam = recept.naam || `de planeet van ${naamVan(wie)}`;
@@ -2209,6 +2237,8 @@ zuinig.sinds = performance.now();
 const klok = new THREE.Clock();
 const zonPlek = new THREE.Vector3();
 const zonRichting = new THREE.Vector3();
+wezens.zon = zonRichting; // aan de nachtkant gaan ze slapen
+beschaving.opBrug = (sid) => leven.brug(sid);
 const asY = new THREE.Vector3(0, 1, 0);
 renderer.setAnimationLoop((nu) => {
   const dt = Math.min(klok.getDelta(), 0.05);

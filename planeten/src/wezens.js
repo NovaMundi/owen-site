@@ -44,6 +44,33 @@ export function beeldVan(w) {
 }
 const sleutelVan = (w) => { const b = beeldVan(w); return JSON.stringify([b.open.length, b.open.slice(-40), w.beweging, w.maat, w.kijkt]); };
 
+// ---- Wat ze aan het doen zijn: een klein wolkje boven hun hoofd (zoals in De Sims) ----
+const TAAK_ICOON = ['🔨', '💤', '🍎', '🙏', '🔥', '🌾'];
+let atlasTex = null;
+function atlas() {
+  if (atlasTex) return atlasTex;
+  const C = 96;
+  const d = document.createElement('canvas');
+  d.width = C * TAAK_ICOON.length;
+  d.height = C;
+  const ctx = d.getContext('2d');
+  TAAK_ICOON.forEach((e, i) => {
+    // Wit wolkje met het icoon erin.
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.beginPath();
+    ctx.arc(i * C + C / 2, C / 2, C * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = `${Math.round(C * 0.5)}px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(e, i * C + C / 2, C / 2 + C * 0.04);
+  });
+  atlasTex = new THREE.CanvasTexture(d);
+  atlasTex.colorSpace = THREE.SRGBColorSpace;
+  return atlasTex;
+}
+const MAX_ICONEN = 260;
+
 export class WezensLaag {
   constructor() {
     this.groep = new THREE.Group();
@@ -52,6 +79,94 @@ export class WezensLaag {
     this.vlak = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0);
     this.schaduwGeo = new THREE.CircleGeometry(0.5, 20);
     this.tijd = 0;
+    this.dorp = null; // de beschavingslaag: waar zijn huizen, vuren, tempels en bouwplaatsen?
+    this.zon = new THREE.Vector3(1, 0, 0); // richting van de zon: aan de nachtkant gaan ze slapen
+    // Wolkjes met wat ze doen: één tekenopdracht voor allemaal.
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAX_ICONEN * 3), 3));
+    g.setAttribute('cel', new THREE.BufferAttribute(new Float32Array(MAX_ICONEN), 1));
+    g.setAttribute('maat', new THREE.BufferAttribute(new Float32Array(MAX_ICONEN), 1));
+    g.setDrawRange(0, 0);
+    this.iconen = new THREE.Points(
+      g,
+      new THREE.ShaderMaterial({
+        uniforms: { kaart: { value: atlas() }, cellen: { value: TAAK_ICOON.length } },
+        vertexShader: `
+          attribute float cel;
+          attribute float maat;
+          varying float vCel;
+          varying float vZicht;
+          void main() {
+            vCel = cel;
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            // Alleen als je dichtbij kijkt; van ver zou het een rommeltje worden.
+            vZicht = 1.0 - smoothstep(0.5, 1.3, -mv.z);
+            gl_PointSize = maat * (300.0 / -mv.z);
+            gl_Position = projectionMatrix * mv;
+          }`,
+        fragmentShader: `
+          uniform sampler2D kaart;
+          uniform float cellen;
+          varying float vCel;
+          varying float vZicht;
+          void main() {
+            vec2 uv = vec2((vCel + gl_PointCoord.x) / cellen, 1.0 - gl_PointCoord.y);
+            vec4 c = texture2D(kaart, uv);
+            if (c.a * vZicht < 0.05) discard;
+            gl_FragColor = vec4(c.rgb, c.a * vZicht);
+          }`,
+        transparent: true,
+        depthWrite: false,
+      })
+    );
+    this.iconen.frustumCulled = false;
+    this.groep.add(this.iconen);
+  }
+
+  // Een nieuwe taak kiezen voor een dier: wat past bij de tijd van de dag en bij wat er te doen is?
+  kiesTaak(s, d) {
+    const id = s.w.id, b = s.w.beweging;
+    const plek = this.dorp && this.dorp.plekken ? this.dorp.plekken.get(id) : null;
+    const licht = this.zon ? d.dir.dot(this.zon) : 1;
+    const nacht = licht < -0.15, avond = !nacht && licht < 0.1;
+    const dichtbij = (lijst, max) => {
+      let beste = null, bd = Math.cos(max);
+      for (const p of lijst || []) {
+        const dot = p.dot(d.dir);
+        if (dot > bd) (bd = dot), (beste = p);
+      }
+      return beste;
+    };
+    const naast = (p, afstand = 0.006) => {
+      const t = new THREE.Vector3().randomDirection();
+      t.addScaledVector(p, -t.dot(p)).normalize();
+      return p.clone().addScaledVector(t, afstand * (0.4 + Math.random())).normalize();
+    };
+    let taak = null;
+    const lopers = b === 'lopen' || b === 'huppen';
+    if (nacht) {
+      const huis = lopers && plek && dichtbij(plek.huis, 0.25);
+      taak = { soort: 'slapen', doel: huis ? naast(huis, 0.004) : null, icoon: 1 };
+    } else if (lopers && this.dorp && Math.random() < 0.7) {
+      const bouw = dichtbij(this.dorp.bouwVoor(id), 0.3);
+      if (bouw) taak = { soort: 'bouwen', doel: naast(bouw, 0.005), icoon: 0 };
+    }
+    // Feest bij de tempel: iedereen komt samen en buigt voor hun god.
+    if (!taak && lopers && plek && plek.tempel && this.tijd % 80 < 20 && plek.tempel.dot(d.dir) > Math.cos(0.35)) taak = { soort: 'bidden', doel: naast(plek.tempel, 0.012), icoon: 3 };
+    if (!taak && lopers && avond && plek) {
+      const vuur = dichtbij(plek.vuur, 0.25);
+      if (vuur) taak = { soort: 'vuur', doel: naast(vuur, 0.006), icoon: 4 };
+    }
+    if (!taak) {
+      const k = Math.random();
+      if (k < 0.4) taak = { soort: 'eten', doel: naast(d.dir, 0.03), icoon: 2 };
+      else if (k < 0.6 && lopers && plek && plek.akker.length) {
+        const akker = dichtbij(plek.akker, 0.2);
+        if (akker) taak = { soort: 'akker', doel: naast(akker, 0.004), icoon: 5 };
+      }
+    }
+    d.taak = taak;
+    d.taakTot = this.tijd + (taak ? 10 + Math.random() * 14 : 4 + Math.random() * 6);
   }
 
   // Lijst wezens uit het recept bijhouden: alleen veranderde soorten opnieuw maken.
@@ -258,6 +373,17 @@ export class WezensLaag {
         }
         d.mesh.visible = true;
 
+        // ---- Wat gaat hij doen? ----
+        if (!d.taakTot || this.tijd > d.taakTot) this.kiesTaak(s, d);
+        const taak = d.taak;
+        let bezig = false; // aangekomen bij zijn taak (dan staat hij stil en doet het)
+        if (taak) {
+          if (!taak.doel || taak.doel.dot(d.dir) > Math.cos(0.006)) {
+            bezig = true;
+            d.pauze = Math.max(d.pauze, 0.2);
+          }
+        }
+
         // ---- Bewegen over een grote cirkel ----
         d.pauze -= dt;
         d.vrij = Math.max(0, (d.vrij || 0) - dt);
@@ -292,14 +418,19 @@ export class WezensLaag {
           }
           // Een beetje slingeren, zoals echte dieren.
           d.koers.applyAxisAngle(d.dir, (Math.random() - 0.5) * dt * 2.2);
+          // Op weg naar zijn taak: daarheen sturen (en dan niet naar huis trekken).
+          if (taak && taak.doel && !bezig && !d.vrij) {
+            const naar = taak.doel.clone().addScaledVector(d.dir, -taak.doel.dot(d.dir));
+            if (naar.lengthSq() > 1e-10) d.koers.lerp(naar.normalize(), Math.min(1, dt * 5));
+          }
           // Niet te ver van huis: langzaam terugsturen naar hun eigen gebied.
-          if (d.thuis && !d.vrij && d.dir.dot(d.thuis) < Math.cos(0.09)) {
+          else if (d.thuis && !d.vrij && d.dir.dot(d.thuis) < Math.cos(0.09)) {
             const naarHuis = d.thuis.clone().addScaledVector(d.dir, -d.thuis.dot(d.dir));
             if (naarHuis.lengthSq() > 1e-8) d.koers.lerp(naarHuis.normalize(), Math.min(1, dt * 1.5));
           }
           d.koers.addScaledVector(d.dir, -d.koers.dot(d.dir)).normalize();
         }
-        if (actief && (b === 'lopen' || b === 'huppen') && Math.random() < dt * 0.1) d.pauze = 0.8 + Math.random() * 2;
+        if (!taak && actief && (b === 'lopen' || b === 'huppen') && Math.random() < dt * 0.1) d.pauze = 0.8 + Math.random() * 2;
 
         // ---- Hoogte ----
         // Staat hij stil, dan af en toe opnieuw kijken (er kan net geboetseerd zijn onder zijn voeten).
@@ -335,6 +466,23 @@ export class WezensLaag {
         } else if (b === 'zweven') {
           hoogte += d.maat * 0.7 + Math.sin(t * 1.2) * d.maat * 0.3;
           kantel = Math.sin(t * 0.8) * 0.1;
+        }
+        // Bezig met zijn taak: dat zie je aan hoe hij beweegt.
+        if (bezig && taak) {
+          if (taak.soort === 'bouwen') {
+            hoogte += Math.abs(Math.sin(t * 11)) * d.maat * 0.25;
+            kantel = Math.sin(t * 11) * 0.3;
+          } else if (taak.soort === 'bidden') {
+            kantel = Math.sin(t * 1.6) > 0 ? 0.55 : 0.05; // buigen
+          } else if (taak.soort === 'vuur') {
+            hoogte += Math.abs(Math.sin(t * 5)) * d.maat * 0.45; // dansen rond het vuur
+            kantel = Math.sin(t * 2.5) * 0.25;
+          } else if (taak.soort === 'slapen') {
+            kantel = 0.9; // liggen
+            squash = 0.9 + Math.sin(t * 1.5) * 0.04;
+          } else if (taak.soort === 'eten' || taak.soort === 'akker') {
+            kantel = 0.25 + Math.sin(t * 7) * 0.15; // knabbelen of werken op het land
+          }
         }
         // Opspringen na een tik.
         if (d.sprong > 0) {
@@ -392,6 +540,24 @@ export class WezensLaag {
       s.dichtInst.instanceMatrix.needsUpdate = true;
       s.schaduwInst.instanceMatrix.needsUpdate = true;
     }
+    // Wolkjes boven wie iets aan het doen is.
+    const pos = this.iconen.geometry.attributes.position, cel = this.iconen.geometry.attributes.cel, mt = this.iconen.geometry.attributes.maat;
+    let ic = 0;
+    for (const s of this.soorten.values()) {
+      for (const d of s.dieren) {
+        if (ic >= MAX_ICONEN || !d.taak || !d.mesh.visible || d.geboren < 0) continue;
+        const bij = !d.taak.doel || d.taak.doel.dot(d.dir) > Math.cos(0.006);
+        if (!bij) continue;
+        const p = d.mesh.position;
+        const hoog = d.maat * 1.35 + 0.002 + Math.sin(this.tijd * 2 + d.fase) * d.maat * 0.06;
+        pos.setXYZ(ic, p.x + d.dir.x * hoog, p.y + d.dir.y * hoog, p.z + d.dir.z * hoog);
+        cel.setX(ic, d.taak.icoon);
+        mt.setX(ic, Math.max(0.006, d.maat * 0.7));
+        ic++;
+      }
+    }
+    pos.needsUpdate = cel.needsUpdate = mt.needsUpdate = true;
+    this.iconen.geometry.setDrawRange(0, ic);
   }
 
   // Welk dier zit onder deze straal (in wereldcoördinaten)?

@@ -2,7 +2,7 @@
 // gegaan terwijl niemand keek, rekent elke paar seconden verder en houdt wezens en gebouwen
 // in beeld gelijk met wat er werkelijk gebeurt.
 
-import { nieuweWereld, voegSoortToe, vertrekSoort, terugSoort, stap, inhalen, soortInfo, stormKans, jarenTussen, snelBezig, meld, meters } from './sim.js';
+import { meervoud, wonder, nieuweWereld, voegSoortToe, vertrekSoort, terugSoort, stap, inhalen, soortInfo, stormKans, jarenTussen, snelBezig, meld, meters } from './sim.js';
 import { maakRegios } from './regio.js';
 import { sleutel } from '../opslag.js';
 
@@ -90,6 +90,7 @@ export class Leven {
     this.recept = recept;
     this.planeet = planeet;
     this.w = leesAlles()[wie] || null;
+    if (this.w) this.w.maker = wie;
     this.leesRegios();
     let weg = null;
     if (this.w) {
@@ -185,6 +186,7 @@ export class Leven {
     if (!this.w) {
       this.w = nieuweWereld(recept.zaad, nu);
       this.w.planeet = this.planeetInfo;
+      this.w.maker = this.wie;
       this.gezien = 0;
     }
     // Het allereerste wezen op deze planeet: het eerste halfuur gaat de tijd supersnel.
@@ -242,6 +244,21 @@ export class Leven {
     this.toon();
     this.bewaar();
     return { minuten, jaren: this.w.jaar - jaarVoor, nieuws, jaarVoor };
+  }
+
+  // Er is een brug gebouwd (dat ziet de beschavingslaag): de eerste keer per soort komt het in het verhaal.
+  brug(sid) {
+    const s = this.w && this.w.soorten[sid];
+    if (!s || s.vlaggen.brug) return;
+    s.vlaggen.brug = 1;
+    meld(this.w, 2, '🌉', `De ${meervoud(s.naam)} bouwden een brug over het water! Nu kunnen ze droog naar de overkant.`);
+    this.meldNieuws();
+  }
+
+  // Het kind deed iets groots: zien de gelovige wezens het als een wonder?
+  wonder(soort) {
+    if (!this.actief) return;
+    if (wonder(this.w, soort)) this.meldNieuws();
   }
 
   // Het snelle begin is voorbij: dat zeggen, anders lijkt het alsof het spel kapot is.

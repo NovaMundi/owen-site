@@ -453,3 +453,29 @@ h1 .logo { width: min(640px, 82vw); height: auto; display: block; margin: 0 auto
 .kies-kaart.aan .hartje { display: block; animation: wiebel 1s ease-in-out infinite; }
 @media (max-width: 560px) { .kies-kaarten { grid-template-columns: repeat(2, 1fr); } .kies-kaart .kies-plaat { width: 90px; height: 90px; } }
 .kies-doos { background: #1b1d2c; }
+/* De grote kaart van een wezen */
+img.tikbaar { cursor: pointer; }
+#wezenkaart-groot { position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; background: rgba(5, 6, 15, 0.8); padding: 14px; overflow-y: auto; }
+.wk-doos { position: relative; background: #1b1d2c; border: 1px solid var(--rand); border-radius: 26px; padding: 20px; width: min(620px, 100%); max-height: calc(100vh - 28px); overflow-y: auto; }
+.wk-dicht { position: absolute; top: 12px; right: 12px; }
+.wk-kop { display: flex; gap: 16px; align-items: center; }
+.wk-plaatje { width: 150px; height: 150px; object-fit: contain; animation: hup 1.8s ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.4)); flex-shrink: 0; }
+.wk-plaatje.dood { filter: grayscale(1) opacity(0.6); animation: none; }
+.wk-titel h2 { margin: 0 0 6px; font-size: 30px; }
+.wk-sub { opacity: 0.8; font-size: 15px; margin-top: 2px; }
+.wk-cijfers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0 8px; }
+.wk-cijfer { background: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 10px 6px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.wk-cijfer b { font-size: 20px; }
+.wk-cijfer span { font-size: 12px; opacity: 0.8; }
+.wk-cijfer.wijd { grid-column: 1 / -1; }
+.wk-meters { display: flex; gap: 8px; margin: 8px 0; }
+.wk-extra { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.wk-extra span { background: rgba(255, 211, 77, 0.15); border-radius: 12px; padding: 6px 10px; font-size: 14px; }
+.wk-doos h3 { margin: 14px 0 6px; font-size: 17px; opacity: 0.9; }
+.wk-ontdekt { display: flex; flex-wrap: wrap; gap: 6px; }
+.wk-ontdekt span { display: inline-flex; gap: 4px; align-items: center; background: rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 5px 9px; font-size: 13px; }
+.wk-ontdekt i { font-style: normal; font-size: 17px; }
+.wk-momenten { display: flex; flex-direction: column; gap: 6px; }
+.wk-momenten .gebeurtenis { text-align: left; border: 0; color: inherit; font: inherit; width: 100%; }
+.wk-knoppen { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+@media (max-width: 560px) { .wk-cijfers { grid-template-columns: repeat(2, 1fr); } .wk-plaatje { width: 100px; height: 100px; } }

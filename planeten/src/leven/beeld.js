@@ -8,7 +8,9 @@ import { maakRandom } from '../ruis.js';
 import { MATEN } from '../keuzes.js';
 import { niveau } from './sim.js';
 
-const MAX = { hol: 3000, wand: 4000, dak: 4000, akker: 2500, gebouw: 8000, boot: 400, raket: 12, heuvel: 1500, fabriek: 600, molen: 600, koraal: 1500 };
+const BOUWTIJD = 30000; // zo lang (echte tijd) staat een nieuw bouwwerk in de steigers
+const GODKLEUR = { owen: '#5ab8ff', jake: '#7ad04a', papa: '#ff9a3a' };
+const MAX = { tempel: 40, brug: 2000, hol: 3000, wand: 4000, dak: 4000, akker: 2500, gebouw: 8000, boot: 400, raket: 12, heuvel: 1500, fabriek: 600, molen: 600, koraal: 1500 };
 
 let puntTex = null;
 function punt() {
@@ -102,7 +104,27 @@ function vormen() {
   }
   takken.push(new THREE.CylinderGeometry(0.12, 0.16, 0.3, 7).translate(0, 0.15, 0));
   const koraal = grijs(mergeGeometries(takken.map((g) => g.toNonIndexed())), (x, y) => 0.7 + y * 0.5);
-  return { hol, wand, dak, akker, gebouw, fabriek, mast, rotor, koraal };
+  // Tempel: trappen, zuilen en een dak; ervoor een beeld van de god (het kind dat de planeet maakte).
+  const tempel = samenVoeg([
+    grijs(new THREE.BoxGeometry(1.2, 0.12, 1.2).translate(0, 0.06, 0), 0.75),
+    grijs(new THREE.BoxGeometry(1.0, 0.12, 1.0).translate(0, 0.18, 0), 0.85),
+    ...[[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]].map(([x, z]) => grijs(new THREE.CylinderGeometry(0.07, 0.08, 0.6, 8).translate(x, 0.54, z), 1)),
+    grijs(new THREE.BoxGeometry(1.0, 0.1, 1.0).translate(0, 0.89, 0), 0.9),
+    grijs(new THREE.ConeGeometry(0.75, 0.35, 4).rotateY(Math.PI / 4).translate(0, 1.11, 0), 0.75),
+  ]);
+  const beeld = samenVoeg([
+    grijs(new THREE.BoxGeometry(0.4, 0.25, 0.4).translate(0, 0.125, 0), 0.6),
+    grijs(new THREE.CylinderGeometry(0.12, 0.18, 0.45, 10).translate(0, 0.47, 0), 1),
+    grijs(new THREE.SphereGeometry(0.14, 12, 8).translate(0, 0.82, 0), 1.1),
+    grijs(new THREE.OctahedronGeometry(0.09).translate(0, 1.05, 0), 1.2),
+  ]);
+  // Brug: een plank met een randje aan beide kanten.
+  const brug = samenVoeg([
+    grijs(new THREE.BoxGeometry(1, 0.12, 1), 0.9),
+    grijs(new THREE.BoxGeometry(1, 0.25, 0.08).translate(0, 0.15, 0.46), 0.6),
+    grijs(new THREE.BoxGeometry(1, 0.25, 0.08).translate(0, 0.15, -0.46), 0.6),
+  ]);
+  return { hol, wand, dak, akker, gebouw, fabriek, mast, rotor, koraal, tempel, beeld, brug };
 }
 
 export class BeschavingLaag {
@@ -121,7 +143,15 @@ export class BeschavingLaag {
     this.mast = instanties(v.mast, klei(), MAX.molen);
     this.rotor = instanties(v.rotor, klei(), MAX.molen);
     this.koraal = instanties(v.koraal, klei(), MAX.koraal);
-    this.groep.add(this.fabriek, this.mast, this.rotor, this.koraal);
+    this.tempel = instanties(v.tempel, klei(), MAX.tempel);
+    this.beeld = instanties(v.beeld, new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, metalness: 0.5, roughness: 0.35 }), MAX.tempel);
+    this.brug = instanties(v.brug, klei(), MAX.brug);
+    this.groep.add(this.fabriek, this.mast, this.rotor, this.koraal, this.tempel, this.beeld, this.brug);
+    this.groei = [];
+    this.plekken = new Map();
+    this.gezienPlek = new Map();
+    this.bekendeBruggen = new Set();
+    this.opBrug = null; // wordt gezet door wie het verhaal bijhoudt
     this.molens = [];
     this.rookBronnen = [];
     const romp = new THREE.BoxGeometry(1, 0.3, 0.4).translate(0, 0.15, 0);
@@ -208,6 +238,17 @@ export class BeschavingLaag {
     this.planeetSleutel = planeetSleutel;
     this.laatsteZet = nu;
     this.sleutel = sleutel;
+    // De eerste keer staat alles er gewoon; daarna wordt wat nieuw is zichtbaar gebouwd.
+    const eerste = !this.gebouwd;
+    this.gebouwd = true;
+    this.groei = [];
+    this.plekken = new Map();
+    let huidigSoort = null, wat = null;
+    const plekVan = (sid) => {
+      let p = this.plekken.get(sid);
+      if (!p) this.plekken.set(sid, (p = { huis: [], vuur: [], akker: [], tempel: null }));
+      return p;
+    };
     this.leeg(false);
 
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();
@@ -230,9 +271,15 @@ export class BeschavingLaag {
       v.copy(dir).multiplyScalar(r - schaal.y * 0.05);
       q.setFromUnitVectors(omhoog, dir).multiply(draai.setFromAxisAngle(omhoog, hoek));
       m4.compose(v, q, sc.copy(schaal));
+      // Nieuw? Dan groeit het de komende tijd op uit de steigers (zie update).
+      const k = mesh.id + ':' + dir.x.toFixed(4) + ',' + dir.y.toFixed(4) + ',' + dir.z.toFixed(4); // plek op de bol, niet de hoogte
+      let t0 = this.gezienPlek.get(k);
+      if (t0 === undefined) this.gezienPlek.set(k, (t0 = eerste ? -1e9 : nu));
+      if (nu - t0 < BOUWTIJD) this.groei.push({ mesh, i: mesh.count, m: m4.clone(), t0, dir: dir.clone(), sid: huidigSoort });
       mesh.setMatrixAt(mesh.count, m4);
       mesh.setColorAt(mesh.count, kleur.set(kleurHex));
       mesh.count++;
+      if (huidigSoort && wat) plekVan(huidigSoort)[wat].push(dir.clone());
       return v.clone();
     };
     // Vaste plekken (uit het eigen toevalsgetal van dat dorp): opnieuw neerzetten verschuift niets.
@@ -246,6 +293,8 @@ export class BeschavingLaag {
 
     const centra = new Map(); // voor wegen
     for (const { g, s, n } of groepen) {
+      huidigSoort = s.id;
+      wat = null;
       const reg = regios[g.regio];
       const midden = new THREE.Vector3(...reg.dir);
       // Elk soort bouwwerk een eigen vaste reeks: komt er een hutje bij, dan blijft de rest staan.
@@ -267,7 +316,9 @@ export class BeschavingLaag {
           plaats(this.heuvel, verspreid(rnd, midden, straal), new THREE.Vector3(h * 0.6, h, h * 0.6), ['#a8784e', '#9a6c45', '#b88a5c'][i % 3], rnd() * 6);
         }
       }
+      wat = 'huis';
       if (n >= 1) for (let i = 0, rnd = stroom('o'); i < 3; i++) plaats(this.hol, verspreid(rnd, midden, straal), sc.set(maat * 0.9, maat * 0.45, maat * 0.9).clone(), onder ? '#c98a6a' : '#4a3a2e', 0, onder);
+      wat = 'vuur';
       if (n >= 2 && !onder) {
         const p = plaats(this.hol, midden.clone(), new THREE.Vector3(maat * 0.6, maat * 0.12, maat * 0.6), '#6b6b6b');
         if (p) {
@@ -275,6 +326,7 @@ export class BeschavingLaag {
           vuurSize.push(maat * 0.9);
         }
       }
+      wat = 'huis';
       const hutten = n >= 6 ? 0 : n === 5 ? 6 : n === 4 ? 9 : n === 3 ? 4 : 0;
       for (let i = 0, rnd = stroom('u'); i < hutten; i++) {
         const dir = verspreid(rnd, midden, straal);
@@ -284,15 +336,17 @@ export class BeschavingLaag {
         else if (plaats(this.wand, dir, s3, wandKleur, rnd() * 6, onder)) plaats(this.dak, dir, s3, dakKleur, rnd() * 6, onder);
       }
       if (n >= 4 && !onder) {
+        wat = 'akker';
         const akkerKleuren = ['#e7c65a', '#9ccc5a', '#c9a24a', '#7fbf4a'];
         for (let i = 0, rnd = stroom('a'); i < (n >= 5 ? 8 : 5); i++) {
           const dir = verspreid(rnd, midden, straal * 1.6);
           plaats(this.akker, dir, new THREE.Vector3(maat * 2.6, maat, maat * 2.6), akkerKleuren[i % 4], rnd() * 6);
         }
       }
+      wat = 'huis';
       if (n >= 5) {
         const aantal = n === 6 ? 34 : 16;
-        for (let i = 0, rnd = stroom('g' + n); i < aantal; i++) {
+        for (let i = 0, rnd = stroom('g'); i < aantal; i++) {
           const dir = verspreid(rnd, midden, straal * (n === 6 ? 1.1 : 0.9));
           const hoog = maat * (n === 6 ? 1.5 + rnd() ** 2 * 5 : 1 + rnd() * 1.8);
           const breed = maat * (0.9 + rnd() * 0.6);
@@ -307,6 +361,7 @@ export class BeschavingLaag {
           }
         }
       }
+      wat = null;
       // Fabrieken (met rook) zodra ze machines hebben; met schone energie komen er windmolens bij
       // en gaat de rook uit. Zo zie je op de planeet zelf wat schone energie betekent.
       if (n >= 5 && !onder && s.tech.includes('machines')) {
@@ -333,22 +388,72 @@ export class BeschavingLaag {
       }
     }
 
-    // Wegen tussen naburige dorpen en steden van dezelfde soort.
-    for (const [, lijst] of centra) {
+    // Tempels: bij het grootste dorp van elke gelovige soort, met een beeld van hun god.
+    huidigSoort = null;
+    wat = null;
+    for (const s of Object.values(wereld.soorten)) {
+      if (!s.geloof || s.uitgestorven !== null) continue;
+      const dorp = groepen.filter((x) => x.s === s && x.n >= 3 && regios[x.g.regio].land).sort((a, b) => b.g.pop - a.g.pop)[0];
+      if (!dorp) continue;
+      const midden = new THREE.Vector3(...regios[dorp.g.regio].dir);
+      const rnd = maakRandom(dorp.g.regio + s.id + 'tempel');
+      const maat = Math.min(0.022, Math.max(0.006, (MATEN.find((m) => m.id === s.maat) || MATEN[1]).maat * (s.genen.grootte || 1)));
+      const dir = verspreid(rnd, midden, 0.03);
+      huidigSoort = s.id;
+      const hoek = rnd() * 6;
+      const p = plaats(this.tempel, dir, new THREE.Vector3(maat * 3, maat * 3, maat * 3), '#efe3c4', hoek);
+      if (p) {
+        plekVan(s.id).tempel = dir.clone();
+        const voor = verspreid(rnd, dir, 0.012);
+        plaats(this.beeld, voor, new THREE.Vector3(maat * 2.4, maat * 2.4, maat * 2.4), GODKLEUR[s.geloof.god] || '#ffd34d', hoek);
+      }
+      huidigSoort = null;
+    }
+
+    // Wegen tussen naburige dorpen en steden van dezelfde soort. Wie het wiel kent, slaat bruggen
+    // over smalle stukken water.
+    for (const [sid, lijst] of centra) {
+      const kanBrug = wereld.soorten[sid]?.tech.includes('wiel');
       const ids = new Set(lijst.map((c) => c.regio));
       for (const c of lijst) {
         for (const b of regios[c.regio].buren) {
           if (b < c.regio || !ids.has(b)) continue;
           const doel = new THREE.Vector3(...regios[b].dir);
           const punten = [];
-          let nat = false;
+          let natAantal = 0;
+          const natte = [];
           for (let k = 0; k <= 10; k++) {
             const dir = c.dir.clone().lerp(doel, k / 10).normalize();
             const r = grondOnder(dir);
-            if (zee > 0 && r < zee) nat = true; // geen wegen over zee
-            punten.push(dir.multiplyScalar(Math.max(r, zee) + 0.0012 * recept.grootte));
+            const isNat = zee > 0 && r < zee;
+            natte.push(isNat);
+            if (isNat) natAantal++;
+            punten.push(dir.multiplyScalar(Math.max(r, zee) + (isNat ? 0.004 : 0.0012) * recept.grootte));
           }
-          if (nat) continue;
+          if (natAantal && (!kanBrug || natAantal > 4)) continue; // te veel water: geen weg
+          if (natAantal) {
+            // Een brug: planken over het water.
+            for (let k = 1; k < punten.length; k++) {
+              if (!natte[k] && !natte[k - 1]) continue;
+              if (this.brug.count >= MAX.brug) break;
+              const a = punten[k - 1], bb = punten[k];
+              const mid = a.clone().add(bb).multiplyScalar(0.5);
+              const lang = a.distanceTo(bb);
+              const x = bb.clone().sub(a).normalize();
+              const y = mid.clone().normalize();
+              const z = new THREE.Vector3().crossVectors(x, y).normalize();
+              y.crossVectors(z, x);
+              m4.makeBasis(x, y, z).scale(new THREE.Vector3(lang * 1.05, 0.0012 * recept.grootte, 0.0045 * recept.grootte)).setPosition(mid);
+              this.brug.setMatrixAt(this.brug.count, m4);
+              this.brug.setColorAt(this.brug.count, kleur.set('#a8794e'));
+              this.brug.count++;
+            }
+            const bk = sid + ':' + c.regio + '-' + b;
+            if (!this.bekendeBruggen.has(bk)) {
+              this.bekendeBruggen.add(bk);
+              if (!eerste && this.opBrug) this.opBrug(sid);
+            }
+          }
           for (let k = 1; k < punten.length; k++) weg.push(punten[k - 1].x, punten[k - 1].y, punten[k - 1].z, punten[k].x, punten[k].y, punten[k].z);
         }
       }
@@ -388,7 +493,7 @@ export class BeschavingLaag {
     this.vulPunten(this.vuur, vuurPos, vuurSize);
     this.vulPunten(this.licht, lichtPos, lichtSize);
     this.rotor.count = this.molens.length;
-    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.heuvel, this.fabriek, this.mast, this.koraal]) {
+    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.heuvel, this.fabriek, this.mast, this.koraal, this.tempel, this.beeld, this.brug]) {
       m.instanceMatrix.needsUpdate = true;
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     }
@@ -402,10 +507,17 @@ export class BeschavingLaag {
     const k = g.regio + '|' + s.id;
     const was = this.getoond.get(k);
     const nu = performance.now();
-    if (!was || n >= was.n || nu - was.t > 30000) {
+    if (!was) {
       this.getoond.set(k, { n, t: nu });
       return n;
     }
+    // Omhoog pas met wat speling (15% boven de grens), omlaag pas na een halve minuut.
+    const ruim = niveau(s, { ...g, pop: g.pop * 0.87 });
+    if (ruim > was.n || (n < was.n && nu - was.t > 30000)) {
+      this.getoond.set(k, { n: n < was.n ? n : ruim, t: nu });
+      return n < was.n ? n : ruim;
+    }
+    if (n >= was.n) was.t = nu;
     return was.n;
   }
 
@@ -422,7 +534,15 @@ export class BeschavingLaag {
 
   leeg(ookSleutel = true) {
     if (ookSleutel) this.sleutel = '';
-    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.boot, this.raket, this.heuvel, this.fabriek, this.mast, this.rotor, this.koraal]) m.count = 0;
+    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.boot, this.raket, this.heuvel, this.fabriek, this.mast, this.rotor, this.koraal, this.tempel, this.beeld, this.brug]) m.count = 0;
+    this.groei = [];
+    if (ookSleutel) {
+      // Andere planeet (of opnieuw geopend): alles staat er meteen, niets in de steigers.
+      this.gebouwd = false;
+      this.gezienPlek = new Map();
+      this.bekendeBruggen = new Set();
+      this.plekken = new Map();
+    }
     for (const p of [this.vuur, this.licht, this.vlam, this.rook]) p.geometry.setDrawRange(0, 0);
     this.molens = [];
     this.rookBronnen = [];
@@ -431,8 +551,31 @@ export class BeschavingLaag {
     this.raketten = [];
   }
 
+  // Wat er nu in de steigers staat voor een soort (de wezens lopen erheen om te helpen).
+  bouwVoor(sid) {
+    return this.groei.filter((g) => g.sid === sid).map((g) => g.dir);
+  }
+
   update(dt) {
     this.tijd += dt;
+    // Nieuwe bouwwerken groeien op: eerst klein en laag, in een halve minuut helemaal af.
+    if (this.groei.length) {
+      const nu = performance.now(), gv = new THREE.Vector3(), gq = new THREE.Quaternion(), gs = new THREE.Vector3(), gm = new THREE.Matrix4();
+      const bezig = [];
+      for (const g of this.groei) {
+        const f = Math.min(1, (nu - g.t0) / BOUWTIJD);
+        const e = f * f * (3 - 2 * f);
+        g.m.decompose(gv, gq, gs);
+        gs.set(gs.x * (0.35 + 0.65 * e), gs.y * (0.05 + 0.95 * e), gs.z * (0.35 + 0.65 * e));
+        gm.compose(gv, gq, gs);
+        if (g.i < g.mesh.count) {
+          g.mesh.setMatrixAt(g.i, gm);
+          g.mesh.instanceMatrix.needsUpdate = true;
+        }
+        if (f < 1) bezig.push(g);
+      }
+      this.groei = bezig;
+    }
     this.vuur.material.uniforms.flikker.value = 0.8 + Math.sin(this.tijd * 17) * 0.12 + Math.sin(this.tijd * 31) * 0.08;
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), t = new THREE.Vector3();
     const omhoog = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), voor = new THREE.Vector3(1, 0, 0);

@@ -694,8 +694,8 @@ export function stap(w, basisRegios, dt, nu) {
           }
         }
         if (doel && beste > 0.05) {
-          const keer = Math.min(5, Math.max(1, 0.25 * dt));
-          const mee = g.pop * (1 - Math.pow(0.8, keer));
+          // Een vijfde trekt weg. (Niet meer bij een grote stap: de groep groeit tussendoor ook weer aan.)
+          const mee = g.pop * 0.2;
           g.pop -= mee;
           let d = (perRegio.get(doel.id) || []).find((x) => x.soort === soort.id);
           if (d) d.pop += mee;
@@ -808,6 +808,7 @@ export function stap(w, basisRegios, dt, nu) {
   }
 
   temmen(w, dt, nu);
+  geloof(w, dt, nu);
   kroon(w, nu);
   ruzies(w, regios, dt, nu);
   nieuweSoorten(w, regios, dt, nu);
@@ -994,6 +995,58 @@ function genEvents(w, soort, nu) {
   drempel('klein', g.grootte < 0.75, '🤏', `Er was weinig eten. Kleine ${m} hebben minder nodig, dus die bleven vaker over. Zo werden de ${m} langzaam kleiner.`);
   drempel('slim', g.slim > SLIM_DREMPEL - 0.05, '🧠', `De slimste ${m} vonden het meeste eten en kregen de meeste kindjes. Na heel veel jaren hebben de ${m} grotere hersenen. Ze maken steeds meer geluidjes naar elkaar...`);
   drempel('pootjes', soort.beweging === 'zwemmen' && g.land >= 0.5, '🦵', `Het werd vol in de zee. ${hoofd(m)} die een stukje op het land konden kruipen, vonden daar eten. Na heel lang hebben sommige ${m} echte pootjes!`);
+}
+
+// ---------- Geloof ----------
+// Een slim volk met dorpen gaat zich afvragen wie hun wereld gemaakt heeft. En dat klopt: dat was
+// het kind (of papa) van wie de planeet is! Ze bouwen een tempel en houden feesten. Verschillende
+// goden geven geen ruzie, alleen mooie verhalen voor elkaar.
+export const GODEN = { owen: 'Owen', jake: 'Jake', papa: 'Papa' };
+function geloof(w, dt, nu) {
+  w._geloofTijd = (w._geloofTijd || 0) + dt;
+  if (w._geloofTijd < 50) return;
+  const tijd = w._geloofTijd;
+  w._geloofTijd = 0;
+  const maker = GODEN[w.maker] ? w.maker : 'papa';
+  const levend = Object.values(w.soorten).filter((s) => s.uitgestorven === null);
+  for (const s of levend) {
+    if (s.geloof || !s.tech.includes('taal') || !s.tech.includes('hutten')) continue;
+    // Naar de sterren kijken of een ijstijd meemaken zet ze eerder aan het denken.
+    const kans = (s.tech.includes('sterren') ? 3 : 1) * (w.klimaat?.fase === 'ijstijd' ? 2 : 1);
+    if (rnd(w) > 1 - Math.exp((-tijd * kans) / 12000)) continue;
+    const ander = levend.find((x) => x.geloof && x !== s);
+    const god = ander && rnd(w) < 0.3 ? ander.geloof.god : maker;
+    s.geloof = { god, sinds: Math.floor(w.jaar) };
+    const m = meervoud(s.naam);
+    verhaal(w, s, 3, '🙏', `De ${m} kijken naar de sterren en vragen zich af wie hun wereld gemaakt heeft. Ze geloven dat het de grote ${GODEN[god]} was! Ze bouwen een tempel voor ${GODEN[god]}.`, nu);
+    if (ander && ander.geloof.god !== god) verhaal(w, s, 2, '📖', `De ${m} en de ${meervoud(ander.naam)} vertellen elkaar verhalen over hun goden ${GODEN[god]} en ${GODEN[ander.geloof.god]}.`, nu);
+  }
+  for (const s of levend) {
+    if (!s.geloof || rnd(w) > 1 - Math.exp(-tijd / 9000)) continue;
+    verhaal(w, s, 1, '🎉', `De ${meervoud(s.naam)} vierden een groot feest voor ${GODEN[s.geloof.god]}. Ze dansten de hele nacht rond de tempel.`, nu);
+  }
+}
+
+// Doet het kind iets groots op de planeet (een berg maken, water gieten, een storm), dan zien de
+// gelovige wezens dat als een wonder van hun god.
+const WONDEREN = {
+  berg: 'zagen ineens een berg uit de grond groeien',
+  kuil: 'zagen de grond wegzakken in een diepe kuil',
+  water: 'zagen het water stijgen alsof iemand de zee vulde',
+  storm: 'zagen een enorme storm over het land trekken',
+  verf: 'zagen de grond ineens van kleur veranderen',
+  wezen: 'zagen een ruimteschip met nieuwe wezens landen',
+  feest: 'zagen vuurwerk aan de hemel',
+};
+export function wonder(w, soort, nu = Date.now()) {
+  const tekst = WONDEREN[soort];
+  if (!tekst || w.jaar - (w._wonderJaar ?? -1e9) < 150) return false;
+  const gelovig = Object.values(w.soorten).filter((s) => s.uitgestorven === null && s.geloof);
+  if (!gelovig.length) return false;
+  w._wonderJaar = w.jaar;
+  const s = gelovig[Math.floor(rnd(w) * gelovig.length)];
+  verhaal(w, s, 2, '✨', `De ${meervoud(s.naam)} ${tekst}. "Een wonder van ${GODEN[s.geloof.god]}!" riepen ze, en ze brachten bloemen naar de tempel.`, nu);
+  return true;
 }
 
 // ---------- Temmen ----------
