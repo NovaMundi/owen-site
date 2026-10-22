@@ -8,43 +8,45 @@ import { maakRandom } from '../ruis.js';
 import { MATEN } from '../keuzes.js';
 import { niveau, geloofNaam, godNaam } from './sim.js';
 
-// Banier boven een tempel: de naam van het geloof en de god, in de kleur van die god.
-const banierCache = new Map();
-function banierTextuur(geloof, kleur) {
-  const sleutel = geloofNaam(geloof) + '|' + kleur;
-  if (banierCache.has(sleutel)) return banierCache.get(sleutel);
-  const B = 512, H = 200;
+// Opschriften in de tempel: de naam van het geloof gebeiteld in de balk boven de zuilen, en
+// "De Grote ..." op de gedenksteen ervoor. Steenkleur met ingekerfde letters, zoals een echte tempel.
+const opschriftCache = new Map();
+function opschriftTextuur(regels, B, H) {
+  const sleutel = regels.join('|') + B + 'x' + H;
+  if (opschriftCache.has(sleutel)) return opschriftCache.get(sleutel);
   const d = document.createElement('canvas');
   d.width = B;
   d.height = H;
   const ctx = d.getContext('2d');
-  const rond = (x, y, w, h, r) => {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  };
-  rond(8, 8, B - 16, H - 16, 40);
-  ctx.fillStyle = kleur;
-  ctx.fill();
-  ctx.lineWidth = 10;
-  ctx.strokeStyle = 'rgba(40,30,20,0.55)';
-  ctx.stroke();
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#efe3c4';
+  ctx.fillRect(0, 0, B, H);
+  // Een beetje steen: vlekjes.
+  for (let i = 0; i < 160; i++) {
+    ctx.fillStyle = `rgba(120,100,70,${Math.random() * 0.08})`;
+    ctx.fillRect(Math.random() * B, Math.random() * H, 2 + Math.random() * 6, 2 + Math.random() * 6);
+  }
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = '700 76px Fredoka, "Segoe UI", sans-serif';
-  ctx.fillText(geloofNaam(geloof), B / 2, H * 0.4, B - 50);
-  ctx.font = '600 40px Fredoka, "Segoe UI", sans-serif';
-  ctx.fillText('✦ De Grote ' + godNaam(geloof) + ' ✦', B / 2, H * 0.76, B - 50);
+  const regelH = H / regels.length;
+  regels.forEach((tekst, i) => {
+    let grootte = Math.floor(regelH * 0.62);
+    ctx.font = `700 ${grootte}px Fredoka, "Segoe UI", sans-serif`;
+    while (ctx.measureText(tekst).width > B * 0.9 && grootte > 10) ctx.font = `700 ${(grootte -= 2)}px Fredoka, "Segoe UI", sans-serif`;
+    const y = regelH * (i + 0.5);
+    // Ingekerfd: lichte rand onder, donkere letter erin.
+    ctx.fillStyle = 'rgba(255,250,235,0.9)';
+    ctx.fillText(tekst, B / 2 + 1.5, y + 2);
+    ctx.fillStyle = '#6b5a3e';
+    ctx.fillText(tekst, B / 2, y);
+  });
   const tex = new THREE.CanvasTexture(d);
   tex.colorSpace = THREE.SRGBColorSpace;
-  banierCache.set(sleutel, tex);
+  tex.anisotropy = 4;
+  opschriftCache.set(sleutel, tex);
   return tex;
 }
+const opschriftVlak = (tex, b, h) =>
+  new THREE.Mesh(new THREE.PlaneGeometry(b, h), new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2 }));
 
 const BOUWTIJD = 30000; // zo lang (echte tijd) staat een nieuw bouwwerk in de steigers
 // Kleur van de god: uit de naam, zodat elke speler altijd dezelfde eigen kleur heeft.
@@ -154,8 +156,10 @@ function vormen() {
     grijs(new THREE.BoxGeometry(1.2, 0.12, 1.2).translate(0, 0.06, 0), 0.75),
     grijs(new THREE.BoxGeometry(1.0, 0.12, 1.0).translate(0, 0.18, 0), 0.85),
     ...[[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]].map(([x, z]) => grijs(new THREE.CylinderGeometry(0.07, 0.08, 0.6, 8).translate(x, 0.54, z), 1)),
-    grijs(new THREE.BoxGeometry(1.0, 0.1, 1.0).translate(0, 0.89, 0), 0.9),
-    grijs(new THREE.ConeGeometry(0.75, 0.35, 4).rotateY(Math.PI / 4).translate(0, 1.11, 0), 0.75),
+    grijs(new THREE.BoxGeometry(1.0, 0.2, 1.0).translate(0, 0.94, 0), 0.9),
+    grijs(new THREE.ConeGeometry(0.75, 0.35, 4).rotateY(Math.PI / 4).translate(0, 1.215, 0), 0.75),
+    // Gedenksteen voor de tempel (daar komt "De Grote ..." op).
+    grijs(new THREE.BoxGeometry(0.62, 0.44, 0.09).translate(0, 0.22, 0.86), 0.85),
   ]);
   const beeld = samenVoeg([
     grijs(new THREE.BoxGeometry(0.4, 0.25, 0.4).translate(0, 0.125, 0), 0.6),
@@ -440,12 +444,18 @@ export class BeschavingLaag {
     wat = null;
     for (const b of [...this.banieren.children]) {
       this.banieren.remove(b);
-      b.material.dispose();
+      b.traverse((o) => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) o.material.dispose();
+      });
     }
     for (const s of Object.values(wereld.soorten)) {
       if (!s.geloof || s.uitgestorven !== null) continue;
-      const dorp = groepen.filter((x) => x.s === s && x.n >= 3 && regios[x.g.regio].land).sort((a, b) => b.g.pop - a.g.pop)[0];
+      // De tempel blijft waar hij gebouwd is (zolang dat dorp er nog is); anders bij het grootste dorp.
+      const dorpen = groepen.filter((x) => x.s === s && x.n >= 3 && regios[x.g.regio].land);
+      const dorp = dorpen.find((x) => x.g.regio === s.geloof.tempelRegio) || dorpen.sort((a, b) => b.g.pop - a.g.pop)[0];
       if (!dorp) continue;
+      s.geloof.tempelRegio = dorp.g.regio;
       const midden = new THREE.Vector3(...regios[dorp.g.regio].dir);
       const rnd = maakRandom(dorp.g.regio + s.id + 'tempel');
       const maat = Math.min(0.022, Math.max(0.006, (MATEN.find((m) => m.id === s.maat) || MATEN[1]).maat * (s.genen.grootte || 1)));
@@ -457,11 +467,19 @@ export class BeschavingLaag {
         plekVan(s.id).tempel = dir.clone();
         const voor = verspreid(rnd, dir, 0.012);
         plaats(this.beeld, voor, new THREE.Vector3(maat * 2.4, maat * 2.4, maat * 2.4), godKleur(s.geloof), hoek);
-        // Banier met de naam van het geloof boven de tempel (stukje herkenning voor het kind).
-        const banier = new THREE.Sprite(new THREE.SpriteMaterial({ map: banierTextuur(s.geloof, godKleur(s.geloof)), transparent: true }));
-        banier.position.copy(p).addScaledVector(dir, maat * 5.2);
-        banier.scale.set(maat * 7, maat * 2.75, 1);
-        this.banieren.add(banier);
+        // Opschriften in de tempel zelf (stukje herkenning voor het kind): de naam van het geloof
+        // in de balk, "De Grote ..." op de gedenksteen. Zelfde stand en maat als de tempel.
+        const tm = new THREE.Matrix4();
+        this.tempel.getMatrixAt(this.tempel.count - 1, tm);
+        const opschrift = new THREE.Group();
+        tm.decompose(opschrift.position, opschrift.quaternion, opschrift.scale);
+        const balk = opschriftVlak(opschriftTextuur([geloofNaam(s.geloof).toUpperCase()], 512, 80), 0.94, 0.16);
+        balk.position.set(0, 0.94, 0.503);
+        const steen = opschriftVlak(opschriftTextuur(['DE GROTE', godNaam(s.geloof).toUpperCase()], 256, 176), 0.56, 0.385);
+        steen.position.set(0, 0.22, 0.907);
+        opschrift.add(balk, steen);
+        opschrift.userData.klaar = (this.gezienPlek.get(this.tempel.id + ':' + dir.x.toFixed(4) + ',' + dir.y.toFixed(4) + ',' + dir.z.toFixed(4)) || 0) + BOUWTIJD;
+        this.banieren.add(opschrift);
       }
       huidigSoort = null;
     }
@@ -594,7 +612,10 @@ export class BeschavingLaag {
     this.groei = [];
     for (const b of [...(this.banieren?.children || [])]) {
       this.banieren.remove(b);
-      b.material.dispose();
+      b.traverse((o) => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) o.material.dispose();
+      });
     }
     if (ookSleutel) {
       // Andere planeet (of opnieuw geopend): alles staat er meteen, niets in de steigers.
@@ -618,6 +639,10 @@ export class BeschavingLaag {
 
   update(dt) {
     this.tijd += dt;
+    if (this.banieren.children.length) {
+      const nu = performance.now();
+      for (const o of this.banieren.children) o.visible = nu > o.userData.klaar;
+    }
     // Nieuwe bouwwerken groeien op: eerst klein en laag, in een halve minuut helemaal af.
     if (this.groei.length) {
       const nu = performance.now(), gv = new THREE.Vector3(), gq = new THREE.Quaternion(), gs = new THREE.Vector3(), gm = new THREE.Matrix4();
