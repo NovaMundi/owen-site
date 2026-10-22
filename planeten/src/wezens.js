@@ -67,6 +67,20 @@ function atlas() {
   });
   atlasTex = new THREE.CanvasTexture(d);
   atlasTex.colorSpace = THREE.SRGBColorSpace;
+  // Zodra de getekende plaatjes binnen zijn: die in de wolkjes zetten.
+  ['hamer', 'act-slapen', 'act-eten', 'act-bidden', 'bouw-vuur', 'bouw-akker'].forEach((naam, i) => {
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(i * C, 0, C, C);
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.beginPath();
+      ctx.arc(i * C + C / 2, C / 2, C * 0.46, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.drawImage(img, i * C + C * 0.14, C * 0.12, C * 0.72, C * 0.72);
+      atlasTex.needsUpdate = true;
+    };
+    img.src = new URL(`../kunst/iconen/${naam}.webp`, import.meta.url).href;
+  });
   return atlasTex;
 }
 const MAX_ICONEN = 260;

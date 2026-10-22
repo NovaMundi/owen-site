@@ -16,8 +16,30 @@ const LIJST = [
   // bouwwerken (ook voorbeeld voor de 3D-vormen)
   'kies-regen', 'kies-bliksem', 'kies-boom', 'kies-museum', 'kies-stickers', 'kies-cadeau',
   'bouw-hol', 'bouw-hut', 'bouw-koraal', 'bouw-iglo', 'bouw-huis', 'bouw-fabriek', 'bouw-vuur', 'bouw-akker',
+  // ontdekkingen (en de eigen paden van zee en lucht)
+  'tech-nesten', 'tech-stokken', 'tech-taal', 'tech-vuur', 'tech-vissen', 'tech-boten', 'tech-wiel', 'tech-metaal', 'tech-schrift', 'tech-kristal',
+  'tech-sterren', 'tech-machines', 'tech-stroom', 'tech-schoon',
+  'tech-zee-vuur', 'tech-zee-wiel', 'tech-zee-landbouw', 'tech-zee-machines', 'tech-lucht-hutten', 'tech-lucht-boten', 'tech-lucht-wiel',
+  // wat de wezens aan het doen zijn
+  'act-eten', 'act-slapen', 'act-bidden',
 ];
 const BESCHIKBAAR = new Set(LIJST);
+
+// Icoon voor een ontdekking, passend bij de soort: zeewezens en vliegers hebben hun eigen pad.
+// Waar al een passend plaatje bestaat, wordt dat gebruikt (hutten = het hutje, raket = de raket).
+const ZELFDE = { 'tech-hutten': 'bouw-hut', 'tech-landbouw': 'bouw-akker', 'tech-raket': 'feest', 'tech-zee-hutten': 'bouw-koraal' };
+export function techIcoon(id, soort, emoji, klasse = 'ico') {
+  const rijk = soort?.beweging === 'zwemmen' ? 'zee' : soort?.beweging === 'vliegen' ? 'lucht' : null;
+  const kandidaten = [];
+  if (id === 'vuur' && soort?.vlaggen?.gloed) kandidaten.push('tech-kristal');
+  if (rijk) kandidaten.push(`tech-${rijk}-${id}`);
+  kandidaten.push(`tech-${id}`);
+  for (const k of kandidaten) {
+    const plaatje = ZELFDE[k] || k;
+    if (BESCHIKBAAR.has(plaatje)) return icoon(plaatje, emoji, klasse);
+  }
+  return emoji || '';
+}
 
 export function icoon(id, emoji, klasse = 'ico') {
   return BESCHIKBAAR.has(id) ? `<img class="${klasse}" src="./kunst/iconen/${id}.webp" alt="${emoji || ''}" draggable="false">` : emoji || '';

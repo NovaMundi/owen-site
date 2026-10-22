@@ -18,7 +18,7 @@ import { TECH, FASEN, OMDAT, meervoud, techNaam, snelBezig } from './leven/sim.j
 import { plaatjeVoorNieuweSoort } from './leven/afbeelding.js';
 import * as K from './keuzes.js';
 import { lees, schrijf, mediaKlaar, SANDBOX } from './opslag.js';
-import { icoon } from './iconen.js';
+import { icoon, techIcoon } from './iconen.js';
 import { openKiezen } from './kiezen.js';
 import { toonWezenKaart } from './wezenkaart.js';
 import { openOntdekkingsboom } from './ontdekkingsboom.js';
@@ -1153,7 +1153,7 @@ const PANELEN = {
       const dood = s.uitgestorven !== null;
       const welvaart = info.groepen.reduce((a, g) => a + (g.cap ? Math.min(1, g.cap / Math.max(g.pop, 1e-6)) * g.pop : 0), 0) / Math.max(1, info.totaal);
       const gevoel = dood ? '🪦' : welvaart > 0.8 ? '😊' : welvaart > 0.5 ? '🙂' : '😟';
-      const tech = TECH.map((t) => { if (!s.tech.includes(t.id)) return ""; const tn = techNaam(t.id, s); return `<span title="${tn.naam}">${tn.icoon}</span>`; }).join("")
+      const tech = TECH.map((t) => { if (!s.tech.includes(t.id)) return ""; const tn = techNaam(t.id, s); return `<span title="${tn.naam}">${techIcoon(t.id, s, tn.icoon)}</span>`; }).join("")
       // Een uitvinding die "slaapt" (donkere tijden): grijs, en ze komt terug als het beter gaat.
       const slaapt = s.vlaggen.slaapt && !dood ? `<span class="slaapt" title="${techNaam(s.vlaggen.slaapt, s).naam} slaapt even">${techNaam(s.vlaggen.slaapt, s).icoon}💤</span>` : "";
       kaart.innerHTML = `

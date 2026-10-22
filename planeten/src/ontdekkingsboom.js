@@ -7,6 +7,7 @@ import { stem } from './stem.js';
 import { geluid } from './geluid.js';
 import { beeldVan } from './wezens.js';
 import { TECH, TECH_BY, SLIM_DREMPEL, meervoud, techNaam } from './leven/sim.js';
+import { techIcoon } from './iconen.js';
 
 // Wat een ontdekking voor de wezens betekent (in kindertaal).
 const BETEKENT = {
@@ -112,7 +113,7 @@ export function openOntdekkingsboom({ wezen, leven }) {
       const voortgang = Math.min(1, s.kennis / t.kosten);
       onder = `<i class="balk"><i style="width:${Math.round(voortgang * 100)}%"></i></i>`;
     } else if (st === 'slaapt') onder = 'slaapt even 💤';
-    return `<button class="knoop ${st}" data-id="${t.id}" style="left:${p.x}px;top:${p.y}px"><span class="ic">${tn.icoon}</span><b>${veilig(tn.naam)}</b><small>${onder}</small></button>`;
+    return `<button class="knoop ${st}" data-id="${t.id}" style="left:${p.x}px;top:${p.y}px"><span class="ic">${techIcoon(t.id, s, tn.icoon, 'ico ob-ico')}</span><b>${veilig(tn.naam)}</b><small>${onder}</small></button>`;
   }).join('');
 
   const pad = s.beweging === 'zwemmen' ? ' (het pad van de zee)' : s.beweging === 'vliegen' ? ' (het pad van de lucht)' : '';

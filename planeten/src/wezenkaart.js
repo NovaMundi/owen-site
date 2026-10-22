@@ -8,6 +8,7 @@ import { beeldVan } from './wezens.js';
 import { TECH, OMDAT, meervoud, techNaam, geloofNaam, godNaam } from './leven/sim.js';
 import { MAKERS } from './keuzes.js';
 import { openOntdekkingsboom } from './ontdekkingsboom.js';
+import { techIcoon } from './iconen.js';
 
 const telTekst = (n) => {
   n = Math.floor(n);
@@ -44,7 +45,7 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
   }
 
   // Ontdekkingen, met naam.
-  const ontdekt = s ? TECH.filter((t) => s.tech.includes(t.id)).map((t) => techNaam(t.id, s)) : [];
+  const ontdekt = s ? TECH.filter((t) => s.tech.includes(t.id)).map((t) => ({ ...techNaam(t.id, s), id: t.id })) : [];
 
   // Grootste momenten: de belangrijke berichten over deze soort uit het verhaal.
   const momenten = w ? w.kroniek.filter((e) => e.soort === wezen.id && e.belang >= 3).slice(-6) : [];
@@ -82,7 +83,7 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
     ${meters ? `<div class="wk-meters">${[['eten', '🍎'], ['water', '💧'], ['warmte', '🌡️']].map(([k, ic]) => `<button class="meter ${meters[k] > 0.66 ? 'goed' : meters[k] > 0.33 ? 'matig' : 'slecht'}" data-k="${k}"><span>${ic}</span><span>${meters[k] > 0.66 ? '😊' : meters[k] > 0.33 ? '😐' : '😟'}</span></button>`).join('')}</div>` : ''}
     ${extra.length ? `<div class="wk-extra">${extra.map((x) => `<span>${veilig(x)}</span>`).join('')}</div>` : ''}
     <h3>Ontdekt</h3>
-    <div class="wk-ontdekt">${ontdekt.length ? ontdekt.map((t) => `<span><i>${t.icoon}</i>${veilig(t.naam)}</span>`).join('') : '<span class="dim">Nog niets</span>'}</div>
+    <div class="wk-ontdekt">${ontdekt.length ? ontdekt.map((t) => `<span><i>${techIcoon(t.id, s, t.icoon)}</i>${veilig(t.naam)}</span>`).join('') : '<span class="dim">Nog niets</span>'}</div>
     ${momenten.length ? `<h3>Grootste momenten</h3><div class="wk-momenten">${momenten.map((e) => `<button class="gebeurtenis belang3" data-tekst="${veilig(e.tekst)}"><span class="g-icoon">${e.icoon}</span><div class="g-tekst"><small>Jaar ${telTekst(e.jaar)}</small><span>${veilig(e.tekst)}</span></div></button>`).join('')}</div>` : ''}
     <div class="wk-knoppen">
       ${!dood && s ? '<button class="tt-klaar wk-bezoek">👀 Bezoeken</button>' : ''}
