@@ -14,7 +14,7 @@ const STAND = 'planeetmakers-wolk-v1';
 const OPSLAG = { recept: 'planeetmakers-v1', wereld: 'planeetmakers-leven-v1', foto: 'planeetmakers-fotos-v1', wensen: 'planeetmakers-wensen-v1' };
 export const PLANETEN = ['owen', 'jake', 'papa'];
 
-import { lees, schrijf, heeftGaten } from './opslag.js';
+import { lees, schrijf, heeftGaten, SANDBOX } from './opslag.js';
 
 // Vingerafdruk: is er sinds de laatste keer bijwerken iets veranderd? 'laatst' (wanneer er voor
 // het laatst gekeken is) telt niet mee: alleen kijken is geen verandering.
@@ -77,6 +77,7 @@ export const wolk = {
   // Een link als ?familie=zorbix-k3m7qp koppelt dit apparaat. Daarna haalt hij de code weg uit
   // het adres, zodat je hem niet per ongeluk deelt.
   koppelUitLink() {
+    if (SANDBOX) return false; // de testomgeving gaat nooit naar de wolk
     const url = new URL(location.href);
     const code = (url.searchParams.get('familie') || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (code.length < 8) return false;
@@ -88,6 +89,7 @@ export const wolk = {
   },
 
   async zetAan() {
+    if (SANDBOX) return null;
     if (stand.code) return stand.code;
     let staart = '';
     for (let i = 0; i < 6; i++) staart += TEKENS[Math.floor(Math.random() * TEKENS.length)];

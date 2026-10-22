@@ -17,7 +17,7 @@ import { BeschavingLaag } from './leven/beeld.js';
 import { TECH, FASEN, OMDAT, meervoud, techNaam, snelBezig } from './leven/sim.js';
 import { plaatjeVoorNieuweSoort } from './leven/afbeelding.js';
 import * as K from './keuzes.js';
-import { lees, schrijf, mediaKlaar } from './opslag.js';
+import { lees, schrijf, mediaKlaar, SANDBOX } from './opslag.js';
 
 // ================= Opslag =================
 const OPSLAG = 'planeetmakers-v1';
@@ -423,6 +423,12 @@ function kiesVersie(id) {
 function toonWolk() {
   const el = $('#wolkpaneel');
   const sites = ['https://owenvanpelt.com', 'https://jakevanpelt.com'];
+  if (SANDBOX) {
+    el.innerHTML = `<div class="weg-doos"><h2>🧪 Testomgeving</h2><p class="weg-uitleg">Hier staat de wolk uit: testplaneten blijven alleen op dit apparaat en raken de echte planeten nooit. Ook de toverknop werkt hier niet (die kost geld).</p><button class="opnieuw wolk-dicht">Sluiten</button></div>`;
+    el.querySelector('.wolk-dicht').onclick = () => (el.hidden = true);
+    el.hidden = false;
+    return;
+  }
   if (!wolk.aan) {
     el.innerHTML = `<div class="weg-doos">
       <h2>☁️ Meenemen naar andere apparaten</h2>
@@ -2220,6 +2226,42 @@ $('#wolkknop').addEventListener('click', () => {
   geluid.klik();
   toonWolk();
 });
+// ================= Testomgeving (?sandbox=1) =================
+// Voor papa: tijd vooruit spoelen en sneller laten lopen, om te zien hoe een wereld zich
+// ontwikkelt. Alles staat in eigen laatjes en gaat nooit naar de wolk.
+if (SANDBOX) {
+  document.body.classList.add('zandbak');
+  $('#start').insertAdjacentHTML('afterbegin', '<div class="zandbak-band">🧪 Testomgeving: niets hiervan komt op de echte planeten</div>');
+  const el = document.createElement('div');
+  el.id = 'tijdknoppen';
+  el.innerHTML = `<span class="tk-titel">🧪 Tijd</span>
+    <button data-min="60">+1 uur</button><button data-min="1440">+1 dag</button><button data-min="10080">+1 week</button><button data-min="43200">+1 maand</button>
+    <span class="tk-scheiding"></span>
+    <button data-snel="1" class="aan">1x</button><button data-snel="60">60x</button><button data-snel="600">600x</button>`;
+  makerScherm.appendChild(el);
+  el.querySelectorAll('[data-min]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      if (!leven.actief) return toonMelding('Er leeft nog niets op deze planeet. Teken eerst een wezen!', 2500);
+      el.classList.add('bezig');
+      toonMelding('⏩ Even doorrekenen...');
+      const weg = await leven.spoel(Number(b.dataset.min));
+      el.classList.remove('bezig');
+      verbergMelding();
+      if (!weg) return;
+      werkJaarBij();
+      if (weg.nieuws.length) toonWeg(weg);
+      else toonMelding(`⏩ ${telTekst(weg.jaren)} jaar verder. Er gebeurde niets bijzonders.`, 3000);
+    })
+  );
+  el.querySelectorAll('[data-snel]').forEach((b) =>
+    b.addEventListener('click', () => {
+      leven.snelheid = Number(b.dataset.snel);
+      el.querySelectorAll('[data-snel]').forEach((x) => x.classList.toggle('aan', x === b));
+      geluid.klik();
+    })
+  );
+}
+
 // Vraag de browser het geheugen van de planeten niet zomaar op te ruimen als de tablet vol raakt.
 navigator.storage?.persist?.().catch(() => {});
 toonStart();

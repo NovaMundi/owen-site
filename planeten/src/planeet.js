@@ -212,7 +212,18 @@ export class Planeet {
       this.groep.add(this.begroeiing.groep);
     }
     this.groep.updateWorldMatrix(true, false);
-    this.begroeiing.bij(this.groep.worldToLocal(camera.position.clone()));
+    const lok = this.groep.worldToLocal(camera.position.clone());
+    this.begroeiing.bij(lok);
+    // Dichtbij: de dampkring en de wolken worden doorzichtig, zodat je de grond goed ziet.
+    // Van ver blijft de planeet mooi blauw omrand.
+    const h = lok.length();
+    const glad = (a, b, x) => {
+      const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+      return t * t * (3 - 2 * t);
+    };
+    if (this.waas) this.waas.material.uniforms.sterkte.value = glad(1.12, 1.9, h);
+    if (this.lucht) this.lucht.material.uniforms.sterkte.value = glad(1.06, 1.5, h);
+    if (this.wolken) this.wolken.material.opacity = 0.2 + 0.8 * glad(1.06, 1.45, h);
   }
 
   // ---------- Recept toepassen ----------
@@ -812,7 +823,7 @@ export class Planeet {
       this.lucht = new THREE.Mesh(
         new THREE.SphereGeometry(1, 64, 32),
         new THREE.ShaderMaterial({
-          uniforms: { kleur: { value: new THREE.Color() } },
+          uniforms: { kleur: { value: new THREE.Color() }, sterkte: { value: 1 } },
           vertexShader: `
             varying vec3 vNormaal;
             varying vec3 vZicht;
@@ -824,12 +835,13 @@ export class Planeet {
             }`,
           fragmentShader: `
             uniform vec3 kleur;
+            uniform float sterkte;
             varying vec3 vNormaal;
             varying vec3 vZicht;
             void main() {
               // Achterkant van de schil: 0 aan de buitenrand, sterk vlak bij de planeet.
               float s = clamp(-dot(vNormaal, vZicht) / 0.5, 0.0, 1.0);
-              gl_FragColor = vec4(kleur, pow(s, 2.2) * 0.9);
+              gl_FragColor = vec4(kleur, pow(s, 2.2) * 0.9 * sterkte);
             }`,
           transparent: true,
           side: THREE.BackSide,
@@ -840,7 +852,7 @@ export class Planeet {
       this.waas = new THREE.Mesh(
         new THREE.SphereGeometry(1, 96, 48),
         new THREE.ShaderMaterial({
-          uniforms: { kleur: { value: new THREE.Color() }, zon: { value: new THREE.Vector3(1, 0.3, 1).normalize() } },
+          uniforms: { kleur: { value: new THREE.Color() }, zon: { value: new THREE.Vector3(1, 0.3, 1).normalize() }, sterkte: { value: 1 } },
           vertexShader: `
             varying vec3 vNormaal;
             varying vec3 vWereld;
@@ -853,13 +865,14 @@ export class Planeet {
           fragmentShader: `
             uniform vec3 kleur;
             uniform vec3 zon;
+            uniform float sterkte;
             varying vec3 vNormaal;
             varying vec3 vWereld;
             void main() {
               vec3 v = normalize(cameraPosition - vWereld);
               float rand = pow(1.0 - max(dot(vNormaal, v), 0.0), 2.6);
               float dag = smoothstep(-0.25, 0.5, dot(vNormaal, zon));
-              gl_FragColor = vec4(kleur * 1.2, rand * dag * 0.85);
+              gl_FragColor = vec4(kleur * 1.2, rand * dag * 0.85 * sterkte);
             }`,
           transparent: true,
           blending: THREE.AdditiveBlending,

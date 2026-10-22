@@ -9,6 +9,10 @@
 // Bij het opstarten laden we alle plaatjes in het geheugen. Daarna werken lees() en schrijf()
 // meteen, net als vroeger. Lukt IndexedDB niet (privévenster), dan gaat alles zoals vroeger.
 
+// Testomgeving (?sandbox=1): alles in eigen laatjes, zodat testen nooit de echte planeten raakt.
+export const SANDBOX = new URLSearchParams(location.search).has('sandbox');
+export const sleutel = (k) => (SANDBOX ? 'zandbak-' + k : k);
+
 const DB = 'planeetmakers-media';
 const WINKEL = 'media';
 const GROOT = 300; // korter dan dit is geen plaatje of geluid
@@ -30,7 +34,7 @@ function gebruikteCodes() {
   const codes = new Set();
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (!k || !k.startsWith('planeetmakers')) continue;
+    if (!k || !(k.startsWith('planeetmakers') || k.startsWith('zandbak-planeetmakers'))) continue;
     for (const m of (localStorage.getItem(k) || '').matchAll(/"m:([a-z0-9]+)"/g)) codes.add(m[1]);
   }
   return codes;
@@ -124,19 +128,19 @@ export function heeftGaten(v) {
   return false;
 }
 
-export function lees(sleutel, standaard) {
+export function lees(naam, standaard) {
   try {
-    const v = JSON.parse(localStorage.getItem(sleutel));
+    const v = JSON.parse(localStorage.getItem(sleutel(naam)));
     return v == null ? standaard : vanRef(v);
   } catch {
     return standaard;
   }
 }
 
-export function schrijf(sleutel, waarde) {
+export function schrijf(naam, waarde) {
   try {
-    if (waarde == null) localStorage.removeItem(sleutel);
-    else localStorage.setItem(sleutel, JSON.stringify(naarRef(waarde)));
+    if (waarde == null) localStorage.removeItem(sleutel(naam));
+    else localStorage.setItem(sleutel(naam), JSON.stringify(naarRef(waarde)));
     return true;
   } catch {
     return false;
