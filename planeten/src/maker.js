@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { Planeet, KAAL, uiterlijk, vulAan } from './planeet.js';
+import { Planeet, KAAL, uiterlijk, vulAan, PADDENSTOEL_ROOD } from './planeet.js';
 import { geluid } from './geluid.js';
 import { stem } from './stem.js';
 import { maakSterren, Sterrenstof, Vuurwerk } from './effecten.js';
@@ -986,7 +986,7 @@ const PANELEN = {
       );
     }
     el.appendChild(r1);
-    const [r2, k2] = rij();
+    const [r2, k2] = rij(huidig.includes('paddenstoel') ? 'Bladeren' : '');
     for (const c of K.BOOMKLEUREN) {
       k2.appendChild(
         kleurBol(c, '', recept.boomKleur === c, (b) => {
@@ -997,6 +997,21 @@ const PANELEN = {
       );
     }
     el.appendChild(r2);
+    // Paddenstoelen hebben een eigen kleur: standaard rood met witte stippen.
+    if (huidig.includes('paddenstoel')) {
+      const [r3, k3] = rij('🍄 Paddenstoelen');
+      const gekozen = recept.paddenstoelKleur || PADDENSTOEL_ROOD;
+      for (const c of [PADDENSTOEL_ROOD, ...K.BOOMKLEUREN.filter((x) => x !== '#e8483a')]) {
+        k3.appendChild(
+          kleurBol(c, '', gekozen === c, (b) => {
+            zet('paddenstoelKleur', c === PADDENSTOEL_ROOD ? null : c);
+            kies(k3, b);
+            geluid.plop();
+          })
+        );
+      }
+      el.appendChild(r3);
+    }
   },
 
   wezens(el) {
@@ -1723,6 +1738,8 @@ function volgCamera(dt) {
 
 function rolTekst(info) {
   if (info.rol === 'heerser') return `👑 grootste bouwers ${info.rijk === 'zee' ? 'in de zee' : 'op het land'}`;
+  if (info.rol === 'huisdier') return `🐕 huisdier van de ${meervoud(leven.w.soorten[info.soort.vlaggen.getemdDoor].naam)}`;
+  if (info.soort.vlaggen.heuvels && !info.soort.tech.includes('taal')) return '⛰️ heuvelbouwers';
   if (info.soort.tech.includes('taal')) return '🗣️ slim';
   return '🐾 wild dier';
 }

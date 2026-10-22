@@ -48,6 +48,30 @@ const BOOM = {
   kristal: { eten: 0.2, hout: 0, magie: 0.9 },
 };
 
+// Welk stuk land hoort bij welk eiland of werelddeel? Land dat aan elkaar vastzit krijgt
+// hetzelfde nummer. Over zee kom je alleen met een boot, vleugels, zwemmen, of heel soms per
+// ongeluk op een drijvende boomstam.
+export function labelEilanden(regios) {
+  for (const r of regios) r.eiland = r.land ? -1 : null;
+  let nr = 0;
+  for (const start of regios) {
+    if (!start.land || start.eiland >= 0) continue;
+    const rij = [start];
+    start.eiland = nr;
+    while (rij.length) {
+      const a = rij.pop();
+      for (const b of a.buren) {
+        const n = regios[b];
+        if (n.land && n.eiland < 0) {
+          n.eiland = nr;
+          rij.push(n);
+        }
+      }
+    }
+    nr++;
+  }
+}
+
 export function maakRegios(planeet) {
   const r = planeet.r;
   // Middelpunten gelijkmatig over de bol (Fibonacci-spiraal).
@@ -182,6 +206,7 @@ export function maakRegios(planeet) {
     delete a._drink;
     delete a._g;
   }
+  labelEilanden(regios);
   return {
     regios,
     planeet: { manen: r.manen.length, grootte: r.grootte, water: ws.naam, wolken: r.wolken, onweer: !!r.onweer, ijskappen: r.ijskappen, seizoenen: r.seizoenen ?? 0.3, temperatuur: r.temperatuur ?? 0.5 },

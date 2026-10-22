@@ -8,7 +8,7 @@ import { maakRandom } from '../ruis.js';
 import { MATEN } from '../keuzes.js';
 import { niveau } from './sim.js';
 
-const MAX = { hol: 3000, wand: 4000, dak: 4000, akker: 2500, gebouw: 8000, boot: 400, raket: 12 };
+const MAX = { hol: 3000, wand: 4000, dak: 4000, akker: 2500, gebouw: 8000, boot: 400, raket: 12, heuvel: 1500 };
 
 let puntTex = null;
 function punt() {
@@ -49,7 +49,17 @@ export class BeschavingLaag {
       [new THREE.CylinderGeometry(0.18, 0.22, 1, 10).translate(0, 0.5, 0), new THREE.ConeGeometry(0.18, 0.4, 10).translate(0, 1.2, 0)].map((g) => g.toNonIndexed())
     );
     this.raket = instanties(raketGeo, std('#f4f4f4', { metalness: 0.4, roughness: 0.3 }), MAX.raket);
-    this.groep.add(this.hol, this.wand, this.dak, this.akker, this.gebouw, this.boot, this.raket);
+    // Zwermheuvels: hoge, hobbelige bergjes van aarde (zoals termietenheuvels).
+    const heuvelGeo = new THREE.CylinderGeometry(0.12, 0.5, 1, 9, 5).translate(0, 0.5, 0);
+    const hp = heuvelGeo.attributes.position;
+    for (let i = 0; i < hp.count; i++) {
+      const x = hp.getX(i), y = hp.getY(i), z = hp.getZ(i);
+      const f = 1 + Math.sin(x * 9 + y * 7) * Math.sin(z * 8 - y * 5) * 0.18;
+      hp.setXYZ(i, x * f, y, z * f);
+    }
+    heuvelGeo.computeVertexNormals();
+    this.heuvel = instanties(heuvelGeo, std('#ffffff', { roughness: 1 }), MAX.heuvel);
+    this.groep.add(this.hol, this.wand, this.dak, this.akker, this.gebouw, this.boot, this.raket, this.heuvel);
 
     // Vuurtjes en lichtjes: puntjes die gloeien.
     this.vuur = this.punten(600, '#ffae42', 1);
@@ -104,7 +114,7 @@ export class BeschavingLaag {
       .filter((x) => x.s && x.n > 0 && regios[x.g.regio]);
     const boten = groepen.filter((x) => x.s.tech.includes('boten') && regios[x.g.regio].kust).length;
     const raketten = Object.values(wereld.soorten).filter((s) => s.tech.includes('raket')).length;
-    const sleutel = groepen.map((x) => `${x.g.regio}${x.s.id}${x.n}`).join(',') + `|${boten}|${raketten}|${planeet.zeeR}|${planeet.maxR}|${recept.grootte}`;
+    const sleutel = groepen.map((x) => `${x.g.regio}${x.s.id}${x.n}${x.s.vlaggen.heuvels ? 'h' : ''}`).join(',') + `|${boten}|${raketten}|${planeet.zeeR}|${planeet.maxR}|${recept.grootte}`;
     if (sleutel === this.sleutel) return;
     this.sleutel = sleutel;
     this.leeg(false);
@@ -140,9 +150,19 @@ export class BeschavingLaag {
       const maat = Math.min(0.022, Math.max(0.006, (MATEN.find((m) => m.id === s.maat) || MATEN[1]).maat * (s.genen.grootte || 1)));
       const onder = s.beweging === 'zwemmen' && !reg.land; // koraaldorpen op de zeebodem
       const eigen = s.kleur ? new THREE.Color().setHSL(s.kleur.h, Math.min(0.75, s.kleur.s), 0.55).getHexString() : 'c0704a';
-      const wandKleur = onder ? '#ff9ec7' : '#e8d3a8';
-      const dakKleur = onder ? '#5ad1c4' : '#' + eigen;
+      // Hoe ze bouwen hangt af van waar ze vandaan komen: iglo's, leem, lavasteen of hout.
+      const land = s.thuisLand;
+      const wandKleur = onder ? '#ff9ec7' : land === 'woestijn' ? '#c99a6b' : land === 'lava' ? '#3d3936' : land === 'berg' ? '#9a948c' : '#e8d3a8';
+      const dakKleur = onder ? '#5ad1c4' : land === 'woestijn' ? '#b07f55' : land === 'lava' ? '#5c534c' : '#' + eigen;
       const straal = 0.035 + n * 0.012;
+      // Zwermheuvels van soorten die niet praten maar wel samen bouwen.
+      if (s.vlaggen.heuvels && !s.tech.includes('taal') && g.pop > 20 && !onder) {
+        const aantal = Math.min(5, 1 + Math.floor(Math.log10(g.pop)));
+        for (let i = 0; i < aantal; i++) {
+          const h = maat * (1.1 + rnd() * 1.3);
+          plaats(this.heuvel, verspreid(rnd, midden, straal), new THREE.Vector3(h * 0.6, h, h * 0.6), ['#a8784e', '#9a6c45', '#b88a5c'][i % 3], rnd() * 6);
+        }
+      }
       if (n >= 1) for (let i = 0; i < 3; i++) plaats(this.hol, verspreid(rnd, midden, straal), sc.set(maat * 0.9, maat * 0.45, maat * 0.9).clone(), onder ? '#c98a6a' : '#4a3a2e', 0, onder);
       if (n >= 2 && !onder) {
         const p = plaats(this.hol, midden.clone(), new THREE.Vector3(maat * 0.6, maat * 0.12, maat * 0.6), '#6b6b6b');
@@ -155,7 +175,8 @@ export class BeschavingLaag {
       for (let i = 0; i < hutten; i++) {
         const dir = verspreid(rnd, midden, straal);
         const s3 = new THREE.Vector3(maat * 1.3, maat * 1.3, maat * 1.3);
-        if (plaats(this.wand, dir, s3, wandKleur, rnd() * 6, onder)) plaats(this.dak, dir, s3, dakKleur, rnd() * 6, onder);
+        if (land === 'ijs' && !onder) plaats(this.hol, dir, new THREE.Vector3(maat * 1.6, maat * 1.1, maat * 1.6), '#f4f8ff', 0); // iglo
+        else if (plaats(this.wand, dir, s3, wandKleur, rnd() * 6, onder)) plaats(this.dak, dir, s3, dakKleur, rnd() * 6, onder);
       }
       if (n >= 4 && !onder) {
         const akkerKleuren = ['#e7c65a', '#9ccc5a', '#c9a24a', '#7fbf4a'];
@@ -241,7 +262,7 @@ export class BeschavingLaag {
 
     this.vulPunten(this.vuur, vuurPos, vuurSize);
     this.vulPunten(this.licht, lichtPos, lichtSize);
-    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw]) {
+    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.heuvel]) {
       m.instanceMatrix.needsUpdate = true;
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     }
@@ -260,7 +281,7 @@ export class BeschavingLaag {
 
   leeg(ookSleutel = true) {
     if (ookSleutel) this.sleutel = '';
-    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.boot, this.raket]) m.count = 0;
+    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.boot, this.raket, this.heuvel]) m.count = 0;
     for (const p of [this.vuur, this.licht, this.vlam]) p.geometry.setDrawRange(0, 0);
     this.wegen.geometry.setDrawRange(0, 0);
     this.boten = [];

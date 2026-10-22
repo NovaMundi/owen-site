@@ -37,6 +37,8 @@ export const KAAL = {
   boomVorm: 'den', // oude planeten: één soort boom
   boomVormen: null, // nieuw: een mix, bijvoorbeeld ['den', 'paddenstoel']
   boomKleur: '#2e8b3a',
+  paddenstoelKleur: null, // null = rood met witte stippen
+
   temperatuur: 0.5, // 0 = ijskoud, 1 = gloeiend heet
   seizoenen: 0.3, // 0 = altijd hetzelfde, 1 = hele strenge winters en hete zomers
   woestijn: 0.2, // hoeveel droge gebieden
@@ -177,6 +179,7 @@ const GROND_DETAIL_NORMAAL = `
 }`;
 
 const kleur = (hex) => new THREE.Color(hex);
+export const PADDENSTOEL_ROOD = '#d8281e';
 const glad = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -246,7 +249,7 @@ export class Planeet {
     const klimaat = ['temperatuur', 'woestijn', 'wolken'];
     if (vorm || veranderd('bergen', 'zee', 'grond', 'ijskappen', 'waterKleur', ...klimaat)) this.maakVorm();
     if (vorm || veranderd('bergen', 'zee', 'waterKleur', 'zeeGloeit')) this.maakZee();
-    if (vorm || veranderd('bergen', 'zee', 'ijskappen', 'bomen', 'boomVorm', 'boomVormen', 'boomKleur', ...klimaat)) this.maakBomen();
+    if (vorm || veranderd('bergen', 'zee', 'ijskappen', 'bomen', 'boomVorm', 'boomVormen', 'boomKleur', 'paddenstoelKleur', ...klimaat)) this.maakBomen();
     if (veranderd('zaad', 'wolkKleur', 'bergen')) await this.maakWolken();
     else if (veranderd('wolken') && !this.weerNu) this.zetWeer({ dekking: r.wolken, stormen: [] });
     if (veranderd('seizoenen') && this.seizoen) this.seizoen.uSterkte.value = r.seizoenen;
@@ -704,7 +707,9 @@ export class Planeet {
       m.compose(v, q, schaal);
       stam.setMatrixAt(nr, m);
       kroon.setMatrixAt(nr, m);
-      kroon.setColorAt(nr, tint.set(r.boomKleur).offsetHSL(p.tint * 0.3, 0, p.tint));
+      // Paddenstoelen hebben hun eigen kleur: standaard rood (met witte stippen), tenzij gekozen.
+      const kroonKleur = beste === 'paddenstoel' ? r.paddenstoelKleur || PADDENSTOEL_ROOD : r.boomKleur;
+      kroon.setColorAt(nr, tint.set(kroonKleur).offsetHSL(p.tint * 0.3, 0, p.tint * (beste === 'paddenstoel' ? 0.4 : 1)));
     }
     for (const [vorm, [stam, kroon]] of this.bomen) {
       const n = tellers.get(vorm) || 0;

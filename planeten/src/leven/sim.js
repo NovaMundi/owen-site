@@ -33,7 +33,7 @@ export const TECH = [
   { id: 'taal', naam: 'Praten', icoon: '🗣️', kosten: 40000, na: ['stokken'] },
   { id: 'vuur', naam: 'Vuur', icoon: '🔥', kosten: 60000, na: ['taal'], eis: 'vuur' },
   { id: 'vissen', naam: 'Vissen', icoon: '🎣', kosten: 25000, na: ['stokken'], eis: 'kust' },
-  { id: 'hutten', naam: 'Hutten', icoon: '🛖', kosten: 95000, na: ['vuur'] },
+  { id: 'hutten', naam: 'Hutten', icoon: '🛖', kosten: 95000, na: ['vuur', 'taal'] },
   { id: 'landbouw', naam: 'Akkers', icoon: '🌾', kosten: 170000, na: ['hutten'], eis: 'vruchtbaar' },
   { id: 'boten', naam: 'Boten', icoon: '⛵', kosten: 240000, na: ['hutten'], eis: 'boot' },
   { id: 'wiel', naam: 'Het wiel', icoon: '🛞', kosten: 300000, na: ['hutten'] },
@@ -51,7 +51,9 @@ export const TECH = [
 const TECH_BY = Object.fromEntries(TECH.map((t) => [t.id, t]));
 
 function naOk(t, soort) {
-  return t.na.every((x) => (Array.isArray(x) ? x.some((y) => soort.tech.includes(y)) : soort.tech.includes(x)));
+  // Een volk dat bij de lava woont, kent het vuur al voordat het kan praten.
+  const na = t.id === 'vuur' && soort.thuisLand === 'lava' ? ['stokken'] : t.na;
+  return na.every((x) => (Array.isArray(x) ? x.some((y) => soort.tech.includes(y)) : soort.tech.includes(x)));
 }
 
 // Niet elke soort volgt het pad van de mens: zeewezens en vliegers vinden hun eigen weg.
@@ -63,10 +65,17 @@ const EIGEN = {
 export function rijk(soort) {
   return soort.beweging === 'zwemmen' ? 'zee' : 'land';
 }
+// En de ondergrond waar een volk begon, bepaalt hoe ze bouwen.
+const LANDEIGEN = {
+  ijs: { hutten: ["Iglo's", '🧊'] },
+  woestijn: { hutten: ['Leemhuizen', '🧱'] },
+  berg: { hutten: ['Rotswoningen', '🪨'] },
+  lava: { hutten: ['Stenen huizen', '🪨'] },
+};
 export function techNaam(id, soort) {
   const t = TECH_BY[id];
   const soortRijk = rijk(soort) === 'zee' ? 'zee' : soort.beweging === 'vliegen' ? 'lucht' : null;
-  const eigen = soortRijk && EIGEN[soortRijk][id];
+  const eigen = (soortRijk && EIGEN[soortRijk][id]) || (rijk(soort) === 'land' && LANDEIGEN[soort.thuisLand]?.[id]);
   if (id === 'vuur' && soort.vlaggen && soort.vlaggen.gloed) return { naam: 'Kristalgloed', icoon: '✨' };
   return eigen ? { naam: eigen[0], icoon: eigen[1] } : { naam: t.naam, icoon: t.icoon };
 }
@@ -75,7 +84,7 @@ export function techNaam(id, soort) {
 function heerser(w, gebied) {
   let beste = null;
   for (const s of Object.values(w.soorten)) {
-    if (s.uitgestorven !== null || !s.tech.includes('landbouw') || rijk(s) !== gebied) continue;
+    if (s.uitgestorven !== null || !s.tech.includes('landbouw') || rijk(s) !== gebied || s.vlaggen.gevallen) continue;
     if (!beste || (s.vlaggen.heerserSinds ?? Infinity) < (beste.vlaggen.heerserSinds ?? Infinity)) beste = s;
   }
   return beste;
@@ -129,7 +138,7 @@ export function meervoud(naam) {
   if (/e$/i.test(n)) return n + 's';
   return n + 'en';
 }
-const LANDSCHAP = { kust: 'Kust', berg: 'Berg', ijs: 'IJs', bos: 'Bos', woestijn: 'Zand', lava: 'Vuur', zee: 'Zee', vlakte: 'Wei', magie: 'Glim' };
+const LANDSCHAP = { kust: 'Kust', berg: 'Berg', ijs: 'IJs', bos: 'Bos', woestijn: 'Zand', lava: 'Vuur', zee: 'Zee', vlakte: 'Wei', magie: 'Glim', eiland: 'Eiland' };
 
 // ---------- Wereld en soorten ----------
 export function nieuweWereld(zaad, nu) {
@@ -434,6 +443,7 @@ function capaciteitVan(soort, r, w) {
   if (h('machines')) onderdak *= 3;
   if (h('stroom')) onderdak *= 2;
   if (h('kristal')) onderdak *= 1 + r.magie;
+  if (soort.vlaggen?.heuvels) onderdak *= 1.5; // veilig en koel in de heuvels
   const reus = 1 / Math.pow(g.grootte, 0.8);
   const oppervlak = w.planeet ? w.planeet.grootte ** 2 : 1; // grotere planeet = meer ruimte
   // Seizoenen: verder van de evenaar zijn de winters strenger. Holen, hutten en akkers (voorraad)
@@ -492,6 +502,31 @@ function klimaatFit(soort, r) {
   const lief = 0.55 - g.kou * 0.45 + g.hitte * 0.4;
   const warm = r.temp + (h('vuur') ? 0.12 : 0) + (h('hutten') ? 0.08 : 0);
   return klem(1 - Math.abs(warm - lief) * 1.6, 0.03, 1);
+}
+
+// Komt deze soort zelf over zee? (Vliegen, zwemmen of met boten wel; lopen, huppen, zweven niet.)
+function overZeeNee(s) {
+  return s.beweging !== 'vliegen' && s.beweging !== 'zwemmen' && !s.tech.includes('boten');
+}
+
+function vlot(w, soort, g, r, regios, nu) {
+  const cosMax = Math.cos(0.6); // niet te ver: de stroming brengt ze naar een eiland in de buurt
+  let doel = null, beste = cosMax;
+  for (const n of regios) {
+    if (!n.land || !n.kust || n.eiland == null || n.eiland === r.eiland || !woont(soort, n)) continue;
+    const dot = n.dir[0] * r.dir[0] + n.dir[1] * r.dir[1] + n.dir[2] * r.dir[2];
+    if (dot > beste) (beste = dot), (doel = n);
+  }
+  if (!doel) return;
+  // Woont de soort daar al, dan verandert er niets.
+  if (w.groepen.some((x) => x.soort === soort.id && regios[x.regio]?.eiland === doel.eiland)) return;
+  const mee = Math.min(6, g.pop * 0.1);
+  g.pop -= mee;
+  w.groepen.push({ soort: soort.id, regio: doel.id, pop: mee, stam: meervoud(soort.naam), oorlog: null, sinds: w.jaar });
+  if (!soort.vlaggen['vlot_' + doel.eiland]) {
+    soort.vlaggen['vlot_' + doel.eiland] = 1;
+    verhaal(w, soort, 2, '🪵', `Een paar ${meervoud(soort.naam)} dreven op een boomstam over de zee. Ze spoelden aan op een ander eiland!`, nu);
+  }
 }
 
 function bereikbaar(soort, van, naar) {
@@ -595,6 +630,11 @@ export function stap(w, basisRegios, dt, nu) {
         for (const x of buren) {
           const s2 = w.soorten[x.soort];
           if (!s2 || x === g || !s2.tech.includes('taal')) continue;
+          // Huisdieren worden niet opgejaagd; bij hun volk hebben ze juist een stal en eten.
+          if (soort.vlaggen.getemdDoor === s2.id) {
+            cap *= 1.25;
+            continue;
+          }
           const nv = niveau(s2, x);
           if (nv >= 4) cap *= Math.max(0.4, 1 - 0.12 * (nv - 3));
           if (s2.tech.includes('stokken') && !s2.tech.includes('schoon') && x.pop > 20 && rijk(s2) === rijk(soort)) {
@@ -633,6 +673,9 @@ export function stap(w, basisRegios, dt, nu) {
       rijkSom += g.pop * klem((r.plant + r.water + r.hout + r.metaal + (r.kust || !r.land ? r.zeevoedsel : 0) + r.vuur * 0.5 + r.magie * 0.5) / 3, 0, 1.4);
       kouDruk += g.pop * klem(0.4 - r.temp) * 2;
       hitteDruk += g.pop * klem(r.temp - 0.7) * 3;
+
+      // Heel soms drijven een paar dieren per ongeluk op een boomstam naar een ander eiland.
+      if (r.kust && r.eiland != null && g.pop > 15 && overZeeNee(soort) && rnd(w) < 1 - Math.exp(-dt / 20000)) vlot(w, soort, g, r, regios, nu);
 
       // Uitzwermen als het vol wordt.
       // Kans en aantal hangen zo van de tijd af dat een grote stap (inhalen) hetzelfde geeft als
@@ -725,6 +768,13 @@ export function stap(w, basisRegios, dt, nu) {
       if (kustRuimte && vol > 0.7) g0.land = klem(g0.land + tempo * 1.2);
     }
     genEvents(w, soort, nu);
+    // Wie nooit gaat praten maar wel goed samenwerkt (zoals mieren en termieten), bouwt samen
+    // enorme heuvels met gangen en kamers. Zonder dat iemand de baas is of het uitlegt.
+    if (!soort.vlaggen.heuvels && !isHeerser && !soort.vlaggen.getemdDoor && soort.tech.includes('nesten') && totaal > 150 && soort.beweging !== 'zwemmen' &&
+      (soort.maat === 'mier' || (slimPlafond(g0) < SLIM_DREMPEL && g0.samen >= 0.5)) && rnd(w) < 1 - Math.exp(-dt / 3000)) {
+      soort.vlaggen.heuvels = Math.floor(w.jaar);
+      verhaal(w, soort, 3, '⛰️', `De ${meervoud(soort.naam)} kunnen niet praten, maar samen bouwen ze enorme heuvels met gangen en kamers. Niemand vertelt ze hoe: iedereen doet een klein stukje!`, nu);
+    }
 
     // Honger en uitsterven.
     const nu_totaal = groepen.reduce((s, g) => s + g.pop, 0);
@@ -756,6 +806,8 @@ export function stap(w, basisRegios, dt, nu) {
     }
   }
 
+  temmen(w, dt, nu);
+  kroon(w, nu);
   ruzies(w, regios, dt, nu);
   nieuweSoorten(w, regios, dt, nu);
   w.groepen = w.groepen.filter((g) => g.pop >= 0.3 || (g.pop > 0 && w.soorten[g.soort] && totaalVan(w, g.soort) < 1.6 && totaalVan(w, g.soort) >= 0.5));
@@ -823,9 +875,16 @@ function ontdek(w, soort, groepen, regios, dt, nu) {
     }
     // Praten kan pas als de hersenen groot genoeg zijn geworden.
     if (t.id === 'taal' && soort.genen.slim < SLIM_DREMPEL) continue;
+    if (t.id === 'vuur' && soort.thuisLand === 'lava' && !soort.tech.includes('taal')) bron = 'lavavolk';
     // Eerst kijken of er al een baas is, dan pas de akkers erbij (anders vindt hij zichzelf).
     const alBaas = t.id === 'landbouw' ? heerser(w, rijk(soort)) : null;
     soort.tech.push(t.id);
+    // Een huisdier dat leert praten, wil geen huisdier meer zijn.
+    if (t.id === 'taal' && soort.vlaggen.getemdDoor) {
+      const baasje = w.soorten[soort.vlaggen.getemdDoor];
+      delete soort.vlaggen.getemdDoor;
+      if (baasje) verhaal(w, soort, 3, '🗝️', `De ${m} leerden praten. Het eerste wat ze zeiden: "We willen geen huisdier meer zijn!" Ze namen afscheid van de ${meervoud(baasje.naam)} en gingen hun eigen weg.`, nu);
+    }
     const tn = techNaam(t.id, soort);
     verhaal(w, soort, t.id === 'nesten' || t.id === 'stokken' ? 2 : 3, tn.icoon, ontdekTekst(t.id, m, bron, soort), nu);
     // Meerdere soorten kunnen slim worden. Wie als eerste akkers heeft en dorpen bouwt, krijgt een
@@ -876,6 +935,7 @@ function ontdekTekst(id, m, bron, soort) {
         lava: `Bij de gloeiende lavazee ontdekten de ${m} het vuur.`,
         vulkaan: `Een vulkaan spuwde vuur. De ${m} namen een brandende tak mee naar huis.`,
         stenen: `Na heel lang proberen sloeg een ${soort.naam} twee stenen tegen elkaar. Vonkjes! Vuur!`,
+        lavavolk: `De ${m} wonen naast de gloeiende lava. Ze kunnen nog niet eens praten, maar ze weten al hoe je met een tak een vuurtje meeneemt!`,
         bronnen: `De ${m} ontdekten hete bronnen op de zeebodem. Daar kun je eten op koken!`,
         zon: `De ${m} ontdekten dat het water in ondiepe lagunes warm wordt van de zon. Zo leerden ze koken!`,
         gloed: `De ${m} ontdekten dat gloeiende kristallen warmte geven. Bijna net zo goed als vuur!`,
@@ -883,7 +943,13 @@ function ontdekTekst(id, m, bron, soort) {
     case 'vissen':
       return zwem ? `De ${m} leerden samen jagen in de zee.` : `De ${m} leerden vissen vangen.`;
     case 'hutten':
-      return zwem ? `De ${m} bouwden huisjes van koraal.` : `De ${m} bouwden hun eerste hutten.`;
+      if (zwem) return `De ${m} bouwden huisjes van koraal.`;
+      return {
+        ijs: `Er groeien geen bomen in het ijs. Daarom bouwden de ${m} huizen van sneeuwblokken: iglo's! Binnen is het lekker warm.`,
+        woestijn: `In de woestijn is bijna geen hout. De ${m} maakten blokken van modder en lieten ze in de zon hard worden. Zo bouwden ze leemhuizen.`,
+        berg: `De ${m} hakten huizen uit in de rotsen van de bergen.`,
+        lava: `De ${m} bouwden huizen van zwarte lavasteen. Die kunnen niet branden!`,
+      }[soort.thuisLand] || `De ${m} bouwden hun eerste hutten.`;
     case 'landbouw':
       return `De ${m} plantten zaadjes en maakten de eerste akkers. Nu groeit het eten vanzelf!`;
     case 'boten':
@@ -926,6 +992,93 @@ function genEvents(w, soort, nu) {
   drempel('klein', g.grootte < 0.75, '🤏', `Er was weinig eten. Kleine ${m} hebben minder nodig, dus die bleven vaker over. Zo werden de ${m} langzaam kleiner.`);
   drempel('slim', g.slim > SLIM_DREMPEL - 0.05, '🧠', `De slimste ${m} vonden het meeste eten en kregen de meeste kindjes. Na heel veel jaren hebben de ${m} grotere hersenen. Ze maken steeds meer geluidjes naar elkaar...`);
   drempel('pootjes', soort.beweging === 'zwemmen' && g.land >= 0.5, '🦵', `Het werd vol in de zee. ${hoofd(m)} die een stukje op het land konden kruipen, vonden daar eten. Na heel lang hebben sommige ${m} echte pootjes!`);
+}
+
+// ---------- Temmen ----------
+// Een slim volk met akkers en een wild dier dat in dezelfde gebieden woont: soms raken ze aan
+// elkaar gewend. Het dier wordt een huisdier: het helpt mee, krijgt eten en een stal, en wordt
+// niet meer opgejaagd. Zo hebben mensen ook honden, paarden en koeien gekregen.
+function temmen(w, dt, nu) {
+  w._temTijd = (w._temTijd || 0) + dt;
+  if (w._temTijd < 50) return;
+  const tijd = w._temTijd;
+  w._temTijd = 0;
+  const levend = Object.values(w.soorten).filter((s) => s.uitgestorven === null);
+  const tammers = levend.filter((s) => s.tech.includes('landbouw') && s.tech.includes('taal'));
+  if (!tammers.length) return;
+  const gebiedenVan = (id) => new Set(w.groepen.filter((g) => g.soort === id && g.pop > 5).map((g) => g.regio));
+  for (const dier of levend) {
+    if (dier.vlaggen.getemdDoor || dier.tech.includes('taal') || dier.maat === 'mier' || dier.beweging === 'zwemmen') continue;
+    const hier = gebiedenVan(dier.id);
+    for (const t of tammers) {
+      if (t === dier || rijk(t) !== rijk(dier)) continue;
+      const daar = gebiedenVan(t.id);
+      let samen = 0;
+      for (const x of hier) if (daar.has(x)) samen++;
+      if (!samen || rnd(w) > 1 - Math.exp((-tijd * samen) / 60000)) continue;
+      dier.vlaggen.getemdDoor = t.id;
+      const klus = dier.beweging === 'vliegen' ? 'met het brengen van berichten' : dier.maat === 'olifant' || dier.maat === 'reus' ? 'met het dragen van zware dingen' : 'met het bewaken van de dorpen';
+      verhaal(w, dier, 3, '🐕', `De ${meervoud(t.naam)} temden de ${meervoud(dier.naam)}! De ${meervoud(dier.naam)} helpen nu ${klus}. Ze krijgen eten en een warme stal, en niemand jaagt meer op ze.`, nu);
+      break;
+    }
+  }
+}
+
+// ---------- De kroon kan wisselen ----------
+// De grootste bouwers blijven dat niet altijd. Stort hun rijk in (honger, ziekte, oorlog...) of
+// wordt een ander volk veel groter, dan zijn ze het niet meer. Na een instorting vergeten ze
+// soms zelfs hun nieuwste uitvinding: donkere tijden. Later kunnen ze weer opkrabbelen.
+function kroon(w, nu) {
+  for (const gebied of ['land', 'zee']) {
+    const baas = heerser(w, gebied);
+    if (!baas) {
+      // Geen baas: een gevallen rijk dat weer groot is, mag weer meedoen.
+      for (const s of Object.values(w.soorten)) {
+        if (s.vlaggen.gevallen && s.uitgestorven === null && rijk(s) === gebied && w.jaar - s.vlaggen.gevallen > 5000 && totaalVan(w, s.id) > s.piek * 0.6) {
+          delete s.vlaggen.gevallen;
+          s.vlaggen.heerserSinds = w.jaar;
+          verhaal(w, s, 3, '👑', `De ${meervoud(s.naam)} krabbelden weer op. Ze zijn opnieuw de grootste bouwers ${gebied === 'zee' ? 'in de zee' : 'op het land'}!`, nu);
+          break;
+        }
+      }
+      continue;
+    }
+    const tot = totaalVan(w, baas.id);
+    let rivaal = null, rivaalTot = 0;
+    for (const s of Object.values(w.soorten)) {
+      if (s === baas || s.uitgestorven !== null || rijk(s) !== gebied || !s.tech.includes('landbouw') || s.vlaggen.gevallen) continue;
+      const t = totaalVan(w, s.id);
+      if (t > rivaalTot) (rivaal = s), (rivaalTot = t);
+    }
+    // Een rijk valt niet zomaar: pas na een flinke tijd aan de top, en niet vlak na de vorige wissel.
+    w.kroonRust ||= {};
+    if (w.jaar - (w.kroonRust[gebied] ?? -1e9) < 12000 || w.jaar - (baas.vlaggen.heerserSinds ?? 0) < 6000) continue;
+    const instort = baas.piek > 200 && tot < baas.piek * 0.2;
+    const ingehaald = rivaal && rivaalTot > tot * 3 && rivaalTot > 100;
+    if (!instort && !ingehaald) continue;
+    w.kroonRust[gebied] = w.jaar;
+    baas.vlaggen.gevallen = w.jaar;
+    delete baas.vlaggen.heerserSinds;
+    const m = meervoud(baas.naam);
+    if (instort) {
+      const basis = ['nesten', 'stokken', 'taal', 'vuur', 'hutten', 'landbouw'];
+      const laatste = [...baas.tech].reverse().find((t) => !basis.includes(t));
+      let vergeten = '';
+      if (laatste) {
+        baas.tech = baas.tech.filter((t) => t !== laatste);
+        baas.kennis = Math.min(baas.kennis, TECH_BY[laatste].kosten * 0.9);
+        vergeten = ` Ze vergaten zelfs hoe ${techNaam(laatste, baas).naam.toLowerCase()} werkte.`;
+      }
+      const oorzaak = grootsteOorzaak(baas);
+      verhaal(w, baas, 3, '🏚️', `Het rijk van de ${m} stortte in, omdat ${OMDAT[oorzaak] || 'er te veel tegelijk misging'}. Er braken donkere tijden aan.${vergeten}`, nu);
+    } else {
+      verhaal(w, baas, 3, '🏚️', `De ${meervoud(rivaal.naam)} werden veel groter dan de ${m}. De ${m} zijn niet meer de grootste bouwers.`, nu);
+    }
+    if (rivaal) {
+      rivaal.vlaggen.heerserSinds = w.jaar;
+      verhaal(w, rivaal, 3, '👑', `Nu zijn de ${meervoud(rivaal.naam)} de grootste bouwers ${gebied === 'zee' ? 'in de zee' : 'op het land'}.`, nu);
+    }
+  }
 }
 
 // ---------- Ruzie, oorlog en vrede ----------
@@ -1092,24 +1245,40 @@ function nieuweSoorten(w, regios, dt, nu) {
 
   // Afsplitsing: een groep die lang in een heel andere omgeving leeft, ver van de rest.
   const bewoond = new Set(w.groepen.filter((x) => x.pop > 5).map((x) => x.soort + '|' + x.regio));
+  // Op welk eiland woont het grootste deel van elke soort? (Hun "thuis-eiland".)
+  const hoofdEiland = {};
+  for (const x of w.groepen) {
+    const e = regios[x.regio]?.eiland;
+    if (e == null) continue;
+    const h = hoofdEiland[x.soort];
+    if (!h || x.pop > h.pop) hoofdEiland[x.soort] = { e, pop: x.pop };
+  }
   for (const g of w.groepen) {
     const s = w.soorten[g.soort];
     const r = regios[g.regio];
     if (s && !s.thuisLand && r) s.thuisLand = r.soort; // oudere werelden
     if (!s || !r || s.uitgestorven !== null || g.pop < 30) continue;
-    if ((s.vlaggen.splitsingen || 0) >= 2 || s.vlaggen['split_' + r.soort]) continue;
+    // Op een ander eiland dan de rest, en ze kunnen niet terug: dat is de snelste weg naar een
+    // nieuwe soort (zoals de vinken en schildpadden van de Galápagos).
+    const opEiland = r.eiland != null && hoofdEiland[s.id] && r.eiland !== hoofdEiland[s.id].e && overZeeNee(s);
+    const sleutel = opEiland ? 'eiland' + r.eiland : r.soort;
+    if ((s.vlaggen.splitsingen || 0) >= 2 || s.vlaggen['split_' + sleutel]) continue;
     const ander = r.soort !== (s.thuisLand || r.soort) && ['ijs', 'woestijn', 'lava', 'magie', 'berg', 'zee'].includes(r.soort);
     const alleen = !r.buren.some((id) => bewoond.has(g.soort + '|' + id));
     const was = g.apart || 0;
-    g.apart = ander && (alleen || r.soort === 'ijs' || r.soort === 'lava') ? was + dt : 0;
+    g.apart = opEiland || (ander && (alleen || r.soort === 'ijs' || r.soort === 'lava')) ? was + dt : 0;
     // Halverwege: de groep verandert al langzaam (selectie), lang voordat het een nieuwe soort is.
-    if (was < APART_NA / 2 && g.apart >= APART_NA / 2 && !s.vlaggen['apart_' + r.soort]) {
-      s.vlaggen['apart_' + r.soort] = 1;
-      const wat = { ijs: 'tegen de kou', woestijn: 'tegen de hitte en de droogte', lava: 'tegen de hitte', berg: 'op de steile bergen', zee: 'in het water', magie: 'bij de kristallen' }[r.soort] || 'daar';
-      verhaal(w, s, 2, '🔎', `De ${meervoud(s.naam)}${plekTekst(r)} zien de anderen nooit meer. Wie het best ${wat} kan, blijft daar over. Langzaam gaan ze er anders uitzien...`, nu);
+    if (was < APART_NA / 2 && g.apart >= APART_NA / 2 && !s.vlaggen['apart_' + sleutel]) {
+      s.vlaggen['apart_' + sleutel] = 1;
+      if (opEiland) {
+        verhaal(w, s, 2, '🔎', `De ${meervoud(s.naam)} op het eiland zien de anderen nooit meer. Daar blijven steeds de ${meervoud(s.naam)} over die het best bij het eiland passen. Langzaam gaan ze er anders uitzien...`, nu);
+      } else {
+        const wat = { ijs: 'tegen de kou', woestijn: 'tegen de hitte en de droogte', lava: 'tegen de hitte', berg: 'op de steile bergen', zee: 'in het water', magie: 'bij de kristallen' }[r.soort] || 'daar';
+        verhaal(w, s, 2, '🔎', `De ${meervoud(s.naam)}${plekTekst(r)} zien de anderen nooit meer. Wie het best ${wat} kan, blijft daar over. Langzaam gaan ze er anders uitzien...`, nu);
+      }
     }
     if (g.apart > APART_NA && rnd(w) < dt / 8000) {
-      if (afsplitsing(w, s, g, r, nu, naamBestaat)) {
+      if (afsplitsing(w, s, g, r, nu, naamBestaat, opEiland, regios)) {
         w.laatsteNieuweSoort = w.jaar;
         return;
       }
@@ -1162,8 +1331,8 @@ function kruising(w, sa, sb, ga, gb, r, nu, naamBestaat) {
   return true;
 }
 
-function afsplitsing(w, ouder, g, r, nu, naamBestaat) {
-  const voor = LANDSCHAP[r.soort] || 'Nieuwe';
+function afsplitsing(w, ouder, g, r, nu, naamBestaat, opEiland = false, regios = []) {
+  const voor = opEiland ? LANDSCHAP.eiland : LANDSCHAP[r.soort] || 'Nieuwe';
   // Geen "IJsijsblibo": een eerder voorvoegsel eerst weghalen.
   const kern = ouder.naam.replace(new RegExp('^(' + Object.values(LANDSCHAP).join('|') + ')', 'i'), '') || ouder.naam;
   const naam = voor + kern.toLowerCase();
@@ -1181,6 +1350,14 @@ function afsplitsing(w, ouder, g, r, nu, naamBestaat) {
   }
   if (r.soort === 'lava') genen.hitte = Math.max(genen.hitte, 0.75);
   if (r.soort === 'magie') genen.magie = Math.max(genen.magie || 0, 0.7);
+  // De eilandregel: op een eiland worden grote dieren kleiner (weinig eten) en kleine dieren
+  // groter (geen grote dieren die ze opeten). Zo bestonden er echt dwergolifanten!
+  let eilandMaat = null;
+  if (opEiland) {
+    const groot = ouder.maat === 'olifant' || ouder.maat === 'reus';
+    genen.grootte = Math.min(2.2, Math.max(0.5, genen.grootte * (groot ? 0.7 : ouder.maat === 'mier' ? 1.4 : 0.9)));
+    eilandMaat = groot ? 'kleiner' : ouder.maat === 'mier' ? 'groter' : null;
+  }
   // Vissen met pootjes worden echte landdieren.
   const beweging = ouder.beweging === 'zwemmen' && r.land ? 'lopen' : ouder.beweging;
   const s = basisSoort(w, naam, genen, {
@@ -1194,14 +1371,26 @@ function afsplitsing(w, ouder, g, r, nu, naamBestaat) {
   s.kennis = ouder.kennis;
   s.piek = g.pop;
   s.wortel = [...(ouder.wortel || [ouder.id])];
-  s.vlaggen['split_' + r.soort] = 1; // niet nog eens in hetzelfde soort landschap
+  const sleutel = opEiland ? 'eiland' + r.eiland : r.soort;
+  s.vlaggen['split_' + sleutel] = 1; // niet nog eens op dezelfde plek
   ouder.vlaggen.splitsingen = (ouder.vlaggen.splitsingen || 0) + 1;
-  ouder.vlaggen['split_' + r.soort] = 1;
+  ouder.vlaggen['split_' + sleutel] = 1;
   w.soorten[s.id] = s;
+  // Op een eiland wordt de hele eilandgroep de nieuwe soort, anders alleen deze groep.
+  for (const x of opEiland ? w.groepen.filter((x) => x.soort === ouder.id && regios[x.regio]?.eiland === r.eiland) : [g]) {
+    x.soort = s.id;
+    x.stam = meervoud(naam);
+    x.apart = 0;
+  }
   g.soort = s.id;
   g.stam = meervoud(naam);
   g.apart = 0;
-  verhaal(w, s, 3, '🧬', `Een groep ${meervoud(ouder.naam)} woonde heel lang${plekTekst(r)}, ver van de anderen. Daar bleven steeds de ${meervoud(ouder.naam)} over die het best bij die plek pasten. Na duizenden jaren waren ze zo anders dat ze een nieuwe soort werden: de ${meervoud(naam)}!`, nu);
+  if (opEiland) {
+    const maatZin = eilandMaat ? ` Op het eiland werden ze langzaam ${eilandMaat}.` : '';
+    verhaal(w, s, 3, '🧬', `Een groep ${meervoud(ouder.naam)} leefde heel lang op een eiland, ver van de anderen. Daar bleven steeds de ${meervoud(ouder.naam)} over die het best bij het eiland pasten.${maatZin} Na duizenden jaren waren ze zo anders dat ze een nieuwe soort werden: de ${meervoud(naam)}!`, nu);
+  } else {
+    verhaal(w, s, 3, '🧬', `Een groep ${meervoud(ouder.naam)} woonde heel lang${plekTekst(r)}, ver van de anderen. Daar bleven steeds de ${meervoud(ouder.naam)} over die het best bij die plek pasten. Na duizenden jaren waren ze zo anders dat ze een nieuwe soort werden: de ${meervoud(naam)}!`, nu);
+  }
   return true;
 }
 
@@ -1259,6 +1448,6 @@ export function soortInfo(w, id) {
   const totaal = groepen.reduce((a, g) => a + g.pop, 0);
   const stammen = new Set(groepen.filter((g) => g.pop >= 1).map((g) => g.stam));
   const baas = heerser(w, rijk(s));
-  const rol = s.uitgestorven !== null ? 'weg' : baas === s ? 'heerser' : 'wild';
+  const rol = s.uitgestorven !== null ? 'weg' : baas === s ? 'heerser' : s.vlaggen.getemdDoor && w.soorten[s.vlaggen.getemdDoor] ? 'huisdier' : 'wild';
   return { soort: s, totaal, gebieden: groepen.length, stammen: stammen.size, tijdperk: tijdperk(s), groepen, rol, rijk: rijk(s) };
 }
