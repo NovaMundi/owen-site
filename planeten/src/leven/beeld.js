@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { maakRandom } from '../ruis.js';
 import { MATEN } from '../keuzes.js';
-import { niveau, geloofNaam, GODEN } from './sim.js';
+import { niveau, geloofNaam, godNaam } from './sim.js';
 
 // Banier boven een tempel: de naam van het geloof en de god, in de kleur van die god.
 const banierCache = new Map();
@@ -39,7 +39,7 @@ function banierTextuur(geloof, kleur) {
   ctx.font = '700 76px Fredoka, "Segoe UI", sans-serif';
   ctx.fillText(geloofNaam(geloof), B / 2, H * 0.4, B - 50);
   ctx.font = '600 40px Fredoka, "Segoe UI", sans-serif';
-  ctx.fillText('✦ De Grote ' + (GODEN[geloof.god] || 'Papa') + ' ✦', B / 2, H * 0.76, B - 50);
+  ctx.fillText('✦ De Grote ' + godNaam(geloof) + ' ✦', B / 2, H * 0.76, B - 50);
   const tex = new THREE.CanvasTexture(d);
   tex.colorSpace = THREE.SRGBColorSpace;
   banierCache.set(sleutel, tex);
@@ -47,7 +47,14 @@ function banierTextuur(geloof, kleur) {
 }
 
 const BOUWTIJD = 30000; // zo lang (echte tijd) staat een nieuw bouwwerk in de steigers
-const GODKLEUR = { owen: '#5ab8ff', jake: '#7ad04a', papa: '#ff9a3a' };
+// Kleur van de god: uit de naam, zodat elke speler altijd dezelfde eigen kleur heeft.
+const GODKLEUREN = ['#5ab8ff', '#7ad04a', '#ff9a3a', '#ff6fb5', '#b07cff', '#ffd34d', '#3fd0c0', '#ff6a5a'];
+function godKleur(geloof) {
+  const n = godNaam(geloof);
+  let h = 0;
+  for (const c of n.toLowerCase()) h = (h * 31 + c.codePointAt(0)) >>> 0;
+  return GODKLEUREN[h % GODKLEUREN.length];
+}
 const MAX = { tempel: 40, brug: 2000, hol: 3000, wand: 4000, dak: 4000, akker: 2500, gebouw: 8000, boot: 400, raket: 12, heuvel: 1500, fabriek: 600, molen: 600, koraal: 1500 };
 
 let puntTex = null;
@@ -449,9 +456,9 @@ export class BeschavingLaag {
       if (p) {
         plekVan(s.id).tempel = dir.clone();
         const voor = verspreid(rnd, dir, 0.012);
-        plaats(this.beeld, voor, new THREE.Vector3(maat * 2.4, maat * 2.4, maat * 2.4), GODKLEUR[s.geloof.god] || '#ffd34d', hoek);
+        plaats(this.beeld, voor, new THREE.Vector3(maat * 2.4, maat * 2.4, maat * 2.4), godKleur(s.geloof), hoek);
         // Banier met de naam van het geloof boven de tempel (stukje herkenning voor het kind).
-        const banier = new THREE.Sprite(new THREE.SpriteMaterial({ map: banierTextuur(s.geloof, GODKLEUR[s.geloof.god] || '#ffd34d'), transparent: true }));
+        const banier = new THREE.Sprite(new THREE.SpriteMaterial({ map: banierTextuur(s.geloof, godKleur(s.geloof)), transparent: true }));
         banier.position.copy(p).addScaledVector(dir, maat * 5.2);
         banier.scale.set(maat * 7, maat * 2.75, 1);
         this.banieren.add(banier);

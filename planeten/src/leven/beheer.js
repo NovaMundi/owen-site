@@ -58,7 +58,9 @@ export function kleurVan(url) {
 }
 
 export class Leven {
-  constructor({ wezens, beeld, snelheid = 1, opNieuws, opNieuweSoort, opBewaard }) {
+  constructor({ wezens, beeld, snelheid = 1, opNieuws, opNieuweSoort, opBewaard, naamVan }) {
+    // De naam van de speler (zoals ingevoerd): die wordt de god in het geloof van de wezens.
+    this.naamVan = naamVan || ((wie) => wie);
     this.opBewaard = opBewaard || (() => {});
     this.wezens = wezens;
     this.beeld = beeld;
@@ -90,7 +92,10 @@ export class Leven {
     this.recept = recept;
     this.planeet = planeet;
     this.w = leesAlles()[wie] || null;
-    if (this.w) this.w.maker = wie;
+    if (this.w) {
+      this.w.maker = wie;
+      this.w.makerNaam = this.naamVan(wie);
+    }
     this.leesRegios();
     let weg = null;
     if (this.w) {
@@ -187,6 +192,7 @@ export class Leven {
       this.w = nieuweWereld(recept.zaad, nu);
       this.w.planeet = this.planeetInfo;
       this.w.maker = this.wie;
+      this.w.makerNaam = this.naamVan(this.wie);
       this.gezien = 0;
     }
     // Het allereerste wezen op deze planeet: het eerste halfuur gaat de tijd supersnel.

@@ -98,7 +98,7 @@ houder.add(beschaving.groep);
 const snelheid = Math.max(1, Number(new URLSearchParams(location.search).get('tijd')) || 1);
 // De wezens weten waar hun huizen, vuren, tempels en bouwplaatsen zijn (voor hun taken).
 wezens.dorp = beschaving;
-const leven = new Leven({ wezens, beeld: beschaving, snelheid, opNieuws: (lijst) => toonNieuws(lijst), opNieuweSoort: (s) => nieuweSoortErbij(s), opBewaard: (w) => wolk.planStuur(w, 60000) });
+const leven = new Leven({ wezens, beeld: beschaving, snelheid, opNieuws: (lijst) => toonNieuws(lijst), opNieuweSoort: (s) => nieuweSoortErbij(s), opBewaard: (w) => wolk.planStuur(w, 60000), naamVan: (id) => naamVan(id) });
 let wezenIds = '';
 
 // Penseel-cursor: een ringetje op de grond waar je vinger is.
