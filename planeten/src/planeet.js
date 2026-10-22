@@ -57,17 +57,40 @@ export function uiterlijk(recept) {
 // ---------- Rekenhulp op de achtergrond ----------
 let werker = null, volgnummer = 0;
 const wachtend = new Map();
+function startWerker() {
+  werker = new Worker(new URL('./werker.js', import.meta.url), { type: 'module' });
+  werker.onmessage = (e) => {
+    const w = wachtend.get(e.data.id);
+    wachtend.delete(e.data.id);
+    if (w) w.klaar(e.data);
+  };
+  // Valt de rekenhulp om (bijvoorbeeld te weinig geheugen op de tablet), dan een nieuwe starten
+  // en het werk nog één keer proberen, in plaats van voor altijd te blijven wachten.
+  werker.onerror = (e) => {
+    e.preventDefault?.();
+    werker.terminate();
+    werker = null;
+    const opnieuw = [...wachtend.entries()];
+    for (const [id, w] of opnieuw) {
+      if (w.poging >= 1) {
+        wachtend.delete(id);
+        w.mis(new Error('rekenen mislukt'));
+      }
+    }
+    if (wachtend.size) {
+      startWerker();
+      for (const [id, w] of wachtend) {
+        w.poging++;
+        werker.postMessage({ ...w.bericht, id });
+      }
+    }
+  };
+}
 function reken(bericht) {
-  if (!werker) {
-    werker = new Worker(new URL('./werker.js', import.meta.url), { type: 'module' });
-    werker.onmessage = (e) => {
-      wachtend.get(e.data.id)(e.data);
-      wachtend.delete(e.data.id);
-    };
-  }
+  if (!werker) startWerker();
   const id = ++volgnummer;
-  return new Promise((klaar) => {
-    wachtend.set(id, klaar);
+  return new Promise((klaar, mis) => {
+    wachtend.set(id, { klaar, mis, bericht, poging: 0 });
     werker.postMessage({ ...bericht, id });
   });
 }
@@ -546,7 +569,7 @@ export class Planeet {
       doek.height = H;
       const tex = new THREE.CanvasTexture(doek);
       tex.colorSpace = THREE.NoColorSpace;
-      tex.anisotropy = 8;
+      tex.anisotropy = 4;
       const mat = new THREE.MeshStandardMaterial({ alphaMap: tex, transparent: true, depthWrite: false, roughness: 1 });
       this.weer = {
         uDrempel: { value: 1 },
@@ -804,7 +827,8 @@ export class Planeet {
     this.groep.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) {
-        if (o.material.map) o.material.map.dispose();
+        // Alle plaatjes op het materiaal opruimen (ook de wolkenkaart: in HD ruim 8 MB per keer).
+        for (const v of Object.values(o.material)) if (v && v.isTexture) v.dispose();
         o.material.dispose();
       }
     });

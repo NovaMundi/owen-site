@@ -2,7 +2,7 @@
 // gegaan terwijl niemand keek, rekent elke paar seconden verder en houdt wezens en gebouwen
 // in beeld gelijk met wat er werkelijk gebeurt.
 
-import { nieuweWereld, voegSoortToe, verwijderSoort, stap, inhalen, soortInfo, stormKans, JAAR_PER_MINUUT } from './sim.js';
+import { nieuweWereld, voegSoortToe, vertrekSoort, terugSoort, stap, inhalen, soortInfo, stormKans, jarenTussen, snelBezig, meld } from './sim.js';
 import { maakRegios } from './regio.js';
 
 const OPSLAG = 'planeetmakers-leven-v1';
@@ -93,7 +93,7 @@ export class Leven {
     let weg = null;
     if (this.w) {
       const nu = Date.now();
-      const jaren = Math.max(0, ((nu - this.w.laatst) / 60000) * JAAR_PER_MINUUT * this.snelheid);
+      const jaren = jarenTussen(this.w, this.w.laatst, nu) * this.snelheid;
       const jaarVoor = this.w.jaar;
       const minuten = (nu - this.w.laatst) / 60000;
       if (jaren > 1) {
@@ -104,9 +104,10 @@ export class Leven {
         this.w = res;
       }
       this.w.laatst = nu;
+      this.snelKlaar(nu);
       const nieuws = this.w.kroniek.filter((e) => e.jaar > jaarVoor && e.belang >= 2);
       if (jaren >= 10) weg = { minuten, jaren, nieuws, jaarVoor };
-      this.gezien = this.w.kroniek.length;
+      this.gezien = this.w.nr || 0;
     }
     await this.syncSoorten();
     await this.controleerNieuweSoorten();
@@ -185,11 +186,17 @@ export class Leven {
       this.w.planeet = this.planeetInfo;
       this.gezien = 0;
     }
+    // Het allereerste wezen op deze planeet: het eerste halfuur gaat de tijd supersnel.
+    if (lijst.length && !this.w.snelVan && !Object.keys(this.w.soorten).length && this.w.jaar < 5) {
+      this.w.snelVan = nu;
+      meld(this.w, 3, '⏩', 'In het begin gaat de tijd supersnel, anders duurt het zo lang! Kijk maar wat je wezens gaan doen.', nu);
+    }
     const ids = new Set(lijst.map((x) => x.id));
     // Een soort die net vanzelf is ontstaan staat nog niet in de lijst: die niet weghalen.
-    for (const [id, s] of Object.entries(this.w.soorten)) if (!ids.has(id) && !s.nieuw) verwijderSoort(this.w, id);
+    for (const [id, s] of Object.entries(this.w.soorten)) if (!ids.has(id) && !s.nieuw) vertrekSoort(this.w, id);
     for (const wezen of lijst) {
       if (this.w.soorten[wezen.id] || this.toevoegen.has(wezen.id)) continue;
+      if (terugSoort(this.w, wezen.id)) continue; // terug met de oeps-knop
       this.toevoegen.add(wezen.id);
       const kleur = await kleurVan(wezen.plaatje);
       this.toevoegen.delete(wezen.id);
@@ -204,13 +211,21 @@ export class Leven {
   tik() {
     if (!this.actief) return;
     const nu = Date.now();
-    const jaren = ((nu - this.w.laatst) / 60000) * JAAR_PER_MINUUT * this.snelheid;
+    const jaren = jarenTussen(this.w, this.w.laatst, nu) * this.snelheid;
     this.w.laatst = nu;
     if (jaren <= 0) return;
     if (jaren < 40) stap(this.w, this.regios, jaren, nu);
     else inhalen(this.w, this.regios, jaren, nu);
+    this.snelKlaar(nu);
     this.meldNieuws();
     this.toon();
+  }
+
+  // Het snelle begin is voorbij: dat zeggen, anders lijkt het alsof het spel kapot is.
+  snelKlaar(nu) {
+    if (!this.w || !this.w.snelVan || this.w.snelKlaar || snelBezig(this.w, nu)) return;
+    this.w.snelKlaar = 1;
+    meld(this.w, 2, '⏳', 'Het snelle begin is voorbij. Nu gaat de tijd gewoon verder: elke minuut een jaar.', nu);
   }
 
   // Nieuwe soorten (kruising of afsplitsing) krijgen een plaatje en komen in de lijst van het kind.
@@ -236,8 +251,8 @@ export class Leven {
   meldNieuws() {
     if (!this.w) return;
     this.controleerNieuweSoorten();
-    const nieuw = this.w.kroniek.slice(this.gezien || 0);
-    this.gezien = this.w.kroniek.length;
+    const nieuw = this.w.kroniek.filter((e) => (e.nr || 0) > (this.gezien || 0));
+    this.gezien = this.w.nr || 0;
     if (nieuw.length) this.opNieuws(nieuw);
   }
 

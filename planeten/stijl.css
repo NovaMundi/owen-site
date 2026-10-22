@@ -344,3 +344,28 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   .kleurbol { width: 48px; height: 48px; }
   #paneel { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 96px); }
 }
+
+/* ---------- Veiligheid en voorlezen (panel ronde 2) ---------- */
+/* Vasthouden om weg te gooien: een ring loopt vol. */
+.houdknop { position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.houdknop::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: conic-gradient(rgba(255, 95, 95, 0.55) calc(var(--p, 0) * 360deg), transparent 0); }
+.opnieuw.houdknop { opacity: 0.8; text-decoration: none; padding: 12px 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.08); }
+.houd-ring { display: none; }
+/* Woordjes onder de knoppen op de wezenkaart. */
+.wezen-knoppen { flex-wrap: wrap; align-items: flex-start; }
+.wezen-knoppen .wezenknop { width: 58px; height: 58px; flex-direction: column; display: inline-flex; align-items: center; justify-content: center; gap: 0; line-height: 1; }
+.wezenknop small { font-size: 10px; font-weight: 600; margin-top: 3px; opacity: 0.85; white-space: nowrap; }
+.wezen-knoppen .wezen-weg { margin-left: 18px; background: rgba(255, 95, 95, 0.12); }
+/* ✋ draaien tijdens boetseren en verven */
+#draaiknop { position: fixed; right: max(14px, env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); z-index: 6;
+  width: 64px; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 26px; }
+#draaiknop small { font-size: 10px; font-weight: 600; }
+#draaiknop.aan { background: var(--goud); color: #222; box-shadow: 0 0 18px rgba(255, 211, 77, 0.7); }
+/* Je eigen planeet staat voorop en is iets groter. */
+.maker-knop.eigen .mini { transform: scale(1.12); }
+.maker-knop.eigen .maker-naam { color: var(--goud); }
+.vraag-knoppen .ja::before { content: '✅ '; }
+.vraag-knoppen .nee::before { content: '❌ '; }
+.bak-lijst { margin: 10px 0; }
+.bak-lijst .wolk-link span { flex: 1; }

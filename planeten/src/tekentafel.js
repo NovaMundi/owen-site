@@ -56,16 +56,31 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
     stem.zeg(uitleg);
 
     // Bestaand wezen aanpassen: de tekening als ondergrond, de ogen weer los zodat ze blijven knipperen.
-    if (bestaand) {
+    // Nieuw wezen, en vorige keer halverwege gestopt? Dan ligt die tekening er nog.
+    const concept = bestaand ? null : leesConcept();
+    const onder = bestaand || concept;
+    if (onder) {
       const img = new Image();
       img.onload = () => {
-        const basis = bestaand.tekening ? volVel(img) : zonderRand(img);
+        const basis = onder.tekening ? volVel(img) : zonderRand(img);
         acties.unshift({ t: 'basis', canvas: basis });
-        for (const o of bestaand.ogen || []) acties.push({ t: 'oog', x: o.x, y: o.y, r: o.r });
+        for (const o of onder.ogen || []) acties.push({ t: 'oog', x: o.x, y: o.y, r: o.r });
         tekenAlles();
       };
-      img.src = bestaand.tekening || bestaand.plaatje;
+      img.src = onder.tekening || onder.plaatje;
+      if (concept) setTimeout(() => stem.zeg('Je tekening van de vorige keer ligt er nog! Wil je opnieuw beginnen? Tik dan op de prullenbak.'), 2500);
     }
+    // Stoppen gooit de tekening niet weg: hij wordt bewaard voor de volgende keer.
+    const bewaarConcept = () => {
+      if (bestaand) return;
+      let start = 0;
+      acties.forEach((a, i) => a.t === 'wis' && (start = i + 1));
+      const rest = acties.slice(start);
+      if (!rest.length) return zetConcept(null); // leeg gemaakt: niets te bewaren
+      const ruw = teken.toDataURL('image/webp', 0.85);
+      const ogenLijst = rest.filter((a) => a.t === 'oog' && !a.weg).map(({ x, y, r }) => ({ x: Math.round(x), y: Math.round(y), r }));
+      zetConcept({ tekening: ruw.startsWith('data:image/webp') ? ruw : teken.toDataURL('image/png'), ogen: ogenLijst });
+    };
 
     // Kleuren
     const kleurRij = el.querySelector('.tt-kleuren');
@@ -116,6 +131,8 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
     el.querySelector('.tt-lees').onclick = () => stem.zeg(uitleg);
     el.querySelector('.tt-stop').onclick = () => {
       geluid.klik();
+      bewaarConcept();
+      if (!bestaand && acties.length) stem.zeg('Ik bewaar je tekening. De volgende keer kun je verder tekenen.');
       sluit(null);
     };
 
@@ -301,7 +318,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
       });
       kaarten(el.querySelector('.tt-aantal'), K.AANTALLEN, (a) => a === w.aantal, (a) => `<span class="groot getal">${a}</span>`, (a) => {
         w.aantal = a;
-        if (a === 1) stem.zeg('Let op: in je eentje kun je geen familie krijgen!');
+        if (a === 1) stem.zeg('Let op: alleen kan hij geen familie krijgen. Kies er meer als je wilt dat ze kindjes krijgen!');
       });
       dier.style.setProperty('--maat', 0.7);
       el.querySelectorAll('[data-kant]').forEach((b) =>
@@ -338,10 +355,15 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
       el.querySelector('.tt-lees').onclick = () => stem.zeg('Hoe beweegt hij? Hoe groot is hij? Hoeveel zijn er? En hoe heet hij?');
       el.querySelector('.tt-stop').onclick = () => {
         geluid.klik();
+        if (!bestaand) {
+          zetConcept({ tekening: sticker.tekening, ogen: sticker.ogen });
+          stem.zeg('Ik bewaar je tekening. De volgende keer kun je verder.');
+        }
         sluit(null);
       };
       el.querySelector('.tt-zet').onclick = () => {
         if (!w.naam) w.naam = 'Wezen';
+        if (!bestaand) zetConcept(null);
         sluit(w);
       };
     }
@@ -352,6 +374,22 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
       klaar(w);
     }
   });
+}
+
+// ---- Halve tekening bewaren (één, op dit apparaat) ----
+const CONCEPT = 'planeetmakers-concept-v1';
+function leesConcept() {
+  try {
+    return JSON.parse(localStorage.getItem(CONCEPT));
+  } catch {
+    return null;
+  }
+}
+function zetConcept(c) {
+  try {
+    if (c) localStorage.setItem(CONCEPT, JSON.stringify(c));
+    else localStorage.removeItem(CONCEPT);
+  } catch {}
 }
 
 // ---- Ondergrond voor het aanpassen van een wezen ----
@@ -539,7 +577,7 @@ function vul(ctx, sx, sy, hex) {
 export async function neemOp(seconden) {
   try {
     const stroom = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const rec = new MediaRecorder(stroom);
+    const rec = new MediaRecorder(stroom, { audioBitsPerSecond: 32000 });
     const stukjes = [];
     rec.ondataavailable = (e) => stukjes.push(e.data);
     const klaar = new Promise((r) => (rec.onstop = r));

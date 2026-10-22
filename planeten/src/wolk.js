@@ -30,9 +30,10 @@ function schrijf(sleutel, waarde) {
   }
 }
 
-// Vingerafdruk: is er sinds de laatste keer bijwerken iets veranderd?
+// Vingerafdruk: is er sinds de laatste keer bijwerken iets veranderd? 'laatst' (wanneer er voor
+// het laatst gekeken is) telt niet mee: alleen kijken is geen verandering.
 function afdruk(obj) {
-  const t = JSON.stringify(obj ?? null);
+  const t = JSON.stringify(obj ?? null, (k, v) => (k === 'laatst' ? undefined : v));
   let h = 5381;
   for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
   return t.length + '-' + h.toString(36);
@@ -66,7 +67,10 @@ const TEKENS = 'abcdefghjkmnpqrstuvwxyz23456789';
 const WOORDEN = ['zorbix', 'blibo', 'lumi', 'kwasar', 'nebula', 'komeet', 'pluto', 'stardust', 'orbit', 'galaxo'];
 
 let stand = lees(STAND, { code: null, versies: {}, afdrukken: {}, botsingen: {} });
-const bewaarStand = () => schrijf(STAND, stand);
+// Botsingen (de hele andere planeet, soms een paar MB) alleen in het geheugen houden: bij de
+// volgende keer ophalen zien we ze vanzelf weer. Anders raakt het geheugen van de tablet vol.
+stand.botsingen = {};
+const bewaarStand = () => schrijf(STAND, { ...stand, botsingen: {} });
 const timers = {};
 let bezig = {};
 
@@ -221,6 +225,30 @@ export const wolk = {
     } finally {
       bezig[wie] = false;
     }
+  },
+
+  // Prullenbak in de wolk: elke planeet die werd weggegooid of overschreven, 30 dagen lang.
+  async prullenbak() {
+    if (!stand.code) return [];
+    const uit = [];
+    await Promise.all(
+      PLANETEN.map(async (wie) => {
+        try {
+          const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}&prullenbak=lijst`);
+          if (!r.ok) return;
+          for (const tijd of await r.json())
+            uit.push({
+              wie,
+              wanneer: Number(tijd),
+              haal: async () => {
+                const d = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}&prullenbak=${tijd}`);
+                return d.ok ? (await d.json())?.data || null : null;
+              },
+            });
+        } catch {}
+      })
+    );
+    return uit;
   },
 
   // Keuze bij twee versies: 'hier' houdt de planeet van dit apparaat, 'daar' die uit de wolk.

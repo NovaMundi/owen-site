@@ -14,7 +14,7 @@ import { wolk } from './wolk.js';
 import { openTekentafel } from './tekentafel.js';
 import { Leven } from './leven/beheer.js';
 import { BeschavingLaag } from './leven/beeld.js';
-import { TECH, FASEN, meervoud, techNaam } from './leven/sim.js';
+import { TECH, FASEN, meervoud, techNaam, snelBezig } from './leven/sim.js';
 import { plaatjeVoorNieuweSoort } from './leven/afbeelding.js';
 import * as K from './keuzes.js';
 
@@ -40,10 +40,30 @@ function schrijf(sleutel, waarde) {
 const planeten = lees(OPSLAG, {});
 const fotos = lees(FOTOS, {});
 
+// Prullenbak: een weggegooide planeet blijft 30 dagen bewaard (hier de laatste per speler, in de
+// wolk allemaal). Past hij niet meer in het geheugen, dan staat hij alsnog in de wolk.
+const PRULLENBAK = 'planeetmakers-prullenbak-v1';
+const MAAND = 30 * 24 * 3600 * 1000;
+function legInPrullenbak(id) {
+  if (!planeten[id]) return;
+  const bak = lees(PRULLENBAK, []).filter((x) => x.wie !== id && Date.now() - x.wanneer < MAAND);
+  bak.push({ wie: id, wanneer: Date.now(), data: { recept: planeten[id], wereld: lees('planeetmakers-leven-v1', {})[id] || null, foto: fotos[id] || null } });
+  if (!schrijf(PRULLENBAK, bak)) schrijf(PRULLENBAK, bak.slice(-1));
+}
+
 // ================= 3D-scène =================
 const doek = document.getElementById('doek');
 const renderer = new THREE.WebGLRenderer({ canvas: doek, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// Tablets hebben scherpe schermen maar een zuinige grafische chip: 1,5 is scherp genoeg en
+// scheelt bijna de helft aan rekenwerk.
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+// Raakt de tablet de 3D-tekenaar kwijt (geheugen vol, app op de achtergrond), dan alles
+// bewaren en de pagina netjes opnieuw laden, in plaats van een zwart scherm.
+doek.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  bewaarNu();
+  setTimeout(() => location.reload(), 300);
+});
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 
@@ -119,7 +139,7 @@ function wijzig() {
 }
 function bewaarStap() {
   geschiedenis.push(JSON.stringify(recept));
-  if (geschiedenis.length > 60) geschiedenis.shift();
+  if (geschiedenis.length > 30) geschiedenis.shift(); // elke stap is een hele kopie, met plaatjes
   knopTerug.classList.toggle('uit', geschiedenis.length === 0);
 }
 function terug() {
@@ -138,10 +158,31 @@ function opslaan() {
   clearTimeout(opslaanTimer);
   opslaanTimer = setTimeout(() => {
     planeten[wie] = recept;
-    if (!schrijf(OPSLAG, planeten)) toonMelding('Oei, het geheugen is vol. Haal een wezen of wens weg.', 4000);
+    if (!schrijf(OPSLAG, planeten)) geheugenVol();
     wolk.planStuur(wie);
   }, 400);
 }
+// Het geheugen van de tablet is vol: één keer per paar minuten zeggen, niet bij elke penseelstreek.
+// Met de wolk aan staat alles er ook nog, dus dan gaat er niets verloren.
+let volGemeld = 0;
+function geheugenVol() {
+  if (Date.now() - volGemeld < 180000) return;
+  volGemeld = Date.now();
+  toonMelding(wolk.aan ? 'Het geheugen van deze tablet is bijna vol. Je planeet staat veilig in de wolk. Roep papa even!' : 'Oei, het geheugen van deze tablet is vol. Roep papa even!', 6000);
+}
+// Meteen alles bewaren: als de app naar de achtergrond gaat (Android sluit die soms hard af).
+function bewaarNu() {
+  if (wie && recept && !geboorte) {
+    clearTimeout(opslaanTimer);
+    planeten[wie] = recept;
+    if (!schrijf(OPSLAG, planeten)) geheugenVol();
+  }
+  leven.bewaar();
+  if (wie) wolk.stuur(wie);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) bewaarNu();
+});
 
 // ================= Snel en mooi =================
 function toonPlaneet(p) {
@@ -322,13 +363,19 @@ function herlaadUitOpslag() {
   }
 }
 
+// Op jakevanpelt.com is Jake de baas, op owenvanpelt.com Owen. Daar staat je eigen planeet
+// voorop, en alleen je eigen planeet kun je helemaal weggooien. Op papa's laptop mag alles.
+const EIGENAAR = location.hostname.includes('jakevanpelt') ? 'jake' : location.hostname.includes('owenvanpelt') ? 'owen' : null;
+const magWissen = (id) => !EIGENAAR || EIGENAAR === id;
+
 function tekenStartKaarten() {
   const lijst = $('#makers');
   lijst.innerHTML = '';
-  for (const m of K.MAKERS) {
+  const volgorde = EIGENAAR ? [...K.MAKERS].sort((a, b) => (b.id === EIGENAAR) - (a.id === EIGENAAR)) : K.MAKERS;
+  for (const m of volgorde) {
     const r = planeten[m.id];
     const k = document.createElement('button');
-    k.className = 'maker-knop';
+    k.className = 'maker-knop' + (m.id === EIGENAAR ? ' eigen' : '');
     k.dataset.id = m.id;
     k.innerHTML = fotos[m.id]
       ? `<img class="mini foto" src="${fotos[m.id]}" alt="">`
@@ -393,7 +440,9 @@ function toonWolk() {
       <h2>☁️ Meenemen naar andere apparaten</h2>
       <p class="weg-uitleg">Zet je de wolk aan, dan staan de planeten op elke tablet en computer waar je ze koppelt. Ze leven overal gewoon verder.</p>
       <button class="tt-klaar wolk-aan">Wolk aanzetten</button>
+      <button class="tt-klaar wolk-bak">🗑️ Prullenbak</button>
       <button class="opnieuw wolk-dicht">Sluiten</button></div>`;
+    el.querySelector('.wolk-bak').onclick = () => toonPrullenbak();
     el.querySelector('.wolk-aan').onclick = async (e) => {
       e.target.disabled = true;
       e.target.textContent = 'Bezig...';
@@ -406,7 +455,9 @@ function toonWolk() {
       <p class="weg-uitleg">Open één van deze links één keer op de tablet of computer. Daarna gaat het vanzelf.</p>
       ${sites.map((s) => `<div class="wolk-link"><code>${wolk.linkVoor(s)}</code><button class="kleurbol plus wolk-kopie" data-link="${wolk.linkVoor(s)}" title="Kopiëren">📋</button></div>`).join('')}
       <p class="weg-uitleg">Familiecode: <b>${wolk.code}</b></p>
+      <button class="tt-klaar wolk-bak">🗑️ Prullenbak</button>
       <button class="opnieuw wolk-dicht">Sluiten</button></div>`;
+    el.querySelector('.wolk-bak').onclick = () => toonPrullenbak();
     el.querySelectorAll('.wolk-kopie').forEach((b) =>
       (b.onclick = async () => {
         try {
@@ -420,6 +471,47 @@ function toonWolk() {
   }
   el.querySelector('.wolk-dicht').onclick = () => (el.hidden = true);
   el.hidden = false;
+}
+
+// Prullenbak (voor papa): weggegooide planeten van deze tablet en uit de wolk terughalen.
+async function toonPrullenbak() {
+  const el = $('#wolkpaneel');
+  el.innerHTML = `<div class="weg-doos"><h2>🗑️ Prullenbak</h2><p class="weg-uitleg">Weggegooide planeten blijven 30 dagen bewaard. Terughalen zet de huidige planeet van die speler zelf weer in de prullenbak.</p><div class="bak-lijst">Even zoeken...</div><button class="opnieuw wolk-dicht">Terug</button></div>`;
+  el.querySelector('.wolk-dicht').onclick = () => toonWolk();
+  el.hidden = false;
+  const items = lees(PRULLENBAK, [])
+    .filter((x) => Date.now() - x.wanneer < MAAND)
+    .map((x) => ({ wie: x.wie, wanneer: x.wanneer, haal: async () => x.data }));
+  for (const x of await wolk.prullenbak()) {
+    // Dezelfde planeet staat vaak hier én in de wolk: maar één keer laten zien.
+    if (!items.some((y) => y.wie === x.wie && Math.abs(y.wanneer - x.wanneer) < 120000)) items.push(x);
+  }
+  items.sort((a, b) => b.wanneer - a.wanneer);
+  const lijst = el.querySelector('.bak-lijst');
+  lijst.textContent = items.length ? '' : 'De prullenbak is leeg.';
+  for (const x of items.slice(0, 15)) {
+    const rij = document.createElement('div');
+    rij.className = 'wolk-link';
+    const datum = new Date(x.wanneer).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    rij.innerHTML = `<span></span><button class="tt-klaar">Terughalen</button>`;
+    rij.querySelector('span').textContent = `${naamVan(x.wie)} · ${datum}`;
+    rij.querySelector('button').onclick = async (e) => {
+      e.target.disabled = true;
+      e.target.textContent = 'Bezig...';
+      const data = await x.haal();
+      if (!data || !data.recept) {
+        e.target.textContent = 'Lukt niet';
+        return;
+      }
+      legInPrullenbak(x.wie);
+      wolk.zetPakket(x.wie, data);
+      herlaadUitOpslag();
+      await wolk.stuur(x.wie, true);
+      e.target.textContent = '✅ Terug!';
+      tekenStartKaarten();
+    };
+    lijst.appendChild(rij);
+  }
 }
 
 async function begin(id) {
@@ -565,9 +657,27 @@ function sluitPaneel() {
 
 function zetPenseel(modus) {
   penseel.modus = modus;
+  penseel.draai = false;
   cursor.visible = false;
   doek.classList.toggle('penseel', !!modus);
+  draaiKnop.hidden = !modus;
+  draaiKnop.classList.remove('aan');
 }
+// ✋ Tijdens boetseren of verven even de planeet draaien met één vinger (twee vingers kan ook).
+const draaiKnop = document.createElement('button');
+draaiKnop.id = 'draaiknop';
+draaiKnop.className = 'rond';
+draaiKnop.title = 'Draaien';
+draaiKnop.innerHTML = '✋<small>Draaien</small>';
+draaiKnop.hidden = true;
+draaiKnop.addEventListener('click', () => {
+  penseel.draai = !penseel.draai;
+  draaiKnop.classList.toggle('aan', penseel.draai);
+  cursor.visible = false;
+  geluid.klik();
+  stem.zeg(penseel.draai ? 'Nu kun je de planeet draaien. Tik nog een keer op het handje om verder te bouwen.' : 'Bouwen maar!');
+});
+document.getElementById('maker').appendChild(draaiKnop);
 
 function toonPaneel(id, opnieuw) {
   const g = K.GEREEDSCHAP.find((x) => x.id === id);
@@ -928,8 +1038,10 @@ const PANELEN = {
       kaart.querySelector('b').textContent = w.naam;
       const knoppen = document.createElement('div');
       knoppen.className = 'wezen-knoppen';
+      // Elke knop heeft een woordje eronder; lang drukken leest het voor.
+      const label = (icoon, woord) => `<span>${icoon}</span><small>${woord}</small>`;
       knoppen.append(
-        knop(w.echt ? '🔒' : '✏️', 'kleurbol plus' + (w.echt ? ' op-slot' : ''), async () => {
+        knop(label(w.echt ? '🔒' : '✏️', w.echt ? 'Op slot' : 'Teken'), 'kleurbol plus wezenknop' + (w.echt ? ' op-slot' : ''), async () => {
           geluid.klik();
           // Eenmaal echt gemaakt is een wezen af: niet meer aanpassen.
           if (w.echt) {
@@ -948,29 +1060,35 @@ const PANELEN = {
           stem.zeg(`${nieuw.naam} ziet er nu zo uit!`);
           toonPaneel('wezens', false);
         }, { titel: 'Aanpassen of inkleuren' }),
-        knop(w.echt && w.weergave === 'echt' ? '🖍️' : '✨', 'kleurbol plus toverknop', () => maakEchtKnop(w), { titel: w.echt ? (w.weergave === 'echt' ? 'Terug naar de tekening' : 'Laat de echte versie zien') : 'Maak echt' }),
-        knop('👀', 'kleurbol plus', () => {
+        knop(label(w.echt && w.weergave === 'echt' ? '🖍️' : '✨', w.echt ? (w.weergave === 'echt' ? 'Tekening' : 'Echt') : 'Maak echt'), 'kleurbol plus wezenknop toverknop', () => maakEchtKnop(w), { titel: w.echt ? (w.weergave === 'echt' ? 'Terug naar de tekening' : 'Laat de echte versie zien') : 'Maak echt' }),
+        knop(label('👀', 'Bezoek'), 'kleurbol plus wezenknop', () => {
           const d = wezens.willekeurigDier(w.id);
           if (d) {
             geluid.zwiep();
             bezoek(d, w);
           }
         }, { titel: 'Bezoeken' }),
-        knop('🔊', 'kleurbol plus', () => maakGeluid(w, 1), { titel: 'Luister' }),
-        knop('📜', 'kleurbol plus', () => {
+        knop(label('🔊', 'Luister'), 'kleurbol plus wezenknop', () => maakGeluid(w, 1), { titel: 'Luister' }),
+        knop(label('📜', 'Verhaal'), 'kleurbol plus wezenknop', () => {
           geluid.klik();
           toonPaneel('verhaal', true);
-        }, { titel: 'Hun verhaal' }),
-        knop('🗑️', 'kleurbol plus', () => {
-          vraag(`Moet ${w.naam} van je planeet af?`, () => {
-            bewaarStap();
-            recept.wezens = recept.wezens.filter((x) => x.id !== w.id);
-            wijzig();
-            opslaan();
-            toonPaneel('wezens', false);
-          });
-        }, { titel: 'Weg' })
+        }, { titel: 'Hun verhaal' })
       );
+      // Weghalen staat apart (niet naast het verhaal) en gaat alleen met vasthouden. Het wezen
+      // vertrekt met een ruimteschip; met de oeps-knop komt het met zijn hele verhaal terug.
+      const weg = knop(`<span class="houd-ring"></span>${label('🛸', 'Weg')}`, 'kleurbol plus wezenknop wezen-weg', () => {}, { titel: 'Weg met het ruimteschip' });
+      houdVast(weg, {
+        uitleg: `Moet ${w.naam} met het ruimteschip weg?`,
+        klaar: () => {
+          bewaarStap();
+          recept.wezens = recept.wezens.filter((x) => x.id !== w.id);
+          wijzig();
+          opslaan();
+          stem.zeg(`${w.naam} is met het ruimteschip vertrokken. Wil je hem terug? Tik op de oeps-knop.`);
+          toonPaneel('wezens', false);
+        },
+      });
+      knoppen.append(weg);
       kaart.appendChild(knoppen);
       el.appendChild(kaart);
     }
@@ -1120,24 +1238,30 @@ const PANELEN = {
     const [r, k] = rij();
     k.appendChild(knop('<span class="groot">🎉</span><span>Mijn planeet is klaar!</span>', 'kaart feest', feest));
     el.appendChild(r);
-    el.appendChild(
-      knop('Helemaal opnieuw beginnen', 'opnieuw', () => {
-        vraag('Wil je echt een nieuwe planeet? Deze is dan weg.', () => {
-          delete planeten[wie];
-          delete fotos[wie];
-          leven.wis(wie);
-          schrijf(OPSLAG, planeten);
-          schrijf(FOTOS, fotos);
-          const ik = wie;
-          sluitPaneel();
-          ruimOp();
-          wie = ik;
-          geschiedenis = [];
-          startGeboorte();
-          bouwDock();
-        });
-      })
-    );
+    // Alleen je eigen planeet kun je weggooien. En ook dan gaat hij eerst naar de prullenbak,
+    // waar papa hem nog een maand terug kan halen.
+    if (!magWissen(wie)) return;
+    const weg = knop('<span class="houd-ring"></span>🗑️ Helemaal opnieuw beginnen', 'opnieuw', () => {});
+    houdVast(weg, {
+      uitleg: 'Wil je een nieuwe planeet? Dan gaat deze naar de prullenbak.',
+      klaar: () => {
+        leven.bewaar();
+        legInPrullenbak(wie);
+        delete planeten[wie];
+        delete fotos[wie];
+        leven.wis(wie);
+        schrijf(OPSLAG, planeten);
+        schrijf(FOTOS, fotos);
+        const ik = wie;
+        sluitPaneel();
+        ruimOp();
+        wie = ik;
+        geschiedenis = [];
+        startGeboorte();
+        bouwDock();
+      },
+    });
+    el.appendChild(weg);
   },
 
   wens(el) {
@@ -1206,10 +1330,61 @@ function vasthouden(knopEl, richting) {
     if (gieten === richting) gieten = 0;
     knopEl.classList.remove('ingedrukt');
   };
+  knopEl.dataset.vasthouden = '1';
   knopEl.addEventListener('pointerdown', start);
   knopEl.addEventListener('pointerup', stop);
   knopEl.addEventListener('pointerleave', stop);
   knopEl.addEventListener('pointercancel', stop);
+}
+
+// Iets weggooien gaat nooit met één tik: je houdt de knop drie tellen vast. Een ring loopt vol
+// en de stem telt af. Laat je eerder los, dan gebeurt er niets.
+function houdVast(knopEl, { tellen = 3, uitleg, klaar }) {
+  knopEl.classList.add('houdknop');
+  knopEl.dataset.vasthouden = '1';
+  let start = 0, raf = 0, gezegd = 0;
+  const reset = () => {
+    cancelAnimationFrame(raf);
+    start = 0;
+    knopEl.style.setProperty('--p', 0);
+    knopEl.classList.remove('ingedrukt');
+  };
+  const loop = () => {
+    const t = (performance.now() - start) / 1000;
+    knopEl.style.setProperty('--p', Math.min(1, t / tellen));
+    const tel = Math.floor(t);
+    if (tel > gezegd && tel < tellen) {
+      gezegd = tel;
+      stem.zeg(['', 'twee', 'één'][tel] || '');
+      geluid.pling(tel);
+    }
+    if (t >= tellen) {
+      reset();
+      geluid.zwiep();
+      klaar();
+      return;
+    }
+    raf = requestAnimationFrame(loop);
+  };
+  knopEl.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    start = performance.now();
+    gezegd = 0;
+    knopEl.classList.add('ingedrukt');
+    stem.zeg('drie');
+    geluid.pling(0);
+    raf = requestAnimationFrame(loop);
+  });
+  const los = () => {
+    if (!start) return;
+    const kort = performance.now() - start < 400;
+    reset();
+    stem.zeg(kort ? `${uitleg} Houd de knop drie tellen vast.` : 'Losgelaten. Er is niets weggegooid.');
+  };
+  knopEl.addEventListener('pointerup', los);
+  knopEl.addEventListener('pointerleave', los);
+  knopEl.addEventListener('pointercancel', los);
+  knopEl.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
 // ================= Wensen opnemen =================
@@ -1221,7 +1396,7 @@ async function wisselOpname(knopEl, paneelEl) {
   }
   try {
     const stroom = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const rec = new MediaRecorder(stroom);
+    const rec = new MediaRecorder(stroom, { audioBitsPerSecond: 32000 });
     const stukjes = [];
     rec.ondataavailable = (e) => stukjes.push(e.data);
     rec.onstop = () => {
@@ -1244,7 +1419,8 @@ async function wisselOpname(knopEl, paneelEl) {
     rec.start();
     opname = rec;
     knopEl.classList.add('neemt-op');
-    rec.maxTimer = setTimeout(() => rec.state === 'recording' && rec.stop(), 30000);
+    // Hooguit 15 seconden: een opname neemt veel plek in het geheugen van de tablet.
+    rec.maxTimer = setTimeout(() => rec.state === 'recording' && rec.stop(), 15000);
   } catch {
     toonMelding('De microfoon doet het niet. Laat papa het opschrijven!', 3000);
   }
@@ -1275,7 +1451,7 @@ doek.addEventListener(
       tikGeboorte();
       return;
     }
-    if (!penseel.modus || !planeet) return;
+    if (!penseel.modus || !planeet || penseel.draai) return;
     if (aanwijzers.size > 1) {
       stopTekenen();
       return;
@@ -1291,7 +1467,7 @@ doek.addEventListener(
   { capture: true }
 );
 doek.addEventListener('pointermove', (e) => {
-  if (!penseel.modus || !planeet) return;
+  if (!penseel.modus || !planeet || penseel.draai) return;
   const r = raakPunt(e);
   zetCursor(r);
   if (penseel.tekenen && r) dep(r, false);
@@ -1506,7 +1682,7 @@ doek.addEventListener('pointerup', (e) => {
   const rect = doek.getBoundingClientRect();
   muis.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
   straal.setFromCamera(muis, camera);
-  const raak = wezens.raak(straal.ray);
+  const raak = wezens.raakBij(straal.ray, muis, camera, rect.width, rect.height);
   if (raak) tikDier(raak);
   else if (volg) stopVolg();
 });
@@ -1577,7 +1753,8 @@ function werkJaarBij() {
   const heeft = !!(w && Object.keys(w.soorten).length);
   $('#verhaalknop').hidden = !heeft || !!geboorte;
   const fase = heeft && w.klimaat && w.klimaat.fase !== 'gewoon' ? FASEN[w.klimaat.fase] : null;
-  $('#jaar').textContent = heeft ? `Jaar ${telTekst(w.jaar)}${fase ? ` · ${fase.icoon} ${fase.naam}` : ''}` : '';
+  // ⏩ zolang het snelle begin duurt: het jaartal telt eerlijk, de tijd gaat alleen sneller.
+  $('#jaar').textContent = heeft ? `${snelBezig(w) ? '⏩ ' : ''}Jaar ${telTekst(w.jaar)}${fase ? ` · ${fase.icoon} ${fase.naam}` : ''}` : '';
 }
 setInterval(werkJaarBij, 2000);
 
@@ -1619,7 +1796,7 @@ function duurTekst(minuten) {
 function toonWeg(weg) {
   const el = $('#weg');
   const naam = recept.naam || 'je planeet';
-  const lijst = [...weg.nieuws].sort((a, b) => b.belang - a.belang || b.jaar - a.jaar).slice(0, 6).sort((a, b) => a.jaar - b.jaar);
+  const lijst = [...weg.nieuws].sort((a, b) => b.belang - a.belang || b.jaar - a.jaar).slice(0, 8).sort((a, b) => a.jaar - b.jaar);
   const plaatjes = Object.fromEntries((recept.wezens || []).map((x) => [x.id, beeldVan(x).open]));
   el.innerHTML = `
     <div class="weg-doos">
@@ -1756,7 +1933,10 @@ let zoomDoel = 0;
 
 // ================= Meldingen en vragen =================
 let meldingTimer = null;
+// Een melding wordt ook voorgelezen, tenzij er net al iets gezegd wordt (dan zegt die zin
+// meestal hetzelfde, en anders zou de melding hem afbreken).
 function toonMelding(tekst, duur = 0, groot = false) {
+  if (!stem.bezig) stem.zeg(tekst);
   melding.textContent = tekst;
   melding.classList.toggle('groot', groot);
   melding.hidden = false;
@@ -1770,7 +1950,7 @@ function vraag(tekst, ja) {
   const v = $('#vraag');
   v.querySelector('.vraag-tekst').textContent = tekst;
   v.hidden = false;
-  stem.zeg(tekst);
+  stem.zeg(`${tekst} Ja of nee?`);
   v.querySelector('.ja').onclick = () => {
     v.hidden = true;
     geluid.zwiep();
@@ -1780,6 +1960,42 @@ function vraag(tekst, ja) {
     v.hidden = true;
     geluid.klik();
   };
+}
+
+// Lang drukken op een knop zegt wat hij doet (titels zie je niet op een tablet). Dan gebeurt er
+// verder niets, zodat je rustig kunt uitzoeken wat een knop doet.
+{
+  let timer = null, gezegd = null;
+  document.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('button');
+    if (!b || b.dataset.vasthouden) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const tekst = b.title || b.getAttribute('aria-label') || b.textContent;
+      if (!tekst || !tekst.trim()) return;
+      const was = stem.aan;
+      stem.aan = true;
+      stem.zeg(tekst);
+      stem.aan = was;
+      gezegd = b;
+    }, 550);
+  }, true);
+  const stop = () => clearTimeout(timer);
+  document.addEventListener('pointerup', stop, true);
+  document.addEventListener('pointercancel', stop, true);
+  document.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse' && (Math.abs(e.movementX) > 6 || Math.abs(e.movementY) > 6)) stop();
+  }, true);
+  document.addEventListener('click', (e) => {
+    if (gezegd && e.target.closest('button') === gezegd) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    gezegd = null;
+  }, true);
+  document.addEventListener('contextmenu', (e) => {
+    if (e.target.closest('button')) e.preventDefault();
+  });
 }
 
 // ================= Bovenbalk =================
@@ -1845,6 +2061,9 @@ function aanpassenAanScherm() {
   renderer.setSize(b, h, false);
   composer.setPixelRatio(renderer.getPixelRatio());
   composer.setSize(b, h);
+  // De gloed is zacht en wazig: op halve maat zie je geen verschil, maar het is veel lichter.
+  const pr = renderer.getPixelRatio();
+  bloei.setSize(Math.round((b * pr) / 2), Math.round((h * pr) / 2));
   camera.aspect = b / h;
   camera.updateProjectionMatrix();
   meetPaneel();
@@ -1859,6 +2078,8 @@ const zonRichting = new THREE.Vector3();
 const asY = new THREE.Vector3(0, 1, 0);
 renderer.setAnimationLoop((nu) => {
   const dt = Math.min(klok.getDelta(), 0.05);
+  // Op het startscherm of als de app op de achtergrond staat: niets tekenen, batterij sparen.
+  if (document.hidden || !startScherm.hidden) return;
 
   if (gieten && recept) {
     const oud = recept.zee;
@@ -1958,4 +2179,6 @@ $('#wolkknop').addEventListener('click', () => {
   geluid.klik();
   toonWolk();
 });
+// Vraag de browser het geheugen van de planeten niet zomaar op te ruimen als de tablet vol raakt.
+navigator.storage?.persist?.().catch(() => {});
 toonStart();

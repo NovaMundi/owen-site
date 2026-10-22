@@ -368,6 +368,31 @@ export class WezensLaag {
     return { soort: s.w, dier: s.dieren.find((d) => d.mesh === hit.object) };
   }
 
+  // Kleine wezens zijn met een vinger lastig precies te raken: eerst echt raak, anders het wezen
+  // dat binnen een vingerbreedte (±32 pixels) van de tik staat, aan de kant die je ziet.
+  raakBij(straal, ndc, camera, breedte, hoogte, marge = 32) {
+    const echt = this.raak(straal);
+    if (echt) return echt;
+    const v = new THREE.Vector3(), naarCam = new THREE.Vector3();
+    let beste = null, afstand = marge;
+    for (const s of this.soorten.values()) {
+      for (const d of s.dieren) {
+        if (!d.mesh.visible) continue;
+        d.mesh.getWorldPosition(v);
+        naarCam.copy(camera.position).sub(v);
+        if (v.clone().normalize().dot(naarCam) <= 0) continue; // achter de planeet
+        v.project(camera);
+        if (v.z > 1) continue;
+        const px = Math.hypot(((v.x - ndc.x) * breedte) / 2, ((v.y - ndc.y) * hoogte) / 2);
+        if (px < afstand) {
+          afstand = px;
+          beste = { soort: s.w, dier: d };
+        }
+      }
+    }
+    return beste;
+  }
+
   willekeurigDier(id) {
     const s = this.soorten.get(id);
     if (!s || !s.dieren.length) return null;
