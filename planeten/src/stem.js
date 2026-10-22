@@ -6,6 +6,8 @@
 // Tablets laten geluid pas toe nadat je ergens op getikt hebt. Wat daarvoor gezegd moet worden,
 // bewaren we tot de eerste tik, anders hoort het kind de welkomstzin nooit.
 
+import { geluid } from './geluid.js';
+
 let stemNL = null;
 function kiesStem() {
   const stemmen = speechSynthesis.getVoices();
@@ -89,10 +91,12 @@ function stop() {
 async function speel(teksten) {
   stop();
   const mijn = ronde;
+  geluid.muziekZacht(true); // muziek even zachter, zodat je de stem goed hoort
   for (const t of teksten.map(schoon).filter(Boolean)) {
     if (mijn !== ronde) return;
     await zegEen(t, mijn);
   }
+  if (mijn === ronde) geluid.muziekZacht(false);
 }
 
 export const stem = {
@@ -114,5 +118,6 @@ export const stem = {
   stil() {
     wachtend = null;
     stop();
+    geluid.muziekZacht(false);
   },
 };

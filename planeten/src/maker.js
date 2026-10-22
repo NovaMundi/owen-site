@@ -1445,6 +1445,7 @@ async function wisselOpname(knopEl, paneelEl) {
     rec.onstop = () => {
       stroom.getTracks().forEach((t) => t.stop());
       clearTimeout(rec.maxTimer);
+      geluid.muziekZacht(false);
       opname = null;
       knopEl.classList.remove('neemt-op');
       const blob = new Blob(stukjes, { type: rec.mimeType });
@@ -1459,6 +1460,7 @@ async function wisselOpname(knopEl, paneelEl) {
       lezer.readAsDataURL(blob);
     };
     stem.stil();
+    geluid.muziekZacht(true);
     rec.start();
     opname = rec;
     knopEl.classList.add('neemt-op');
@@ -2063,6 +2065,13 @@ $('#huis').addEventListener('click', () => {
   toonStart();
 });
 knopTerug.addEventListener('click', terug);
+// Muziek aan of uit (wordt onthouden op dit apparaat).
+const knopMuziek = $('#muziekknop');
+knopMuziek.classList.toggle('gedempt', !geluid.muziekAan);
+knopMuziek.addEventListener('click', () => {
+  geluid.muziek(!geluid.muziekAan);
+  knopMuziek.classList.toggle('gedempt', !geluid.muziekAan);
+});
 const knopStem = $('#stemknop');
 knopStem.addEventListener('click', () => {
   stem.aan = !stem.aan;

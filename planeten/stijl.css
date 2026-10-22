@@ -401,8 +401,8 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .kaart .groot .ico { width: 52px; height: 52px; }
 .balk .rond .ico { width: 30px; height: 30px; }
 .rond .ico { width: 34px; height: 34px; }
-#stemknop.gedempt .ico { opacity: 0.35; filter: grayscale(1); }
-#stemknop.gedempt::after { content: ''; position: absolute; left: 20%; right: 20%; top: 50%; height: 4px; background: #ff5f5f; transform: rotate(-35deg); border-radius: 2px; }
-#stemknop { position: relative; }
+.rond.gedempt .ico, .rond.gedempt { opacity: 0.5; filter: grayscale(1); }
+.rond.gedempt::after { content: ''; position: absolute; left: 20%; right: 20%; top: 50%; height: 4px; background: #ff5f5f; transform: rotate(-35deg); border-radius: 2px; }
+#stemknop, #muziekknop { position: relative; }
 #wolkknop .ico { width: 40px; height: 40px; }
 .wezenknop .ico { width: 30px; height: 30px; }
