@@ -1002,6 +1002,17 @@ function genEvents(w, soort, nu) {
 // het kind (of papa) van wie de planeet is! Ze bouwen een tempel en houden feesten. Verschillende
 // goden geven geen ruzie, alleen mooie verhalen voor elkaar.
 export const GODEN = { owen: 'Owen', jake: 'Jake', papa: 'Papa' };
+// Elk volk geeft zijn geloof een eigen naam: het Owenisme, het Owendom, het Geloof van Jake...
+// (Een e gevolgd door -isme krijgt een trema: Jakeïsme.)
+function maakGeloofNaam(god, keuze) {
+  const g = GODEN[god] || 'Papa';
+  const isme = /e$/i.test(g) ? g + 'ïsme' : /a$/i.test(g) ? g + 'ïsme' : g + 'isme';
+  return [isme, g + 'dom', 'Geloof van ' + g][Math.floor(keuze * 3) % 3];
+}
+export function geloofNaam(geloof) {
+  if (!geloof) return '';
+  return geloof.naam || maakGeloofNaam(geloof.god, 0);
+}
 function geloof(w, dt, nu) {
   w._geloofTijd = (w._geloofTijd || 0) + dt;
   if (w._geloofTijd < 50) return;
@@ -1016,14 +1027,14 @@ function geloof(w, dt, nu) {
     if (rnd(w) > 1 - Math.exp((-tijd * kans) / 12000)) continue;
     const ander = levend.find((x) => x.geloof && x !== s);
     const god = ander && rnd(w) < 0.3 ? ander.geloof.god : maker;
-    s.geloof = { god, sinds: Math.floor(w.jaar) };
+    s.geloof = { god, sinds: Math.floor(w.jaar), naam: maakGeloofNaam(god, rnd(w)) };
     const m = meervoud(s.naam);
-    verhaal(w, s, 3, '🙏', `De ${m} kijken naar de sterren en vragen zich af wie hun wereld gemaakt heeft. Ze geloven dat het de grote ${GODEN[god]} was! Ze bouwen een tempel voor ${GODEN[god]}.`, nu);
-    if (ander && ander.geloof.god !== god) verhaal(w, s, 2, '📖', `De ${m} en de ${meervoud(ander.naam)} vertellen elkaar verhalen over hun goden ${GODEN[god]} en ${GODEN[ander.geloof.god]}.`, nu);
+    verhaal(w, s, 3, '🙏', `De ${m} keken naar de sterren en vroegen zich af wie hun wereld gemaakt had. Nu hebben ze zich bekeerd tot het ${s.geloof.naam}! Ze geloven dat de Grote ${GODEN[god]} de hemel en de aarde heeft geschapen. Ze bouwen een tempel voor de Grote ${GODEN[god]}.`, nu);
+    if (ander && ander.geloof.god !== god) verhaal(w, s, 2, '📖', `De ${m} (${s.geloof.naam}) en de ${meervoud(ander.naam)} (${geloofNaam(ander.geloof)}) vertellen elkaar verhalen over de Grote ${GODEN[god]} en de Grote ${GODEN[ander.geloof.god]}.`, nu);
   }
   for (const s of levend) {
     if (!s.geloof || rnd(w) > 1 - Math.exp(-tijd / 9000)) continue;
-    verhaal(w, s, 1, '🎉', `De ${meervoud(s.naam)} vierden een groot feest voor ${GODEN[s.geloof.god]}. Ze dansten de hele nacht rond de tempel.`, nu);
+    verhaal(w, s, 1, '🎉', `De ${meervoud(s.naam)} vierden het grote ${GODEN[s.geloof.god]}feest van het ${geloofNaam(s.geloof)}. Ze dansten de hele nacht rond de tempel van de Grote ${GODEN[s.geloof.god]}.`, nu);
   }
 }
 
@@ -1045,7 +1056,7 @@ export function wonder(w, soort, nu = Date.now()) {
   if (!gelovig.length) return false;
   w._wonderJaar = w.jaar;
   const s = gelovig[Math.floor(rnd(w) * gelovig.length)];
-  verhaal(w, s, 2, '✨', `De ${meervoud(s.naam)} ${tekst}. "Een wonder van ${GODEN[s.geloof.god]}!" riepen ze, en ze brachten bloemen naar de tempel.`, nu);
+  verhaal(w, s, 2, '✨', `De ${meervoud(s.naam)} ${tekst}. "Een wonder van de Grote ${GODEN[s.geloof.god]}!" riepen ze, en ze brachten bloemen naar de tempel van het ${geloofNaam(s.geloof)}.`, nu);
   return true;
 }
 

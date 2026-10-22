@@ -6,7 +6,45 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { maakRandom } from '../ruis.js';
 import { MATEN } from '../keuzes.js';
-import { niveau } from './sim.js';
+import { niveau, geloofNaam, GODEN } from './sim.js';
+
+// Banier boven een tempel: de naam van het geloof en de god, in de kleur van die god.
+const banierCache = new Map();
+function banierTextuur(geloof, kleur) {
+  const sleutel = geloofNaam(geloof) + '|' + kleur;
+  if (banierCache.has(sleutel)) return banierCache.get(sleutel);
+  const B = 512, H = 200;
+  const d = document.createElement('canvas');
+  d.width = B;
+  d.height = H;
+  const ctx = d.getContext('2d');
+  const rond = (x, y, w, h, r) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  };
+  rond(8, 8, B - 16, H - 16, 40);
+  ctx.fillStyle = kleur;
+  ctx.fill();
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = 'rgba(40,30,20,0.55)';
+  ctx.stroke();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '700 76px Fredoka, "Segoe UI", sans-serif';
+  ctx.fillText(geloofNaam(geloof), B / 2, H * 0.4, B - 50);
+  ctx.font = '600 40px Fredoka, "Segoe UI", sans-serif';
+  ctx.fillText('✦ De Grote ' + (GODEN[geloof.god] || 'Papa') + ' ✦', B / 2, H * 0.76, B - 50);
+  const tex = new THREE.CanvasTexture(d);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  banierCache.set(sleutel, tex);
+  return tex;
+}
 
 const BOUWTIJD = 30000; // zo lang (echte tijd) staat een nieuw bouwwerk in de steigers
 const GODKLEUR = { owen: '#5ab8ff', jake: '#7ad04a', papa: '#ff9a3a' };
@@ -147,6 +185,8 @@ export class BeschavingLaag {
     this.beeld = instanties(v.beeld, new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, metalness: 0.5, roughness: 0.35 }), MAX.tempel);
     this.brug = instanties(v.brug, klei(), MAX.brug);
     this.groep.add(this.fabriek, this.mast, this.rotor, this.koraal, this.tempel, this.beeld, this.brug);
+    this.banieren = new THREE.Group();
+    this.groep.add(this.banieren);
     this.groei = [];
     this.plekken = new Map();
     this.gezienPlek = new Map();
@@ -391,6 +431,10 @@ export class BeschavingLaag {
     // Tempels: bij het grootste dorp van elke gelovige soort, met een beeld van hun god.
     huidigSoort = null;
     wat = null;
+    for (const b of [...this.banieren.children]) {
+      this.banieren.remove(b);
+      b.material.dispose();
+    }
     for (const s of Object.values(wereld.soorten)) {
       if (!s.geloof || s.uitgestorven !== null) continue;
       const dorp = groepen.filter((x) => x.s === s && x.n >= 3 && regios[x.g.regio].land).sort((a, b) => b.g.pop - a.g.pop)[0];
@@ -406,6 +450,11 @@ export class BeschavingLaag {
         plekVan(s.id).tempel = dir.clone();
         const voor = verspreid(rnd, dir, 0.012);
         plaats(this.beeld, voor, new THREE.Vector3(maat * 2.4, maat * 2.4, maat * 2.4), GODKLEUR[s.geloof.god] || '#ffd34d', hoek);
+        // Banier met de naam van het geloof boven de tempel (stukje herkenning voor het kind).
+        const banier = new THREE.Sprite(new THREE.SpriteMaterial({ map: banierTextuur(s.geloof, GODKLEUR[s.geloof.god] || '#ffd34d'), transparent: true }));
+        banier.position.copy(p).addScaledVector(dir, maat * 5.2);
+        banier.scale.set(maat * 7, maat * 2.75, 1);
+        this.banieren.add(banier);
       }
       huidigSoort = null;
     }
@@ -536,6 +585,10 @@ export class BeschavingLaag {
     if (ookSleutel) this.sleutel = '';
     for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.boot, this.raket, this.heuvel, this.fabriek, this.mast, this.rotor, this.koraal, this.tempel, this.beeld, this.brug]) m.count = 0;
     this.groei = [];
+    for (const b of [...(this.banieren?.children || [])]) {
+      this.banieren.remove(b);
+      b.material.dispose();
+    }
     if (ookSleutel) {
       // Andere planeet (of opnieuw geopend): alles staat er meteen, niets in de steigers.
       this.gebouwd = false;

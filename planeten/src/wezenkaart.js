@@ -5,7 +5,7 @@
 import { stem } from './stem.js';
 import { geluid } from './geluid.js';
 import { beeldVan } from './wezens.js';
-import { TECH, OMDAT, GODEN, meervoud, techNaam } from './leven/sim.js';
+import { TECH, OMDAT, GODEN, meervoud, techNaam, geloofNaam } from './leven/sim.js';
 import { MAKERS } from './keuzes.js';
 
 const telTekst = (n) => {
@@ -50,7 +50,7 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
 
   // Bijzonderheden.
   const extra = [];
-  if (s?.geloof) extra.push(`🙏 Ze geloven in de grote ${GODEN[s.geloof.god]}`);
+  if (s?.geloof) extra.push(`🙏 ${geloofNaam(s.geloof)}: ze geloven dat de Grote ${GODEN[s.geloof.god]} de hemel en de aarde heeft geschapen`);
   if (s?.vlaggen.getemdDoor && w.soorten[s.vlaggen.getemdDoor]) extra.push(`🐕 Huisdier van de ${meervoud(w.soorten[s.vlaggen.getemdDoor].naam)}`);
   if (s?.vlaggen.heuvels) extra.push('⛰️ Ze bouwen grote heuvels');
   if (s?.vlaggen.brug) extra.push('🌉 Ze hebben bruggen gebouwd');
