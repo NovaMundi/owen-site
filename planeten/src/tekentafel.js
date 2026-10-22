@@ -138,6 +138,12 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
       sluit(null);
     };
 
+    // Gaat de tablet naar de achtergrond (Android sluit apps soms), dan de tekening alvast bewaren.
+    const opAchtergrond = () => {
+      if (document.hidden) bewaarConcept();
+    };
+    document.addEventListener('visibilitychange', opAchtergrond);
+
     // ---- Tekenen ----
     const punt = (e) => {
       const r = teken.getBoundingClientRect();
@@ -373,6 +379,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
     }
 
     function sluit(w) {
+      document.removeEventListener('visibilitychange', opAchtergrond);
       el.hidden = true;
       el.innerHTML = '';
       klaar(w);

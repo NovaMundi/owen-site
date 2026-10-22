@@ -786,6 +786,7 @@ export function stap(w, basisRegios, dt, nu) {
     }
     // Het kind heeft gezien dat het slecht gaat (tijdens het spelen, niet tijdens het inhalen).
     if (!w._inhalen && soort.piek > 20 && nu_totaal < soort.piek * 0.3) soort.vlaggen.gewaarschuwd = 1;
+    else if (soort.vlaggen.gewaarschuwd && nu_totaal > soort.piek * 0.6) delete soort.vlaggen.gewaarschuwd; // weer opgeknapt: weer beschermd
     // Een getekend wezen sterft nooit uit terwijl het kind weg was, zonder dat het kind eerder
     // heeft kunnen zien dat het slecht ging. Dan blijft er een laatste groepje over.
     if (w._inhalen && !soort.afkomst && !soort.vlaggen.gewaarschuwd && nu_totaal < 10 && nu_totaal > 0 && soort.piek >= 10) {
@@ -1335,6 +1336,9 @@ function kruising(w, sa, sb, ga, gb, r, nu, naamBestaat) {
 }
 
 function afsplitsing(w, ouder, g, r, nu, naamBestaat, opEiland = false, regios = []) {
+  // De oudersoort moet ergens anders blijven bestaan: nooit de laatste groep omzetten.
+  const blijft = w.groepen.some((x) => x.soort === ouder.id && x !== g && x.pop > 2 && !(opEiland && regios[x.regio]?.eiland === r.eiland));
+  if (!blijft) return false;
   const voor = opEiland ? LANDSCHAP.eiland : LANDSCHAP[r.soort] || 'Nieuwe';
   // Geen "IJsijsblibo": een eerder voorvoegsel eerst weghalen.
   const kern = ouder.naam.replace(new RegExp('^(' + Object.values(LANDSCHAP).join('|') + ')', 'i'), '') || ouder.naam;

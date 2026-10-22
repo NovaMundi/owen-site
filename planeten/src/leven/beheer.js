@@ -190,7 +190,7 @@ export class Leven {
     // Het allereerste wezen op deze planeet: het eerste halfuur gaat de tijd supersnel.
     if (lijst.length && !this.w.snelVan && !Object.keys(this.w.soorten).length && this.w.jaar < 5) {
       this.w.snelVan = nu;
-      meld(this.w, 3, 'â©', 'In het begin gaat de tijd supersnel, anders duurt het zo lang! Kijk maar wat je wezens gaan doen.', nu);
+      meld(this.w, 3, '⏩', 'In het begin gaat de tijd supersnel, anders duurt het zo lang! Kijk maar wat je wezens gaan doen.', nu);
     }
     const ids = new Set(lijst.map((x) => x.id));
     // Een soort die net vanzelf is ontstaan staat nog niet in de lijst: die niet weghalen.
@@ -199,9 +199,10 @@ export class Leven {
       if (this.w.soorten[wezen.id] || this.toevoegen.has(wezen.id)) continue;
       if (terugSoort(this.w, wezen.id)) continue; // terug met de oeps-knop
       this.toevoegen.add(wezen.id);
+      const wereldVoor = this.w;
       const kleur = await kleurVan(wezen.plaatje);
       this.toevoegen.delete(wezen.id);
-      if (!this.w || this.w.soorten[wezen.id]) continue;
+      if (!this.w || this.w !== wereldVoor || this.w.soorten[wezen.id]) continue;
       voegSoortToe(this.w, { ...wezen, kleur }, this.regios, nu);
     }
     this.meldNieuws();
@@ -247,7 +248,7 @@ export class Leven {
   snelKlaar(nu) {
     if (!this.w || !this.w.snelVan || this.w.snelKlaar || snelBezig(this.w, nu)) return;
     this.w.snelKlaar = 1;
-    meld(this.w, 2, 'â³', 'Het snelle begin is voorbij. Nu gaat de tijd gewoon verder: elke minuut een jaar.', nu);
+    meld(this.w, 2, '⏳', 'Het snelle begin is voorbij. Nu gaat de tijd gewoon verder: elke minuut een jaar.', nu);
   }
 
   // Nieuwe soorten (kruising of afsplitsing) krijgen een plaatje en komen in de lijst van het kind.
@@ -348,7 +349,12 @@ function rekenOpAchtergrond(wereld, regios, jaren, nu) {
     };
     werker.onerror = () => {
       werker.terminate();
-      inhalen(wereld, regios, jaren, nu);
+      // Dan maar hier rekenen; en lukt ook dat niet, dan gewoon verder met de wereld zoals hij was.
+      try {
+        inhalen(wereld, regios, jaren, nu);
+      } catch (e) {
+        console.warn('Inhalen mislukt:', e);
+      }
       klaar(wereld);
     };
     werker.postMessage({ wereld, regios, jaren, nu });

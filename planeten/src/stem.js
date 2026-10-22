@@ -61,6 +61,8 @@ function zegEen(tekst, mijn) {
         klaar();
       };
       a.play().catch(() => {
+        // Afgebroken omdat er al een nieuwe zin is: niets meer doen (anders twee stemmen door elkaar).
+        if (speler !== a || mijn !== ronde) return klaar();
         speler = null;
         tts(tekst, klaar);
       });

@@ -49,6 +49,9 @@ function veilig(data) {
   return data;
 }
 
+// Een verzoek dat blijft hangen (tablet even bevroren) mag de sync niet voorgoed blokkeren.
+const wachtHooguit = (ms) => (AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
+
 const TEKENS = 'abcdefghjkmnpqrstuvwxyz23456789';
 const WOORDEN = ['zorbix', 'blibo', 'lumi', 'kwasar', 'nebula', 'komeet', 'pluto', 'stardust', 'orbit', 'galaxo'];
 
@@ -127,7 +130,7 @@ export const wolk = {
   async haal(wie) {
     let doc;
     try {
-      const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}`);
+      const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}`, { signal: wachtHooguit(20000) });
       if (!r.ok) return;
       doc = await r.json();
     } catch {
@@ -141,6 +144,8 @@ export const wolk = {
       if (hier) this.stuur(wie); // nog niet in de wolk: erheen sturen
       return;
     }
+    // Ouder dan wat we al weten, of we sturen net zelf iets: niets terugzetten.
+    if (doc.versie < bekend || bezig[wie]) return;
     if (doc.versie === bekend) {
       if (veranderdHier) this.stuur(wie);
       return;
@@ -153,6 +158,7 @@ export const wolk = {
       delete stand.botsingen[wie];
     } else {
       // Hier én daar veranderd: niet zelf kiezen.
+      if (doc.data) doc.data = veilig(doc.data);
       stand.botsingen[wie] = doc;
     }
     bewaarStand();
@@ -193,12 +199,15 @@ export const wolk = {
     try {
       const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}${forceer ? '&forceer=1' : ''}${aanzetten ? '&aanzetten=1' : ''}`, {
         method: 'POST',
+        signal: wachtHooguit(30000),
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ versie: stand.versies[wie] || 0, data }),
       });
       if (r.status === 409) {
         // Iemand anders heeft ondertussen op deze planeet gespeeld: het kind kiest straks.
-        stand.botsingen[wie] = (await r.json()).hunne;
+        const hunne = (await r.json()).hunne;
+        if (hunne && hunne.data) hunne.data = veilig(hunne.data);
+        stand.botsingen[wie] = hunne;
         bewaarStand();
         return false;
       }

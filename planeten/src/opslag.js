@@ -26,6 +26,7 @@ function openDb() {
     r.onupgradeneeded = () => r.result.createObjectStore(WINKEL);
     r.onsuccess = () => ok(r.result);
     r.onerror = () => mis(r.error);
+    r.onblocked = () => mis(new Error('geblokkeerd'));
   });
 }
 
@@ -40,11 +41,13 @@ function gebruikteCodes() {
   return codes;
 }
 
+// Hooguit 3 seconden wachten op IndexedDB; daarna gewoon door zonder (nooit een zwart scherm).
+const binnen = (p, ms) => Promise.race([p, new Promise((_, mis) => setTimeout(() => mis(new Error('te traag')), ms))]);
 export const mediaKlaar = (async () => {
   if (!('indexedDB' in window)) return;
   try {
-    db = await openDb();
-    await new Promise((ok) => {
+    db = await binnen(openDb(), 3000);
+    await binnen(new Promise((ok) => {
       const req = db.transaction(WINKEL).objectStore(WINKEL).openCursor();
       req.onsuccess = () => {
         const c = req.result;
@@ -53,7 +56,7 @@ export const mediaKlaar = (async () => {
         c.continue();
       };
       req.onerror = () => ok();
-    });
+    }), 8000);
     // Opruimen: plaatjes waar niets meer naar verwijst (weggegooide wezens van lang geleden).
     const nodig = gebruikteCodes();
     const weg = [...cache.keys()].filter((c) => !nodig.has(c));
@@ -65,6 +68,8 @@ export const mediaKlaar = (async () => {
       }
     }
   } catch {
+    // Lukt het niet (op tijd), dan alles zoals vroeger in localStorage. Er wordt dan ook niets
+    // opgeruimd, dus er raakt niets kwijt.
     db = null;
   }
 })();
@@ -82,6 +87,10 @@ function code(t) {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36) + t.length.toString(36);
 }
 
+// Pas een verwijzing teruggeven als het plaatje echt in IndexedDB staat (transactie klaar).
+// Tot dan blijft het plaatje gewoon zelf in localStorage staan: zo raakt er nooit iets kwijt,
+// ook niet als de tablet de app net op dat moment sluit.
+const onderweg = new Set();
 function bewaarMedia(t) {
   let c = bekend.get(t);
   if (!c) {
@@ -89,13 +98,22 @@ function bewaarMedia(t) {
     if (bekend.size > 400) bekend.clear();
     bekend.set(t, c);
   }
-  if (!cache.has(c)) {
-    cache.set(c, t);
+  if (cache.has(c)) return 'm:' + c;
+  if (!onderweg.has(c)) {
+    onderweg.add(c);
     try {
-      db.transaction(WINKEL, 'readwrite').objectStore(WINKEL).put(t, c);
-    } catch {}
+      const tx = db.transaction(WINKEL, 'readwrite');
+      tx.objectStore(WINKEL).put(t, c);
+      tx.oncomplete = () => {
+        cache.set(c, t);
+        onderweg.delete(c);
+      };
+      tx.onerror = tx.onabort = () => onderweg.delete(c);
+    } catch {
+      onderweg.delete(c);
+    }
   }
-  return 'm:' + c;
+  return t;
 }
 
 function naarRef(v) {

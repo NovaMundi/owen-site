@@ -219,6 +219,7 @@ async function bouwHD(feestelijk) {
   }
   if (hdBezig) return planHD();
   hdBezig = true;
+  zuinig.rust();
   const mijn = sessie;
   const sleutel = uiterlijk(zicht(recept));
   const nieuw = await Planeet.maak(structuredClone(zicht(recept)), 'hoog');
@@ -409,6 +410,8 @@ function kiesVersie(id) {
     b.addEventListener('click', async () => {
       geluid.pling(3);
       klaar();
+      // Wat op dit apparaat stond, gaat eerst naar de prullenbak (voor als het de verkeerde keuze was).
+      if (b.dataset.welke === 'daar') legInPrullenbak(id);
       await wolk.kies(id, b.dataset.welke);
       herlaadUitOpslag();
       tekenStartKaarten();
@@ -511,6 +514,7 @@ async function toonPrullenbak() {
 }
 
 async function begin(id) {
+  zuinig.rust();
   wie = id;
   geschiedenis = [];
   knopTerug.classList.add('uit');
@@ -2160,9 +2164,11 @@ const zuinig = {
   aantal: 0,
   sinds: 0,
   fps: 0,
+  slecht: 0,
+  goed: 0,
   zet(n) {
-    this.niveau = Math.min(3, n);
-    if (this.niveau >= 2) renderer.setPixelRatio(1);
+    this.niveau = Math.max(0, Math.min(3, n));
+    renderer.setPixelRatio(this.niveau >= 2 ? 1 : Math.min(window.devicePixelRatio, 1.5));
     aanpassenAanScherm();
     try {
       localStorage.setItem('planeetmakers-zuinig', String(this.niveau));
@@ -2176,13 +2182,21 @@ const zuinig = {
     this.fps = this.aantal / this.som;
     const fpsEl = document.querySelector('#tijdknoppen .tk-fps');
     if (fpsEl) fpsEl.textContent = Math.round(this.fps) + ' fps · stand ' + this.niveau;
-    // Pas na de eerste seconden meten (dan wordt er nog van alles klaargezet).
-    if (performance.now() - this.sinds > 8000 && this.fps < 28 && this.niveau < 3) {
-      this.zet(this.niveau + 1);
-      this.sinds = performance.now();
+    // Niet meten vlak na zware momenten (laden, mooie versie bouwen, inhalen).
+    if (performance.now() - this.sinds > 8000) {
+      if (this.fps < 28) (this.slecht++, (this.goed = 0));
+      else if (this.fps > 55) (this.goed++, (this.slecht = 0));
+      else this.slecht = this.goed = 0;
+      // Pas na twee slechte metingen op rij een stapje zuiniger; na vier ruim goede weer terug.
+      if (this.slecht >= 2 && this.niveau < 3) this.zet(this.niveau + 1), this.rust();
+      else if (this.goed >= 4 && this.niveau > 0) this.zet(this.niveau - 1), this.rust();
     }
     this.som = 0;
     this.aantal = 0;
+  },
+  rust() {
+    this.sinds = performance.now();
+    this.som = this.aantal = this.slecht = this.goed = 0;
   },
 };
 try {
