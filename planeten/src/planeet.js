@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { maakRuis, maakRandom } from './ruis.js';
 import { velden } from './velden.js';
+import { Begroeiing } from './begroeiing.js';
 
 const KWALITEIT = {
   snel: { N: 128, bomen: 7000, wolkB: 1024, wolkH: 512 },
@@ -95,6 +96,86 @@ function reken(bericht) {
   });
 }
 
+// ---------- Details als je inzoomt ----------
+// Van ver zie je kleuren; dichtbij komt er structuur bij: grassprieten en bloemetjes, ribbels in
+// het zand, scheuren in de rotsen, glinsters in de sneeuw. Alles uitgerekend in de grafische
+// chip (geen plaatjes nodig) en met een beetje reliëf in het licht. Langs de kust nat zand en
+// schuim. Ver weg valt het detail weg, anders gaat het flikkeren.
+const GROND_DETAIL_PARS = `
+uniform float uTijd;
+uniform float uZee;
+uniform float uSchaal;
+varying vec3 vBodem;
+varying vec3 vPos;
+float gDetailH = 0.0;
+float gDichtbij = 0.0;
+float hash3(vec3 p) {
+  p = fract(p * 0.3183099 + 0.1);
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+float ruis3(vec3 x) {
+  vec3 i = floor(x);
+  vec3 f = fract(x);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash3(i), hash3(i + vec3(1, 0, 0)), f.x), mix(hash3(i + vec3(0, 1, 0)), hash3(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(hash3(i + vec3(0, 0, 1)), hash3(i + vec3(1, 0, 1)), f.x), mix(hash3(i + vec3(0, 1, 1)), hash3(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}`;
+const GROND_DETAIL_KLEUR = `
+{
+  float afst = length(vViewPosition) / uSchaal;
+  gDichtbij = 1.0 - smoothstep(0.035, 0.42, afst);
+  vec3 p = vPos;
+  if (gDichtbij > 0.001) { // ver weg: niets uitrekenen (scheelt veel op een tablet)
+  float n1 = ruis3(p * 140.0);
+  float n2 = ruis3(p * 900.0);
+  float n3 = ruis3(p * 2600.0);
+  vec3 basis = diffuseColor.rgb;
+  // Gras: plukjes en sprieten, hier en daar een bloemetje.
+  float hG = n1 * 0.5 + n2 * 0.55 + n3 * 0.35;
+  vec3 cG = basis * (0.7 + 0.55 * n2 + 0.2 * (n1 - 0.5));
+  float bloem = step(0.972, ruis3(p * 650.0 + 7.3)) * step(0.45, n1);
+  vec3 bloemKleur = mix(vec3(1.0, 0.93, 0.45), vec3(1.0, 0.7, 0.85), step(0.5, ruis3(p * 230.0)));
+  cG = mix(cG, bloemKleur, bloem * 0.9);
+  // Zand: ribbels van de wind en losse korrels.
+  float rib = sin(dot(p, vec3(0.7, 0.2, 0.68)) * 1500.0 + n1 * 10.0) * 0.5 + 0.5;
+  float hZ = rib * 0.7 + n3 * 0.3;
+  vec3 cZ = basis * (0.86 + 0.2 * rib + 0.16 * (n3 - 0.5));
+  // Rots: scheuren en vlekken.
+  float scheur = pow(1.0 - abs(ruis3(p * 320.0) * 2.0 - 1.0), 7.0);
+  float hR = n1 * 0.8 + n2 * 0.5 - scheur * 0.9;
+  vec3 cR = basis * (0.78 + 0.4 * n1) * (1.0 - scheur * 0.55);
+  // Sneeuw en ijs: zacht, met glinsters.
+  float hS = n1 * 0.35 + n2 * 0.1;
+  vec3 cS = basis * (0.94 + 0.08 * n2) + step(0.985, n3) * 0.7;
+  vec3 w = vec3(vBodem.x, vBodem.y, max(vBodem.z, sneeuw));
+  float wg = max(0.0, 1.0 - w.x - w.y - w.z);
+  float som = max(1.0, w.x + w.y + w.z + wg);
+  vec3 det = (cG * wg + cZ * w.x + cR * w.y + cS * w.z) / som;
+  gDetailH = (hG * wg + hZ * w.x + hR * w.y + hS * w.z) / som;
+  diffuseColor.rgb = mix(basis, det, gDichtbij);
+  }
+  // Kust: net boven het water nat (donker) zand, net eronder schuim dat heen en weer spoelt.
+  if (uZee > 0.0) {
+    float r = length(vPos);
+    float boven = r - uZee;
+    diffuseColor.rgb *= 1.0 - 0.28 * smoothstep(0.0012, 0.0, boven) * step(0.0, boven);
+    float golf = sin(uTijd * 1.3 + ruis3(p * 60.0) * 6.0) * 0.0004;
+    float band = smoothstep(-0.0026, -0.0006, boven + golf) * step(boven, 0.0);
+    float schuim = band * smoothstep(0.35, 0.75, ruis3(p * 420.0 + vec3(uTijd * 0.25)));
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.95, 0.98, 1.0), schuim * (0.45 + 0.5 * gDichtbij));
+  }
+}`;
+const GROND_DETAIL_NORMAAL = `
+{
+  vec3 sx = dFdx(-vViewPosition), sy = dFdy(-vViewPosition);
+  vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
+  float det = dot(sx, r1);
+  float h = gDetailH * 0.00035 * uSchaal * gDichtbij;
+  vec3 grad = sign(det) * (dFdx(h) * r1 + dFdy(h) * r2);
+  normal = normalize(abs(det) * normal - grad);
+}`;
+
 const kleur = (hex) => new THREE.Color(hex);
 const glad = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -116,6 +197,19 @@ export class Planeet {
     this.r = null;
     this.manen = [];
     this.uit = [0, 0, 0];
+    this.wind = { uWind: { value: 0 } };
+    this.begroeiing = null;
+  }
+
+  // Elk beeldje: kijk je van dichtbij, dan groeit er begroeiing rond die plek (zie begroeiing.js).
+  detail(camera) {
+    if (!this.geo || !this.r || !this.geo.attributes.bodem) return;
+    if (!this.begroeiing) {
+      this.begroeiing = new Begroeiing(this, this.wind);
+      this.groep.add(this.begroeiing.groep);
+    }
+    this.groep.updateWorldMatrix(true, false);
+    this.begroeiing.bij(this.groep.worldToLocal(camera.position.clone()));
   }
 
   // ---------- Recept toepassen ----------
@@ -126,6 +220,7 @@ export class Planeet {
     const veranderd = (...velden) => !oud || velden.some((v) => !zelfde(oud[v], r[v]));
 
     this.groep.scale.setScalar(r.grootte);
+    if (this.seizoen) this.seizoen.uSchaal.value = r.grootte;
 
     let vorm = false;
     if (veranderd('zaad', 'ruwheid')) {
@@ -158,6 +253,7 @@ export class Planeet {
     if (veranderd('lucht', 'bergen')) this.maakLucht();
     if (veranderd('ring')) this.maakRing();
     if (veranderd('manen', 'zaad')) this.maakManen();
+    if (this.begroeiing) this.begroeiing.vuil = true; // er kan iets veranderd zijn op de grond
   }
 
   // Ruisvelden die alleen van het zaadje en de ruwheid afhangen (het dure deel, op de achtergrond).
@@ -171,6 +267,7 @@ export class Planeet {
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
       g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
       g.setAttribute('warmte', new THREE.BufferAttribute(new Float32Array(n), 1));
+      g.setAttribute('bodem', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); // zand, rots, sneeuw (de rest is gras)
       g.setIndex(new THREE.BufferAttribute(res.index, 1));
       this.geo = g;
       this.dirs = res.dirs;
@@ -183,24 +280,27 @@ export class Planeet {
       this.bioom = new Uint8Array(n); // 0 gewoon, 1 ijs, 2 toendra, 3 woestijn, 4 oerwoud, 5 zee
       const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 });
       // Seizoenen: de sneeuwgrens schuift heen en weer; winter in het noorden = zomer in het zuiden.
-      this.seizoen = { uSeizoen: { value: 0 }, uSterkte: { value: 0 } };
+      this.seizoen = { uSeizoen: { value: 0 }, uSterkte: { value: 0 }, uTijd: { value: 0 }, uZee: { value: 0 }, uSchaal: { value: 1 } };
       mat.onBeforeCompile = (shader) => {
         Object.assign(shader.uniforms, this.seizoen);
         shader.vertexShader = shader.vertexShader
-          .replace('#include <common>', '#include <common>\nattribute float warmte;\nvarying float vWarmte;\nvarying float vNoord;')
-          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWarmte = warmte;\nvNoord = normalize(position).y;');
+          .replace('#include <common>', '#include <common>\nattribute float warmte;\nattribute vec3 bodem;\nvarying float vWarmte;\nvarying float vNoord;\nvarying vec3 vBodem;\nvarying vec3 vPos;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWarmte = warmte;\nvNoord = normalize(position).y;\nvBodem = bodem;\nvPos = position;');
         shader.fragmentShader = shader.fragmentShader
-          .replace('#include <common>', '#include <common>\nuniform float uSeizoen;\nuniform float uSterkte;\nvarying float vWarmte;\nvarying float vNoord;')
+          .replace('#include <common>', `#include <common>\nuniform float uSeizoen;\nuniform float uSterkte;\nvarying float vWarmte;\nvarying float vNoord;\n${GROND_DETAIL_PARS}`)
           .replace(
             '#include <color_fragment>',
             `#include <color_fragment>
             float koude = uSterkte * 0.32 * uSeizoen * sign(vNoord) * (0.25 + abs(vNoord));
             float sneeuw = smoothstep(0.2, 0.1, vWarmte - koude) * step(0.001, vWarmte);
-            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.93, 0.96, 1.0), sneeuw * 0.92);`
-          );
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.93, 0.96, 1.0), sneeuw * 0.92);
+            ${GROND_DETAIL_KLEUR}`
+          )
+          .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${GROND_DETAIL_NORMAAL}`);
       };
       this.grond = new THREE.Mesh(g, mat);
       this.groep.add(this.grond);
+      this.seizoen.uSchaal.value = this.r.grootte;
     }
     this.cont = res.cont;
     this.kam = res.kam;
@@ -345,16 +445,22 @@ export class Planeet {
     const temp0 = 0.5 + (r.temperatuur - 0.5) * 0.9;
     const nat0 = 0.5 + (r.wolken - 0.5) * 0.45 - r.woestijn * 0.55;
     const vocht = this.vocht || new Float32Array(n);
+    // Wat voor bodem: zand, rots of sneeuw (de rest is begroeid). Voor de details als je inzoomt.
+    const bodem = this.geo.attributes.bodem;
+    const kaal = r.bomen <= 0 && !r.zee && r.penseel.every((p) => p.t !== 'v') && r.grond.laag === KAAL.grond.laag;
 
     for (let i = 0; i < n; i++) {
       const x = d[i * 3], y = d[i * 3 + 1], z = d[i * 3 + 2];
       const s = this.rad[i];
       const wiebel = this.wiebel[i];
+      let wZand = 0, wRots = kaal ? 1 : 0, wSneeuw = 0;
       if (zeeR > 0 && s < zeeR) {
         // Ondiep water licht, diep water donker: geeft de kustlijn een mooie lagune-rand.
         c.copy(ondiep).lerp(bodemDiep, glad(0, 0.35, (zeeR - s) / Math.max(1e-4, zeeR - minR)));
         this.warmte[i] = 0;
         this.bioom[i] = 5;
+        wZand = 1; // zeebodem: zand
+        wRots = 0;
       } else {
         const t = (s - basis) / Math.max(1e-4, this.maxR - basis) + wiebel;
         let k = 0;
@@ -377,6 +483,7 @@ export class Planeet {
           if (oer > 0.01) c.lerp(jungle, oer);
           if (toe > 0.01) c.lerp(toendra, toe * 0.7);
           bioom = woest > 0.5 ? 3 : oer > 0.5 ? 4 : toe > 0.5 ? 2 : 0;
+          wZand = Math.max(wZand, woest);
         }
         // Zo koud dat het altijd bevroren is.
         const vries = glad(0.12, 0.05, warm);
@@ -386,6 +493,10 @@ export class Planeet {
         // Steile hellingen worden kale rots.
         const steil = 1 - (nrm[i * 3] * x + nrm[i * 3 + 1] * y + nrm[i * 3 + 2] * z);
         if (t > 0.03 && t < 0.88) c.lerp(rots, glad(0.06, 0.2, steil) * 0.75);
+        // Strand vlak bij het water, rots hoog en steil, sneeuw waar het bevroren is.
+        if (zeeR > 0) wZand = Math.max(wZand, glad(0.07, 0.02, t));
+        wRots = Math.max(wRots, glad(0.06, 0.2, steil) * 0.8, glad(0.6, 0.8, t));
+        wSneeuw = Math.max(vries, glad(0.85, 0.95, t));
       }
       if (r.ijskappen > 0) {
         const pool = Math.abs(y) + wiebel * 1.6;
@@ -397,8 +508,17 @@ export class Planeet {
             this.bioom[i] = 1;
             this.warmte[i] = Math.min(this.warmte[i], 0.08);
           }
+          if (this.bioom[i] !== 5) wSneeuw = Math.max(wSneeuw, f);
         }
       }
+      // Zo samen nooit meer dan 1; wat overblijft is gras.
+      const som = wZand + wRots + wSneeuw;
+      if (som > 1) {
+        wZand /= som;
+        wRots /= som;
+        wSneeuw /= som;
+      }
+      bodem.setXYZ(i, wZand, wRots, wSneeuw);
       const w = this.verfW[i];
       if (w > 0) {
         verf.setRGB(this.verf[i * 3], this.verf[i * 3 + 1], this.verf[i * 3 + 2]);
@@ -407,7 +527,9 @@ export class Planeet {
       col.setXYZ(i, c.r, c.g, c.b);
     }
     col.needsUpdate = true;
+    bodem.needsUpdate = true;
     this.geo.attributes.warmte.needsUpdate = true;
+    this.seizoen.uZee.value = zeeR;
     this.seizoen.uSterkte.value = r.seizoenen;
   }
 
@@ -429,8 +551,25 @@ export class Planeet {
           transparent: true,
         })
       );
+      // Dichtbij: kleine golfjes bovenop de grote, die de andere kant op trekken. Zo glinstert
+      // het water als je inzoomt, en lijkt het van ver nog steeds rustig.
+      this.water = { uTijd: { value: 0 }, uSchaal: { value: 1 } };
+      this.zee.material.onBeforeCompile = (shader) => {
+        Object.assign(shader.uniforms, this.water);
+        shader.fragmentShader = shader.fragmentShader
+          .replace('#include <common>', '#include <common>\nuniform float uTijd;\nuniform float uSchaal;')
+          .replace(
+            'vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;',
+            `vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
+            float dichtbij = 1.0 - smoothstep(0.04, 0.5, length(vViewPosition) / uSchaal);
+            vec3 klein = texture2D( normalMap, vNormalMapUv * vec2(14.0, 9.0) + vec2(-uTijd * 0.012, uTijd * 0.008) ).xyz * 2.0 - 1.0;
+            vec3 kleinst = texture2D( normalMap, vNormalMapUv * vec2(41.0, 27.0) + vec2(uTijd * 0.02, uTijd * 0.015) ).xyz * 2.0 - 1.0;
+            mapN.xy += (klein.xy * 0.9 + kleinst.xy * 0.5) * dichtbij;`
+          );
+      };
       this.groep.add(this.zee);
     }
+    this.water.uSchaal.value = r.grootte;
     const zeeR = this.zeeR;
     this.zee.visible = zeeR > 0;
     this.zee.scale.setScalar(Math.max(zeeR, 0.01));
@@ -482,13 +621,36 @@ export class Planeet {
         }
       }
       this.bomen = new Map();
+      // Bomen wiegen zachtjes in de wind: hoe hoger in de boom, hoe meer. Elke boom een eigen ritme.
+      const wiegen = (mat) => {
+        mat.onBeforeCompile = (shader) => {
+          Object.assign(shader.uniforms, this.wind);
+          shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float uWind;').replace(
+            '#include <begin_vertex>',
+            `#include <begin_vertex>
+            vec3 boomPlek = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+            float buig = transformed.y * transformed.y * 900.0;
+            float fase = uWind * 1.6 + dot(boomPlek, vec3(310.0, 230.0, 170.0));
+            transformed.x += sin(fase) * buig * 0.0045;
+            transformed.z += cos(fase * 0.77) * buig * 0.003;`
+          );
+        };
+        return mat;
+      };
       for (const vorm of vormen) {
         const [stamGeo, kroonGeo, stamKleur] = boomVormen(vorm);
-        const stam = new THREE.InstancedMesh(stamGeo, new THREE.MeshStandardMaterial({ color: stamKleur, roughness: 0.9 }), max);
+        const stam = new THREE.InstancedMesh(stamGeo, wiegen(new THREE.MeshStandardMaterial({ color: stamKleur, roughness: 0.9 })), max);
         const kristal = vorm === 'kristal';
         const kroon = new THREE.InstancedMesh(
           kroonGeo,
-          new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: kristal ? 0.2 : 0.85, metalness: kristal ? 0.3 : 0, emissive: kristal ? '#222222' : '#000000' }),
+          wiegen(new THREE.MeshStandardMaterial({
+            color: '#ffffff',
+            vertexColors: true,
+            side: vorm === 'palm' ? THREE.DoubleSide : THREE.FrontSide,
+            roughness: kristal ? 0.2 : 0.85,
+            metalness: kristal ? 0.3 : 0,
+            emissive: kristal ? '#222222' : '#000000',
+          })),
           max
         );
         this.bomen.set(vorm, [stam, kroon]);
@@ -813,7 +975,12 @@ export class Planeet {
 
   update(dt, zonRichting) {
     // Eén jaar op de planeet duurt één echte minuut: zo zie je de winter komen en gaan.
-    if (this.seizoen) this.seizoen.uSeizoen.value = Math.sin((Date.now() / 60000) * Math.PI * 2);
+    if (this.seizoen) {
+      this.seizoen.uSeizoen.value = Math.sin((Date.now() / 60000) * Math.PI * 2);
+      this.seizoen.uTijd.value = (this.seizoen.uTijd.value + dt) % 1000;
+    }
+    if (this.wind) this.wind.uWind.value = (this.wind.uWind.value + dt) % 1000;
+    if (this.water) this.water.uTijd.value = (this.water.uTijd.value + dt) % 1000;
     if (this.wolken) this.wolken.rotation.y += dt * 0.006;
     if (this.golven) {
       this.golven.offset.x += dt * 0.004;
@@ -886,32 +1053,104 @@ function golfTextuur() {
 }
 
 // Stam en kroon per vorm. Formaat: ongeveer 1 cm op een planeet van 1 m.
+// Boomvormen. Van ver zie je een stip, dichtbij een echte boom: een den met lagen, een bolle boom
+// als een wolkje blad, een palm met hangende bladeren en kokosnoten, een paddenstoel met stippen.
+// De onderkant van de kroon is wat donkerder (schaduw), dat geeft diepte.
+const samen = (lijst) => mergeGeometries(lijst.map((g) => (g.index ? g.toNonIndexed() : g)).map((g) => {
+  for (const naam of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(naam)) g.deleteAttribute(naam);
+  return g;
+}));
+function hobbelig(geo, mate, zaad) {
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const h = Math.sin(x * 2900 + zaad) * Math.sin(y * 3100 + zaad * 2) * Math.sin(z * 2700 + zaad * 3);
+    const f = 1 + h * mate;
+    p.setXYZ(i, x * f, y * (1 + h * mate * 0.5), z * f);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+function metSchaduw(geo) {
+  geo.computeBoundingBox();
+  const { min, max } = geo.boundingBox;
+  const p = geo.attributes.position;
+  const kleuren = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) {
+    const t = (p.getY(i) - min.y) / Math.max(1e-6, max.y - min.y);
+    const l = 0.55 + 0.45 * t;
+    kleuren[i * 3] = kleuren[i * 3 + 1] = kleuren[i * 3 + 2] = l;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(kleuren, 3));
+  return geo;
+}
 function boomVormen(vorm) {
   let stam, kroon, stamKleur = '#5a3d2b';
   if (vorm === 'bol') {
-    stam = new THREE.CylinderGeometry(0.0007, 0.0009, 0.006, 5).translate(0, 0.003, 0);
-    kroon = new THREE.IcosahedronGeometry(0.0042, 1).translate(0, 0.0085, 0);
+    stam = samen([
+      new THREE.CylinderGeometry(0.0006, 0.0009, 0.0065, 6).translate(0, 0.00325, 0),
+      new THREE.CylinderGeometry(0.0002, 0.0004, 0.003, 4).rotateZ(-0.7).translate(0.0011, 0.0058, 0),
+    ]);
+    kroon = samen([
+      new THREE.IcosahedronGeometry(0.0034, 1).translate(0, 0.0086, 0),
+      new THREE.IcosahedronGeometry(0.0026, 1).translate(0.0023, 0.0076, 0.0008),
+      new THREE.IcosahedronGeometry(0.0025, 1).translate(-0.0019, 0.0079, -0.0012),
+      new THREE.IcosahedronGeometry(0.0023, 1).translate(0.0004, 0.0108, 0.0005),
+      new THREE.IcosahedronGeometry(0.002, 1).translate(-0.0008, 0.0078, 0.0021),
+    ]);
+    hobbelig(kroon, 0.12, 1);
   } else if (vorm === 'paddenstoel') {
-    stam = new THREE.CylinderGeometry(0.0012, 0.0016, 0.008, 8).translate(0, 0.004, 0);
-    kroon = new THREE.SphereGeometry(0.0055, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.7, 1).translate(0, 0.0075, 0);
+    // Stippen horen bij de witte steel, zo blijven ze wit, wat voor kleur de hoed ook heeft.
+    const stippen = [];
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + (i % 2) * 0.3, h = i % 3 === 0 ? 0.35 : 0.85;
+      const dir = new THREE.Vector3(Math.cos(a) * Math.sin(h), Math.cos(h) * 0.7, Math.sin(a) * Math.sin(h));
+      stippen.push(new THREE.SphereGeometry(0.00075, 6, 4).scale(1, 0.45, 1).translate(dir.x * 0.0055, 0.0075 + dir.y * 0.0055, dir.z * 0.0055));
+    }
+    stam = samen([new THREE.CylinderGeometry(0.0011, 0.0016, 0.008, 10).translate(0, 0.004, 0), ...stippen]);
+    kroon = new THREE.SphereGeometry(0.0055, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.7, 1).translate(0, 0.0075, 0);
     stamKleur = '#f2ead8';
   } else if (vorm === 'kristal') {
-    stam = new THREE.OctahedronGeometry(0.0015).scale(1, 2.2, 1).translate(0.002, 0.003, 0.001);
+    stam = samen([
+      new THREE.OctahedronGeometry(0.0015).scale(1, 2.2, 1).translate(0.002, 0.003, 0.001),
+      new THREE.OctahedronGeometry(0.001).scale(1, 2.4, 1).rotateZ(0.4).translate(-0.0018, 0.0024, -0.0008),
+    ]);
     kroon = new THREE.OctahedronGeometry(0.0025).scale(1, 3, 1).translate(0, 0.0072, 0);
     stamKleur = '#ffffff';
   } else if (vorm === 'palm') {
-    stam = new THREE.CylinderGeometry(0.0005, 0.0008, 0.011, 5).translate(0, 0.0055, 0);
+    // Een licht gebogen stam met kokosnoten bovenin.
+    const st = new THREE.CylinderGeometry(0.0005, 0.0008, 0.011, 6, 6).translate(0, 0.0055, 0);
+    const sp = st.attributes.position;
+    for (let i = 0; i < sp.count; i++) sp.setX(i, sp.getX(i) + (sp.getY(i) / 0.011) ** 2 * 0.0012);
+    st.computeVertexNormals();
+    const noten = [0, 2.1, 4.2].map((a) => new THREE.SphereGeometry(0.0006, 6, 4).translate(0.0012 + Math.cos(a) * 0.0006, 0.0102, Math.sin(a) * 0.0006));
+    stam = samen([st, ...noten]);
+    // Bladeren die naar beneden hangen.
     const blad = [];
-    for (let i = 0; i < 6; i++) {
-      blad.push(new THREE.ConeGeometry(0.0012, 0.0065, 3).rotateZ(Math.PI / 2 + 0.5).translate(0.003, 0.0105, 0).rotateY((i / 6) * Math.PI * 2));
+    for (let i = 0; i < 7; i++) {
+      const b = new THREE.PlaneGeometry(0.0068, 0.0016, 6, 1).translate(0.0034, 0, 0);
+      const bp = b.attributes.position;
+      for (let k = 0; k < bp.count; k++) {
+        const t = bp.getX(k) / 0.0068;
+        bp.setY(k, bp.getY(k) * (1 - t * 0.7)); // spits toelopend
+        bp.setZ(k, -t * t * 0.0034); // naar beneden buigen
+      }
+      b.rotateX(-Math.PI / 2 + 0.25).rotateY((i / 7) * Math.PI * 2 + (i % 2) * 0.2).translate(0.0012, 0.011, 0);
+      b.computeVertexNormals();
+      blad.push(b);
     }
-    kroon = mergeGeometries(blad.map((g) => g.toNonIndexed()));
+    kroon = samen(blad);
     stamKleur = '#7a5a3a';
   } else {
-    stam = new THREE.CylinderGeometry(0.0006, 0.0008, 0.003, 5).translate(0, 0.0015, 0);
-    kroon = new THREE.ConeGeometry(0.0035, 0.011, 6).translate(0, 0.0075, 0);
+    // Den: drie lagen takken, steeds kleiner naar boven.
+    stam = new THREE.CylinderGeometry(0.0005, 0.0008, 0.004, 6).translate(0, 0.002, 0);
+    kroon = samen([
+      new THREE.ConeGeometry(0.0037, 0.0058, 8).translate(0, 0.0052, 0),
+      new THREE.ConeGeometry(0.003, 0.005, 8).rotateY(0.4).translate(0, 0.0079, 0),
+      new THREE.ConeGeometry(0.0021, 0.0043, 8).rotateY(0.8).translate(0, 0.0104, 0),
+    ]);
   }
-  return [stam, kroon, stamKleur];
+  return [stam, metSchaduw(kroon), stamKleur];
 }
 
 function ringTextuur(basisHex, zaad) {

@@ -2177,7 +2177,10 @@ renderer.setAnimationLoop((nu) => {
 
   if (planeet) {
     planeet.update(dt, zonRichting.copy(zonPlek).normalize());
-    if (!geboorte) weerStap(dt);
+    if (!geboorte) {
+      weerStap(dt);
+      planeet.detail(camera);
+    }
   }
   flitsKracht = Math.max(0, flitsKracht - dt * 3.5);
   const flikker = flitsKracht > 0 ? flitsKracht * (0.6 + Math.random() * 0.4) : 0;
