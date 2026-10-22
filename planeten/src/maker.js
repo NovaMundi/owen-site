@@ -2125,12 +2125,30 @@ function toonWeg(weg) {
     if (el.hidden) return;
     stem.rij(['Terwijl je weg was, is er van alles gebeurd op je planeet!', ...voorlezen.map((e) => e.tekst), ...(meer ? ['Er gebeurde nog veel meer. Kijk maar in je verhaalboek!'] : [])]);
   }
+  // Kijk mee: het grootste moment van een eigen wezen bewaren we tot het kind kijkt, en dan
+  // vliegt de camera erheen (panelgesprek 2). Tikken op het scherm stopt het meteen.
+  const levend = (id) => leven.w && leven.w.soorten[id] && leven.w.soorten[id].uitgestorven === null;
+  const moment = [...weg.nieuws].reverse().find((e) => e.belang >= 3 && e.icoon !== '🪦' && e.soort && levend(e.soort) && (recept.wezens || []).some((x) => x.id === e.soort));
   el.querySelector('.weg-verder').onclick = () => {
     geluid.zwiep();
     stem.stil();
     el.hidden = true;
     el.innerHTML = '';
+    if (moment) kijkMee(moment);
   };
+}
+
+function kijkMee(e) {
+  const wz = (recept.wezens || []).find((x) => x.id === e.soort);
+  const d = wz && wezens.willekeurigDier(wz.id);
+  if (!d) return;
+  bezoek(d, wz);
+  // Alleen de eerste zin: kort en duidelijk.
+  const zin = (e.tekst.match(/^[^.!?]*[.!?]/) || [e.tekst])[0];
+  setTimeout(() => {
+    toonMelding(`👀 ${zin}`, 5000);
+    stem.zeg(`Kijk mee! ${zin}`);
+  }, 900);
 }
 
 $('#wensknop').addEventListener('click', () => {
