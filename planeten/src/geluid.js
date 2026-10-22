@@ -86,7 +86,7 @@ function speel(naam, { vol = 1, snelheid = 1 } = {}) {
 // Rustige muziek op de achtergrond. Aan of uit wordt onthouden op dit apparaat.
 const muziek = new Audio(new URL('../kunst/geluid/muziek.mp3', import.meta.url));
 muziek.loop = true;
-muziek.volume = 0.22;
+muziek.volume = 0.12;
 muziek.preload = 'none';
 let muziekAan = true;
 try {
@@ -107,7 +107,12 @@ export const geluid = {
   },
   // Even zachter tijdens het voorlezen en opnemen.
   muziekZacht(zacht) {
-    muziek.volume = zacht ? 0.06 : 0.22;
+    muziek.volume = zacht ? 0.04 : 0.12;
+  },
+  // Tijdens een opname (wens, geluid van een wezen) helemaal stil, anders neemt de microfoon het op.
+  opname(bezig) {
+    if (bezig) muziek.pause();
+    else if (muziekAan) muziek.play().catch(() => {});
   },
   aan: true,
   klik() {

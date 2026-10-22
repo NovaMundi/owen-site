@@ -879,6 +879,7 @@ function ontdek(w, soort, groepen, regios, dt, nu) {
     // Eerst kijken of er al een baas is, dan pas de akkers erbij (anders vindt hij zichzelf).
     const alBaas = t.id === 'landbouw' ? heerser(w, rijk(soort)) : null;
     soort.tech.push(t.id);
+    if (soort.vlaggen.slaapt === t.id) delete soort.vlaggen.slaapt;
     // Een huisdier dat leert praten, wil geen huisdier meer zijn.
     if (t.id === 'taal' && soort.vlaggen.getemdDoor) {
       const baasje = w.soorten[soort.vlaggen.getemdDoor];
@@ -1065,9 +1066,11 @@ function kroon(w, nu) {
       const laatste = [...baas.tech].reverse().find((t) => !basis.includes(t));
       let vergeten = '';
       if (laatste) {
+        // De uitvinding raakt niet kwijt, maar "slaapt": als het weer beter gaat, komt ze snel terug.
         baas.tech = baas.tech.filter((t) => t !== laatste);
         baas.kennis = Math.min(baas.kennis, TECH_BY[laatste].kosten * 0.9);
-        vergeten = ` Ze vergaten zelfs hoe ${techNaam(laatste, baas).naam.toLowerCase()} werkte.`;
+        baas.vlaggen.slaapt = laatste;
+        vergeten = ` Even wisten ze niet meer hoe ${techNaam(laatste, baas).naam.toLowerCase()} werkte. Als het beter gaat, komt het terug.`;
       }
       const oorzaak = grootsteOorzaak(baas);
       verhaal(w, baas, 3, '🏚️', `Het rijk van de ${m} stortte in, omdat ${OMDAT[oorzaak] || 'er te veel tegelijk misging'}. Er braken donkere tijden aan.${vergeten}`, nu);

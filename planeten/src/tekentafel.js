@@ -345,9 +345,11 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
       opneem.onclick = async () => {
         if (opneem.classList.contains('neemt-op')) return;
         stem.stil();
+        geluid.opname(true);
         opneem.classList.add('neemt-op');
         const url = await neemOp(3);
         opneem.classList.remove('neemt-op');
+        geluid.opname(false);
         if (url) {
           w.geluid = url;
           speel.hidden = false;

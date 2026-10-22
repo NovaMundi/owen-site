@@ -1140,7 +1140,9 @@ const PANELEN = {
       const dood = s.uitgestorven !== null;
       const welvaart = info.groepen.reduce((a, g) => a + (g.cap ? Math.min(1, g.cap / Math.max(g.pop, 1e-6)) * g.pop : 0), 0) / Math.max(1, info.totaal);
       const gevoel = dood ? '🪦' : welvaart > 0.8 ? '😊' : welvaart > 0.5 ? '🙂' : '😟';
-      const tech = TECH.map((t) => { if (!s.tech.includes(t.id)) return ""; const tn = techNaam(t.id, s); return `<span title="${tn.naam}">${tn.icoon}</span>`; }).join("");
+      const tech = TECH.map((t) => { if (!s.tech.includes(t.id)) return ""; const tn = techNaam(t.id, s); return `<span title="${tn.naam}">${tn.icoon}</span>`; }).join("")
+      // Een uitvinding die "slaapt" (donkere tijden): grijs, en ze komt terug als het beter gaat.
+      const slaapt = s.vlaggen.slaapt && !dood ? `<span class="slaapt" title="${techNaam(s.vlaggen.slaapt, s).naam} slaapt even">${techNaam(s.vlaggen.slaapt, s).icoon}💤</span>` : "";
       kaart.innerHTML = `
         <img src="${beeldVan(wz).open}" alt="" class="${dood ? 'dood' : ''}">
         <div class="soort-info">
@@ -1148,7 +1150,7 @@ const PANELEN = {
           <div class="soort-stand">${dood ? `Uitgestorven in jaar ${telTekst(s.uitgestorven)}${s.oorzaak && OMDAT[s.oorzaak] ? `, omdat ${OMDAT[s.oorzaak]}` : ''}` : `${rolTekst(info)} · ${info.tijdperk.icoon} ${info.tijdperk.naam} · 👪 ${telTekst(info.totaal)} · ${gevoel}`}</div>
           ${!dood && info.stammen > 1 ? `<div class="soort-stand">🏕️ ${info.stammen} stammen</div>` : ''}
           <div class="meters"></div>
-          <div class="soort-tech">${tech || '<span class="dim">Nog niets ontdekt</span>'}</div>
+          <div class="soort-tech">${tech + slaapt || '<span class="dim">Nog niets ontdekt</span>'}</div>
         </div>`;
       kaart.querySelector('b').textContent = meervoud(wz.naam);
       // Drie gezichtjes: eten, water, warmte. Tikken leest voor hoe het gaat en waarom.
@@ -1445,7 +1447,7 @@ async function wisselOpname(knopEl, paneelEl) {
     rec.onstop = () => {
       stroom.getTracks().forEach((t) => t.stop());
       clearTimeout(rec.maxTimer);
-      geluid.muziekZacht(false);
+      geluid.opname(false);
       opname = null;
       knopEl.classList.remove('neemt-op');
       const blob = new Blob(stukjes, { type: rec.mimeType });
@@ -1460,7 +1462,7 @@ async function wisselOpname(knopEl, paneelEl) {
       lezer.readAsDataURL(blob);
     };
     stem.stil();
-    geluid.muziekZacht(true);
+    geluid.opname(true);
     rec.start();
     opname = rec;
     knopEl.classList.add('neemt-op');
@@ -1843,7 +1845,10 @@ function duurTekst(minuten) {
 function toonWeg(weg) {
   const el = $('#weg');
   const naam = recept.naam || 'je planeet';
-  const lijst = [...weg.nieuws].sort((a, b) => b.belang - a.belang || b.jaar - a.jaar).slice(0, 8).sort((a, b) => a.jaar - b.jaar);
+  // Niet te veel tegelijk voor een kind van 6: de vijf belangrijkste laten zien, er drie voorlezen.
+  const lijst = [...weg.nieuws].sort((a, b) => b.belang - a.belang || b.jaar - a.jaar).slice(0, 5).sort((a, b) => a.jaar - b.jaar);
+  const voorlezen = [...lijst].sort((a, b) => b.belang - a.belang).slice(0, 3).sort((a, b) => a.jaar - b.jaar);
+  const meer = weg.nieuws.length > voorlezen.length;
   const plaatjes = Object.fromEntries((recept.wezens || []).map((x) => [x.id, beeldVan(x).open]));
   el.innerHTML = `
     <div class="weg-doos">
@@ -1863,7 +1868,7 @@ function toonWeg(weg) {
     vak.appendChild(k);
     setTimeout(() => geluid.pling(i), 600 + i * 1200);
   });
-  stem.rij([`Terwijl je weg was, zijn er op ${naam} ${telTekst(weg.jaren)} jaren voorbij gegaan!`, ...lijst.map((e) => e.tekst)]);
+  stem.rij(['Terwijl je weg was, is er van alles gebeurd op je planeet!', ...voorlezen.map((e) => e.tekst), ...(meer ? ['Er gebeurde nog veel meer. Kijk maar in je verhaalboek!'] : [])]);
   el.querySelector('.weg-verder').onclick = () => {
     geluid.zwiep();
     stem.stil();
@@ -2066,18 +2071,38 @@ $('#huis').addEventListener('click', () => {
 });
 knopTerug.addEventListener('click', terug);
 // Muziek aan of uit (wordt onthouden op dit apparaat).
-const knopMuziek = $('#muziekknop');
-knopMuziek.classList.toggle('gedempt', !geluid.muziekAan);
-knopMuziek.addEventListener('click', () => {
-  geluid.muziek(!geluid.muziekAan);
-  knopMuziek.classList.toggle('gedempt', !geluid.muziekAan);
+// Geluid: één knop in de balk, met daarachter twee grote schakelaars (voorlezen en muziek).
+// Zo zet een kind niet per ongeluk het voorlezen uit als hij de muziek bedoelt.
+const geluidMenu = $('#geluidmenu');
+const knopStem = $('#stemknop'), knopMuziek = $('#muziekknop');
+const zetSchakelaars = () => {
+  knopStem.classList.toggle('uit-gezet', !stem.aan);
+  knopMuziek.classList.toggle('uit-gezet', !geluid.muziekAan);
+};
+zetSchakelaars();
+$('#geluidknop').addEventListener('click', (e) => {
+  e.stopPropagation();
+  geluid.klik();
+  geluidMenu.hidden = !geluidMenu.hidden;
 });
-const knopStem = $('#stemknop');
+document.addEventListener('pointerdown', (e) => {
+  if (!geluidMenu.hidden && !e.target.closest('#geluidmenu, #geluidknop')) geluidMenu.hidden = true;
+});
 knopStem.addEventListener('click', () => {
   stem.aan = !stem.aan;
-  knopStem.classList.toggle('gedempt', !stem.aan);
-  if (!stem.aan) stem.stil();
-  else stem.zeg('Ik lees weer voor!');
+  zetSchakelaars();
+  if (!stem.aan) {
+    stem.stil();
+    const was = stem.aan;
+    stem.aan = true;
+    stem.zeg('Voorlezen staat uit.');
+    stem.aan = was;
+  } else stem.zeg('Voorlezen staat aan.');
+});
+knopMuziek.addEventListener('click', () => {
+  geluid.muziek(!geluid.muziekAan);
+  zetSchakelaars();
+  stem.zeg(geluid.muziekAan ? 'Muziek aan.' : 'Muziek uit.');
 });
 
 // ================= Camera =================

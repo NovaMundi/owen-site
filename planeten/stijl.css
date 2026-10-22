@@ -421,3 +421,18 @@ h1 .logo { width: min(640px, 82vw); height: auto; display: block; margin: 0 auto
     radial-gradient(ellipse at 90% -10%, rgba(40, 140, 220, 0.3), transparent 50%),
     #05060f;
 }
+/* Bovenbalk: knoppen met een woordje eronder (kinderen lezen het plaatje, papa het woord) */
+.balk .rond { width: 62px; height: 62px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; position: relative; }
+.balk .rond .ico { width: 32px; height: 32px; }
+.balk .rond small { font-size: 10px; font-weight: 600; line-height: 1; opacity: 0.9; }
+/* Geluidmenu: twee grote schakelaars */
+#geluidmenu { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 72px); right: max(12px, env(safe-area-inset-right)); z-index: 20;
+  display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 20px; background: rgba(20, 22, 34, 0.94); border: 1px solid var(--rand); }
+#geluidmenu .aan-uit { display: flex; align-items: center; gap: 12px; min-width: 190px; padding: 10px 16px; border-radius: 16px; border: 0; font: inherit; font-size: 20px; font-weight: 600; color: #fff;
+  background: rgba(156, 255, 138, 0.22); }
+#geluidmenu .aan-uit .ico { width: 36px; height: 36px; }
+#geluidmenu .aan-uit::after { content: 'AAN'; margin-left: auto; font-size: 14px; color: #9cff8a; }
+#geluidmenu .aan-uit.uit-gezet { background: rgba(255, 255, 255, 0.08); opacity: 0.75; }
+#geluidmenu .aan-uit.uit-gezet::after { content: 'UIT'; color: #ff8a8a; }
+@media (max-width: 560px) { .balk .rond { width: 52px; height: 52px; } .balk .rond small { display: none; } }
+.soort-tech .slaapt { filter: grayscale(1); opacity: 0.55; }
