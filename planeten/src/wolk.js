@@ -3,7 +3,8 @@
 //      later vanzelf bij. Een kind ziet nooit een foutmelding omdat de wifi hapert.
 //   2. Er wordt nooit stil iets overschreven. Is een planeet op twee apparaten veranderd, dan
 //      kiest het kind welke het houdt.
-//   3. Koppelen gebeurt één keer per apparaat, via een link met de familiecode erin.
+//   3. Koppelen gebeurt één keer per apparaat, via een link met een uitnodiging erin. Daarmee
+//      krijgt het apparaat een eigen geheime sleutel; de familiecode alleen is niet genoeg.
 //
 // Per planeet (owen, jake, papa) gaat alles mee: het recept, de levende wereld en de foto voor
 // het startscherm. De ingesproken wensen gaan als één lijst mee en worden samengevoegd.
@@ -56,6 +57,37 @@ const TEKENS = 'abcdefghjkmnpqrstuvwxyz23456789';
 const WOORDEN = ['zorbix', 'blibo', 'lumi', 'kwasar', 'nebula', 'komeet', 'pluto', 'stardust', 'orbit', 'galaxo'];
 
 let stand = lees(STAND, { code: null, versies: {}, afdrukken: {}, botsingen: {} });
+
+// De eigen sleutel van dit apparaat meesturen (zie netlify/lib/planeet-toegang.mjs).
+const kop = (extra = {}) => (stand.sleutel ? { ...extra, 'x-planeet-sleutel': stand.sleutel } : extra);
+let sleutelBezig = null;
+async function zorgSleutel() {
+  if (!stand.code || stand.sleutel) return !!stand.sleutel;
+  // Eén aanvraag tegelijk, ook als alle planeten tegelijk willen ophalen.
+  sleutelBezig ||= (async () => {
+    try {
+      const r = await fetch(`${WOLK}?code=${stand.code}&actie=sleutel`, {
+        method: 'POST',
+        signal: wachtHooguit(20000),
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ uitnodiging: stand.uitnodiging || null }),
+      });
+      if (r.ok) {
+        stand.sleutel = (await r.json()).sleutel || null;
+        delete stand.uitnodiging;
+        bewaarStand();
+      } else if (r.status === 401) {
+        // De uitnodiging is verlopen of al te vaak gebruikt.
+        delete stand.uitnodiging;
+        stand.geweigerd = true;
+        bewaarStand();
+      }
+    } catch {}
+    sleutelBezig = null;
+    return !!stand.sleutel;
+  })();
+  return sleutelBezig;
+}
 // Botsingen (de hele andere planeet, soms een paar MB) alleen in het geheugen houden: bij de
 // volgende keer ophalen zien we ze vanzelf weer. Anders raakt het geheugen van de tablet vol.
 stand.botsingen = {};
@@ -73,8 +105,22 @@ export const wolk = {
   botsing(wie) {
     return stand.botsingen[wie] || null;
   },
-  linkVoor(site) {
-    return `${site}/planeten/?familie=${stand.code}`;
+  // Voor andere verzoeken naar jakevanpelt.com (de toverknop).
+  kop,
+  get geweigerd() {
+    return !!stand.geweigerd && !stand.sleutel;
+  },
+  // Een koppel-link voor een ander apparaat: met een verse uitnodiging (7 dagen, hooguit 5 keer).
+  async maakLink(sites) {
+    if (!(await zorgSleutel())) return null;
+    try {
+      const r = await fetch(`${WOLK}?code=${stand.code}&actie=uitnodig`, { method: 'POST', headers: kop(), signal: wachtHooguit(20000) });
+      if (!r.ok) return null;
+      const u = await r.json();
+      return { ...u, links: sites.map((s) => `${s}/planeten/?familie=${stand.code}&uitnodiging=${u.uitnodiging}`) };
+    } catch {
+      return null;
+    }
   },
 
   // Een link als ?familie=zorbix-k3m7qp koppelt dit apparaat. Daarna haalt hij de code weg uit
@@ -85,8 +131,12 @@ export const wolk = {
     const code = (url.searchParams.get('familie') || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (code.length < 8) return false;
     if (code !== stand.code) stand = { code, versies: {}, afdrukken: {}, botsingen: {} };
+    const uitnodiging = (url.searchParams.get('uitnodiging') || '').toLowerCase().replace(/[^a-f0-9]/g, '');
+    if (uitnodiging && !stand.sleutel) stand.uitnodiging = uitnodiging;
+    delete stand.geweigerd;
     bewaarStand();
     url.searchParams.delete('familie');
+    url.searchParams.delete('uitnodiging');
     history.replaceState(null, '', url.pathname + (url.search || ''));
     return true;
   },
@@ -98,6 +148,7 @@ export const wolk = {
     for (let i = 0; i < 6; i++) staart += TEKENS[Math.floor(Math.random() * TEKENS.length)];
     stand.code = WOORDEN[Math.floor(Math.random() * WOORDEN.length)] + '-' + staart;
     bewaarStand();
+    await zorgSleutel();
     for (const wie of [...PLANETEN, 'wensen']) await this.stuur(wie, false, true);
     return stand.code;
   },
@@ -124,13 +175,14 @@ export const wolk = {
   // Bij het startscherm: van elke planeet de laatste versie ophalen.
   async haalAlles() {
     if (!stand.code) return;
+    await zorgSleutel();
     await Promise.all([...PLANETEN, 'wensen'].map((wie) => this.haal(wie)));
   },
 
   async haal(wie) {
     let doc;
     try {
-      const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}`, { signal: wachtHooguit(20000) });
+      const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}`, { headers: kop(), signal: wachtHooguit(20000) });
       if (!r.ok) return;
       doc = await r.json();
     } catch {
@@ -197,10 +249,11 @@ export const wolk = {
     if (!forceer && vingerafdruk === stand.afdrukken[wie]) return true; // niets veranderd
     bezig[wie] = true;
     try {
+      await zorgSleutel();
       const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}${forceer ? '&forceer=1' : ''}${aanzetten ? '&aanzetten=1' : ''}`, {
         method: 'POST',
         signal: wachtHooguit(30000),
-        headers: { 'content-type': 'application/json' },
+        headers: kop({ 'content-type': 'application/json' }),
         body: JSON.stringify({ versie: stand.versies[wie] || 0, data }),
       });
       if (r.status === 409) {
@@ -228,18 +281,19 @@ export const wolk = {
   // Prullenbak in de wolk: elke planeet die werd weggegooid of overschreven, 30 dagen lang.
   async prullenbak() {
     if (!stand.code) return [];
+    await zorgSleutel();
     const uit = [];
     await Promise.all(
       PLANETEN.map(async (wie) => {
         try {
-          const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}&prullenbak=lijst`);
+          const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}&prullenbak=lijst`, { headers: kop() });
           if (!r.ok) return;
           for (const tijd of await r.json())
             uit.push({
               wie,
               wanneer: Number(tijd),
               haal: async () => {
-                const d = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}&prullenbak=${tijd}`);
+                const d = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}&prullenbak=${tijd}`, { headers: kop() });
                 return d.ok ? (await d.json())?.data || null : null;
               },
             });

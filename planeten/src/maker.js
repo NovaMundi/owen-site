@@ -458,22 +458,35 @@ function toonWolk() {
   } else {
     el.innerHTML = `<div class="weg-doos">
       <h2>☁️ De planeten gaan mee</h2>
-      <p class="weg-uitleg">Open één van deze links één keer op de tablet of computer. Daarna gaat het vanzelf.</p>
-      ${sites.map((s) => `<div class="wolk-link"><code>${wolk.linkVoor(s)}</code><button class="kleurbol plus wolk-kopie" data-link="${wolk.linkVoor(s)}" title="Kopiëren">📋</button></div>`).join('')}
-      <p class="weg-uitleg">Familiecode: <b>${wolk.code}</b></p>
+      <p class="weg-uitleg">Nog een tablet of computer koppelen? Maak een koppel-link en open die daar één keer. Daarna gaat het vanzelf.</p>
+      <div class="wolk-links"><button class="tt-klaar wolk-maak">🔗 Koppel-link maken</button></div>
+      ${wolk.geweigerd ? '<p class="weg-uitleg">⚠️ Deze koppel-link werkt niet meer. Maak op een gekoppeld apparaat een nieuwe.</p>' : ''}
       <button class="tt-klaar wolk-bak">🗑️ Prullenbak</button>
       <button class="opnieuw wolk-dicht">Sluiten</button></div>`;
     el.querySelector('.wolk-bak').onclick = () => toonPrullenbak();
-    el.querySelectorAll('.wolk-kopie').forEach((b) =>
-      (b.onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(b.dataset.link);
-          b.textContent = '✅';
-        } catch {
-          b.textContent = '❌';
-        }
-      })
-    );
+    el.querySelector('.wolk-maak').onclick = async (e) => {
+      e.target.disabled = true;
+      e.target.textContent = 'Bezig...';
+      const u = await wolk.maakLink(sites);
+      const vak = el.querySelector('.wolk-links');
+      if (!u) {
+        vak.innerHTML = '<p class="weg-uitleg">Dat lukte niet. Is er internet?</p>';
+        return;
+      }
+      vak.innerHTML =
+        u.links.map((l) => `<div class="wolk-link"><code>${l}</code><button class="kleurbol plus wolk-kopie" data-link="${l}" title="Kopiëren">📋</button></div>`).join('') +
+        `<p class="weg-uitleg">Deze links werken ${u.dagen} dagen, op hooguit ${u.keer} apparaten. Deel ze alleen met je eigen gezin.</p>`;
+      vak.querySelectorAll('.wolk-kopie').forEach((b) =>
+        (b.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(b.dataset.link);
+            b.textContent = '✅';
+          } catch {
+            b.textContent = '❌';
+          }
+        })
+      );
+    };
   }
   el.querySelector('.wolk-dicht').onclick = () => (el.hidden = true);
   el.hidden = false;

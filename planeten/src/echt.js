@@ -1,3 +1,4 @@
+import { wolk } from './wolk.js';
 // "Maak echt" aan de kant van de browser: tekening klaarmaken voor de beeldmotor en het
 // resultaat netjes bijsnijden tot een los wezen zonder achtergrond.
 
@@ -115,7 +116,7 @@ export async function echtStatus(wie, code) {
   try {
     if (route === 'lokaal') return await (await fetch('/api/echt?wie=' + encodeURIComponent(wie))).json();
     if (route === 'online') {
-      const r = await fetch(`${ONLINE}?code=${code}&wie=${wie}`);
+      const r = await fetch(`${ONLINE}?code=${code}&wie=${wie}`, { headers: wolk.kop() });
       if (!r.ok) return { kan: false };
       return await r.json();
     }
@@ -133,13 +134,13 @@ export async function vraagEcht(wie, w, code) {
     if (!r.ok) throw Object.assign(new Error(data.fout || 'mislukt'), { status: r.status, data });
   } else {
     // Online: opdracht geven, dan elke paar seconden kijken of het klaar is (± 20-40 s).
-    const r = await fetch(`${ONLINE}?code=${code}&wie=${wie}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    const r = await fetch(`${ONLINE}?code=${code}&wie=${wie}`, { method: 'POST', headers: wolk.kop({ 'Content-Type': 'application/json' }), body });
     const start = await r.json().catch(() => ({}));
     if (!r.ok) throw Object.assign(new Error(start.fout || 'mislukt'), { status: r.status, data: start });
     const tot = Date.now() + 150000;
     while (Date.now() < tot) {
       await new Promise((k) => setTimeout(k, 3000));
-      const p = await fetch(`${ONLINE}?code=${code}&wie=${wie}&taak=${start.taak}`).then((x) => x.json()).catch(() => null);
+      const p = await fetch(`${ONLINE}?code=${code}&wie=${wie}&taak=${start.taak}`, { headers: wolk.kop() }).then((x) => x.json()).catch(() => null);
       if (!p || !p.klaar) continue;
       if (p.fout) throw Object.assign(new Error(p.fout), { status: p.status || 500 });
       data = p;
