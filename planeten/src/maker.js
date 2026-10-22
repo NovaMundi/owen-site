@@ -1995,7 +1995,7 @@ function vraag(tekst, ja) {
   const v = $('#vraag');
   v.querySelector('.vraag-tekst').textContent = tekst;
   v.hidden = false;
-  stem.zeg(`${tekst} Ja of nee?`);
+  stem.rij([tekst, 'Ja of nee?']);
   v.querySelector('.ja').onclick = () => {
     v.hidden = true;
     geluid.zwiep();
