@@ -120,7 +120,7 @@ export function openOntdekkingsboom({ wezen, leven }) {
   const el = document.createElement('section');
   el.id = 'ontdekkingsboom';
   el.innerHTML = `<div class="ob-doos">
-    <div class="ob-kop"><img src="${beeldVan(wezen).open}" alt=""><div><h2>Ontdekkingen van de ${veilig(meervoud(wezen.naam))}</h2><small>${s.tech.length} van de ${TECH.length} ontdekt${pad}. Tik op een ontdekking!</small></div><button class="rond ob-dicht" title="Dicht">✕</button></div>
+    <div class="ob-kop"><img src="${veilig(beeldVan(wezen).open)}" alt=""><div><h2>Ontdekkingen van de ${veilig(meervoud(wezen.naam))}</h2><small>${s.tech.length} van de ${TECH.length} ontdekt${pad}. Tik op een ontdekking!</small></div><button class="rond ob-dicht" title="Dicht">✕</button></div>
     <div class="ob-veld"><div class="ob-boom" style="width:${breedte}px;height:${hoogte}px"><svg width="${breedte}" height="${hoogte}">${lijnen}</svg>${knopen}</div></div>
     <div class="ob-uitleg">Tik op een ontdekking om te horen wat het is.</div>
   </div>`;
@@ -172,6 +172,6 @@ export function openOntdekkingsboom({ wezen, leven }) {
     })
   );
   // Meteen naar de plek waar ze nu zijn (de eerste "volgende" ontdekking).
-  const nu = el.querySelector('.knoop.volgende') || el.querySelector('.knoop.ontdekt:last-of-type');
+  const nu = el.querySelector('.knoop.volgende') || [...el.querySelectorAll('.knoop.ontdekt')].pop();
   if (nu) el.querySelector('.ob-veld').scrollLeft = Math.max(0, parseFloat(nu.style.left) - 120);
 }

@@ -19,9 +19,12 @@ import { plaatjeVoorNieuweSoort } from './leven/afbeelding.js';
 import * as K from './keuzes.js';
 import { lees, schrijf, mediaKlaar, SANDBOX } from './opslag.js';
 import { icoon, techIcoon } from './iconen.js';
+import { geschiedenisGrafiek } from './grafiek.js';
 import { openKiezen } from './kiezen.js';
 import { toonWezenKaart } from './wezenkaart.js';
 import { openOntdekkingsboom } from './ontdekkingsboom.js';
+// Tekst uit de wolk (namen, plaatjes) veilig in de pagina zetten.
+const veilig = (t) => String(t ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
 
 // ================= Opslag =================
 const OPSLAG = 'planeetmakers-v1';
@@ -1139,7 +1142,7 @@ const PANELEN = {
       el.insertAdjacentHTML('beforeend', '<div class="tip">Er woont nog niemand op je planeet. Teken een wezen bij 🐾 Wezens!</div>');
       return;
     }
-    el.insertAdjacentHTML('beforeend', `<div class="verhaal-jaar">Jaar ${telTekst(w.jaar)} op ${recept.naam || 'je planeet'}</div>`);
+    el.insertAdjacentHTML('beforeend', `<div class="verhaal-jaar">Jaar ${telTekst(w.jaar)} op ${veilig(recept.naam || 'je planeet')}</div>`);
     const k = leven.klimaat();
     const fase = FASEN[k.fase] || FASEN.gewoon;
     const warmte = k.temp > 0.08 ? ' · 🌡️ warmer dan normaal' : k.temp < -0.08 ? ' · ❄️ kouder dan normaal' : '';
@@ -1157,7 +1160,7 @@ const PANELEN = {
       // Een uitvinding die "slaapt" (donkere tijden): grijs, en ze komt terug als het beter gaat.
       const slaapt = s.vlaggen.slaapt && !dood ? `<span class="slaapt" title="${techNaam(s.vlaggen.slaapt, s).naam} slaapt even">${techNaam(s.vlaggen.slaapt, s).icoon}💤</span>` : "";
       kaart.innerHTML = `
-        <img src="${beeldVan(wz).open}" alt="" class="${dood ? 'dood' : ''}">
+        <img src="${veilig(beeldVan(wz).open)}" alt="" class="${dood ? 'dood' : ''}">
         <div class="soort-info">
           <b></b>
           <div class="soort-stand">${dood ? `Uitgestorven in jaar ${telTekst(s.uitgestorven)}${s.oorzaak && OMDAT[s.oorzaak] ? `, omdat ${OMDAT[s.oorzaak]}` : ''}` : `${rolTekst(info)} · ${info.tijdperk.icoon} ${info.tijdperk.naam} · 👪 ${telTekst(info.totaal)} · ${gevoel}`}</div>
@@ -1190,13 +1193,20 @@ const PANELEN = {
       }
       el.appendChild(kaart);
     }
+    const plaatjes = Object.fromEntries(lijst.map((x) => [x.id, beeldVan(x).open]));
+    const grafiek = geschiedenisGrafiek(w, plaatjes, (e) => {
+      const was = stem.aan;
+      stem.aan = true;
+      stem.zeg(e.tekst);
+      stem.aan = was;
+    });
+    if (grafiek) el.appendChild(grafiek);
     const tijdlijn = document.createElement('div');
     tijdlijn.className = 'tijdlijn';
-    const plaatjes = Object.fromEntries(lijst.map((x) => [x.id, beeldVan(x).open]));
     for (const e of w.kroniek.slice(-60).reverse()) {
       const rij = document.createElement('div');
       rij.className = 'gebeurtenis belang' + e.belang;
-      rij.innerHTML = `<span class="g-icoon">${e.icoon}</span><div class="g-tekst"><small>Jaar ${telTekst(e.jaar)}</small><span></span></div>${e.soort && plaatjes[e.soort] ? `<img src="${plaatjes[e.soort]}" alt="">` : ''}`;
+      rij.innerHTML = `<span class="g-icoon">${veilig(e.icoon)}</span><div class="g-tekst"><small>Jaar ${telTekst(e.jaar)}</small><span></span></div>${e.soort && plaatjes[e.soort] ? `<img src="${veilig(plaatjes[e.soort])}" alt="">` : ''}`;
       rij.querySelector('.g-tekst span').textContent = e.tekst;
       rij.addEventListener('click', () => {
         const was = stem.aan;
@@ -2177,6 +2187,7 @@ function aanpassenAanScherm() {
   composer.setSize(b, h);
   // De gloed is zacht en wazig: op halve maat zie je geen verschil, maar het is veel lichter.
   const pr = renderer.getPixelRatio();
+  wezens.schermHoogte = h * pr; // voor de wolkjes boven de wezens
   bloei.setSize(Math.round((b * pr) / 2), Math.round((h * pr) / 2));
   camera.aspect = b / h;
   camera.updateProjectionMatrix();
@@ -2240,7 +2251,7 @@ const klok = new THREE.Clock();
 const zonPlek = new THREE.Vector3();
 const zonRichting = new THREE.Vector3();
 wezens.zon = zonRichting; // aan de nachtkant gaan ze slapen
-beschaving.opBrug = (sid) => leven.brug(sid);
+beschaving.opBrug = (sid, stil) => leven.brug(sid, stil);
 const asY = new THREE.Vector3(0, 1, 0);
 renderer.setAnimationLoop((nu) => {
   const dt = Math.min(klok.getDelta(), 0.05);

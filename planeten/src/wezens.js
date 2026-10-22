@@ -45,7 +45,9 @@ export function beeldVan(w) {
 const sleutelVan = (w) => { const b = beeldVan(w); return JSON.stringify([b.open.length, b.open.slice(-40), w.beweging, w.maat, w.kijkt]); };
 
 // ---- Wat ze aan het doen zijn: een klein wolkje boven hun hoofd (zoals in De Sims) ----
-const TAAK_ICOON = ['🔨', '💤', '🍎', '🙏', '🔥', '🌾'];
+const TAAK_ICOON = ['🔨', '💤', '🍎', '🙏', '🔥', '🌾', '⚔️', '🕊️', '🎒'];
+// Taken waarbij je het wolkje al onderweg ziet (niet pas als ze er zijn).
+const ONDERWEG = new Set(['vechten', 'reizen']);
 let atlasTex = null;
 function atlas() {
   if (atlasTex) return atlasTex;
@@ -104,10 +106,11 @@ export class WezensLaag {
     this.iconen = new THREE.Points(
       g,
       new THREE.ShaderMaterial({
-        uniforms: { kaart: { value: atlas() }, cellen: { value: TAAK_ICOON.length } },
+        uniforms: { kaart: { value: atlas() }, cellen: { value: TAAK_ICOON.length }, schaal: { value: 300 } },
         vertexShader: `
           attribute float cel;
           attribute float maat;
+          uniform float schaal;
           varying float vCel;
           varying float vZicht;
           void main() {
@@ -115,7 +118,7 @@ export class WezensLaag {
             vec4 mv = modelViewMatrix * vec4(position, 1.0);
             // Alleen als je dichtbij kijkt; van ver zou het een rommeltje worden.
             vZicht = 1.0 - smoothstep(0.5, 1.3, -mv.z);
-            gl_PointSize = maat * (300.0 / -mv.z);
+            gl_PointSize = maat * (schaal / -mv.z);
             gl_Position = projectionMatrix * mv;
           }`,
         fragmentShader: `
@@ -158,10 +161,39 @@ export class WezensLaag {
     };
     let taak = null;
     const lopers = b === 'lopen' || b === 'huppen';
+    // Kan hij er komen zonder door het water (of over land, voor een zwemmer)? Drie tussenpunten.
+    const bereikbaar = (doel) => {
+      for (const f of [0.25, 0.5, 0.75, 1]) if (!this.magHier(s, d.dir.clone().lerp(doel, f).normalize())) return false;
+      return true;
+    };
     if (nacht) {
       const huis = lopers && plek && dichtbij(plek.huis, 0.25);
       taak = { soort: 'slapen', doel: huis ? naast(huis, 0.004) : null, icoon: 1 };
-    } else if (lopers && this.dorp && Math.random() < 0.7) {
+    } else if (s.fronten && s.fronten.length && Math.random() < 0.6) {
+      // Oorlog: ze trekken naar de grens om te vechten (ook van verder weg, als een leger).
+      const front = dichtbij(s.fronten.filter(bereikbaar), Math.PI);
+      if (front) {
+        taak = { soort: 'vechten', doel: naast(front, 0.008), icoon: 6 };
+        if (front.dot(d.dir) < Math.cos(0.2)) {
+          d.taak = taak;
+          d.taakTot = this.tijd + 40 + Math.random() * 20;
+          return;
+        }
+      }
+    }
+    if (!taak && !nacht && s.vredeTot > this.tijd && Math.random() < 0.6) taak = { soort: 'vrede', doel: null, icoon: 7 };
+    if (!taak && !nacht && s.reizen && s.reizen.length && Math.random() < 0.12) {
+      // Op reis naar een ander dorp (handel): een rugzakje om en gaan.
+      const ver = s.reizen.filter((r) => r.dot(d.dir) < Math.cos(0.05) && bereikbaar(r));
+      const r = ver[Math.floor(Math.random() * ver.length)];
+      if (r) {
+        taak = { soort: 'reizen', doel: naast(r, 0.01), icoon: 8 };
+        d.taak = taak;
+        d.taakTot = this.tijd + 45 + Math.random() * 30;
+        return;
+      }
+    }
+    if (!taak && !nacht && lopers && this.dorp && Math.random() < 0.7) {
       const bouw = dichtbij(this.dorp.bouwVoor(id), 0.3);
       if (bouw) taak = { soort: 'bouwen', doel: naast(bouw, 0.005), icoon: 0 };
     }
@@ -179,6 +211,7 @@ export class WezensLaag {
         if (akker) taak = { soort: 'akker', doel: naast(akker, 0.004), icoon: 5 };
       }
     }
+    if (taak && taak.doel && !this.magHier(s, taak.doel)) taak = null;
     d.taak = taak;
     d.taakTot = this.tijd + (taak ? 10 + Math.random() * 14 : 4 + Math.random() * 6);
   }
@@ -200,9 +233,24 @@ export class WezensLaag {
   }
 
   // Wat de levensmotor zegt: hoeveel zijn er te zien, waar wonen ze, hoe groot zijn ze geworden.
-  stelLeven(id, { aantal, thuizen, schaal = 1, amfibie = false }) {
+  stelLeven(id, { aantal, thuizen, schaal = 1, amfibie = false, fronten = [], reizen = [] }) {
     const s = this.soorten.get(id);
     if (!s) return;
+    const fs = fronten.map((f) => f.id).join(',');
+    if (fs !== s.frontSleutel) {
+      // Was er oorlog en is die nu voorbij? Dan even vrede vieren.
+      if (s.fronten && s.fronten.length && !fronten.length) {
+        s.vredeTot = this.tijd + 30;
+        for (const d of s.dieren) if (d.taak && d.taak.soort === 'vechten') d.taakTot = 0;
+      }
+      s.frontSleutel = fs;
+      s.fronten = fronten.map((f) => new THREE.Vector3(...f.dir));
+    }
+    const rs = reizen.map((r) => r.id).join(',');
+    if (rs !== s.reisSleutel) {
+      s.reisSleutel = rs;
+      s.reizen = reizen.map((r) => new THREE.Vector3(...r.dir));
+    }
     s.doel = Math.min(aantal, PER_SOORT);
     s.amfibie = amfibie;
     if (schaal !== s.schaal) {
@@ -373,6 +421,7 @@ export class WezensLaag {
     for (const s of this.soorten.values()) {
       this.bijwerken(s);
       const b = s.w.beweging;
+      const verhouding = beeldVan(s.w).verhouding;
       const aantal = s.dieren.length;
       s.openInst.count = s.dichtInst.count = s.schaduwInst.count = aantal;
       for (let i = 0; i < aantal; i++) {
@@ -395,6 +444,11 @@ export class WezensLaag {
           if (!taak.doel || taak.doel.dot(d.dir) > Math.cos(0.006)) {
             bezig = true;
             d.pauze = Math.max(d.pauze, 0.2);
+            if (taak.soort === 'reizen' && !taak.aangekomen) {
+              taak.aangekomen = true;
+              d.thuis = taak.doel.clone();
+              d.taakTot = Math.min(d.taakTot, this.tijd + 3);
+            }
           }
         }
 
@@ -435,7 +489,11 @@ export class WezensLaag {
           // Op weg naar zijn taak: daarheen sturen (en dan niet naar huis trekken).
           if (taak && taak.doel && !bezig && !d.vrij) {
             const naar = taak.doel.clone().addScaledVector(d.dir, -taak.doel.dot(d.dir));
-            if (naar.lengthSq() > 1e-10) d.koers.lerp(naar.normalize(), Math.min(1, dt * 5));
+            if (naar.lengthSq() > 1e-10) {
+              naar.normalize();
+              if (taak.doel.dot(d.dir) > Math.cos(hoek * 12)) d.koers.copy(naar);
+              else d.koers.lerp(naar, Math.min(1, dt * 5));
+            }
           }
           // Niet te ver van huis: langzaam terugsturen naar hun eigen gebied.
           else if (d.thuis && !d.vrij && d.dir.dot(d.thuis) < Math.cos(0.09)) {
@@ -486,6 +544,13 @@ export class WezensLaag {
           if (taak.soort === 'bouwen') {
             hoogte += Math.abs(Math.sin(t * 11)) * d.maat * 0.25;
             kantel = Math.sin(t * 11) * 0.3;
+          } else if (taak.soort === 'vechten') {
+            // Stoeien aan de grens: springen en heen en weer duwen.
+            hoogte += Math.abs(Math.sin(t * 8)) * d.maat * 0.5;
+            kantel = Math.sin(t * 13) * 0.45;
+          } else if (taak.soort === 'vrede') {
+            hoogte += Math.abs(Math.sin(t * 4)) * d.maat * 0.6; // blij huppelen
+            kantel = Math.sin(t * 2) * 0.2;
           } else if (taak.soort === 'bidden') {
             kantel = Math.sin(t * 1.6) > 0 ? 0.55 : 0.05; // buigen
           } else if (taak.soort === 'vuur') {
@@ -524,7 +589,7 @@ export class WezensLaag {
         d.spiegel += (doel - d.spiegel) * Math.min(1, dt * 8);
         const groei = Math.min(1, d.geboren * 3);
         const plop = groei < 1 ? groei * (1 + Math.sin(groei * Math.PI) * 0.4) : 1;
-        const breed = d.maat * beeldVan(s.w).verhouding * plop;
+        const breed = d.maat * verhouding * plop;
         d.mesh.scale.set(breed * d.spiegel, d.maat * squash * plop, 1);
         d.mesh.updateMatrix();
 
@@ -554,19 +619,20 @@ export class WezensLaag {
       s.dichtInst.instanceMatrix.needsUpdate = true;
       s.schaduwInst.instanceMatrix.needsUpdate = true;
     }
-    // Wolkjes boven wie iets aan het doen is.
+    // Wolkjes boven wie iets aan het doen is (even groot op elk scherm).
+    this.iconen.material.uniforms.schaal.value = ((this.schermHoogte || 800) * camera.projectionMatrix.elements[5]) / 2;
     const pos = this.iconen.geometry.attributes.position, cel = this.iconen.geometry.attributes.cel, mt = this.iconen.geometry.attributes.maat;
     let ic = 0;
     for (const s of this.soorten.values()) {
       for (const d of s.dieren) {
         if (ic >= MAX_ICONEN || !d.taak || !d.mesh.visible || d.geboren < 0) continue;
         const bij = !d.taak.doel || d.taak.doel.dot(d.dir) > Math.cos(0.006);
-        if (!bij) continue;
+        if (!bij && !ONDERWEG.has(d.taak.soort)) continue;
         const p = d.mesh.position;
         const hoog = d.maat * 1.35 + 0.002 + Math.sin(this.tijd * 2 + d.fase) * d.maat * 0.06;
         pos.setXYZ(ic, p.x + d.dir.x * hoog, p.y + d.dir.y * hoog, p.z + d.dir.z * hoog);
         cel.setX(ic, d.taak.icoon);
-        mt.setX(ic, Math.max(0.006, d.maat * 0.7));
+        mt.setX(ic, Math.max(0.004, d.maat * 0.55));
         ic++;
       }
     }

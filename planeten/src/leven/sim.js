@@ -779,6 +779,17 @@ export function stap(w, basisRegios, dt, nu) {
     // Honger en uitsterven.
     const nu_totaal = groepen.reduce((s, g) => s + g.pop, 0);
     soort.piek = Math.max(soort.piek, nu_totaal);
+    // Geschiedenis voor de grafiek in het verhaalboek: hooguit 120 punten. Is het vol, dan om de
+    // andere weg en twee keer zo ver uit elkaar (zo past ook een miljoen jaar erin).
+    const hs = (soort.histStap ||= 200);
+    const hist = (soort.hist ||= []);
+    if (!hist.length || w.jaar - hist[hist.length - 1][0] >= hs) {
+      hist.push([Math.floor(w.jaar), Math.round(nu_totaal)]);
+      if (hist.length > 120) {
+        soort.hist = hist.filter((_, k) => k % 2 === 0 || k === hist.length - 1);
+        soort.histStap = hs * 2;
+      }
+    }
     // Hooguit eens per 5000 jaar melden; alleen de eerste keer is groot nieuws.
     if (honger > nu_totaal * 0.02 * dt && (!soort.vlaggen.honger || w.jaar - soort.vlaggen.honger > 5000)) {
       verhaal(w, soort, soort.vlaggen.honger ? 1 : 2, '😟', hongerTekst(soort, groepen, regios), nu);
@@ -794,6 +805,7 @@ export function stap(w, basisRegios, dt, nu) {
       if (beste) beste.pop += 10 - nu_totaal;
     } else if (nu_totaal < 0.5) {
       soort.uitgestorven = Math.floor(w.jaar);
+      (soort.hist ||= []).push([Math.floor(w.jaar), 0]);
       const oorzaak = grootsteOorzaak(soort);
       soort.oorzaak = oorzaak;
       verhaal(w, soort, 3, '🪦', `De ${meervoud(soort.naam)} zijn uitgestorven${oorzaak ? `, omdat ${OMDAT[oorzaak]}` : ''}. De laatste ${soort.naam} is er niet meer.${soort.afkomst ? '' : ' Wat zou daar wél kunnen leven? Teken het maar!'}`, nu);
@@ -1401,6 +1413,7 @@ function kruising(w, sa, sb, ga, gb, r, nu, naamBestaat) {
     afkomst: { soort: 'kruising', ouders: [sa.id, sb.id], tint: sb.kleur ? sb.kleur.h : null, vlekken: sb.kleur || null },
   });
   s.tech = slim.tech.filter((t) => t !== 'taal' || (sa.tech.includes('taal') && sb.tech.includes('taal')));
+  s.ontdekt = Object.fromEntries(Object.entries(slim.ontdekt || {}).filter(([t]) => s.tech.includes(t)));
   s.kennis = Math.min(slim.kennis, 6000) * 0.8;
   s.wortel = [...new Set([...(sa.wortel || [sa.id]), ...(sb.wortel || [sb.id])])];
   s.genen.slim += 0.1; // bastaardkracht: kruisingen zijn vaak sterk en slim
@@ -1454,6 +1467,7 @@ function afsplitsing(w, ouder, g, r, nu, naamBestaat, opEiland = false, regios =
     afkomst: { soort: 'afsplitsing', ouders: [ouder.id], tint: TINT[r.soort] ?? null, landschap: r.soort },
   });
   s.tech = [...ouder.tech];
+  s.ontdekt = { ...(ouder.ontdekt || {}) };
   s.kennis = ouder.kennis;
   s.piek = g.pop;
   s.wortel = [...(ouder.wortel || [ouder.id])];

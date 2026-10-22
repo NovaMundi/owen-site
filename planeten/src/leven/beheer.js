@@ -253,10 +253,11 @@ export class Leven {
   }
 
   // Er is een brug gebouwd (dat ziet de beschavingslaag): de eerste keer per soort komt het in het verhaal.
-  brug(sid) {
+  brug(sid, stil = false) {
     const s = this.w && this.w.soorten[sid];
     if (!s || s.vlaggen.brug) return;
     s.vlaggen.brug = 1;
+    if (stil) return; // stond er al bij het openen
     meld(this.w, 2, '🌉', `De ${meervoud(s.naam)} bouwden een brug over het water! Nu kunnen ze droog naar de overkant.`);
     this.meldNieuws();
   }
@@ -323,9 +324,41 @@ export class Leven {
         .sort((a, b) => b.pop - a.pop)
         .slice(0, 8)
         .map((g) => ({ id: g.regio, dir: this.regios[g.regio].dir, gewicht: g.pop }));
+      // Oorlog: waar ligt de grens met de vijand? Daar trekken de wezens heen om te vechten.
+      const dirVan = (r) => this.regios[r] && this.regios[r].dir;
+      const midden = (a, b) => {
+        const v = [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+        const l = Math.hypot(...v) || 1;
+        return v.map((x) => x / l);
+      };
+      const fronten = [];
+      for (const g of i.groepen) {
+        if (!g.oorlog || fronten.length >= 4 || !dirVan(g.regio)) continue;
+        for (const h of this.w.groepen) {
+          if (h === g || h.oorlog !== g.oorlog || h.stam === g.stam || !dirVan(h.regio)) continue;
+          fronten.push({ id: g.regio + '>' + h.regio, dir: midden(dirVan(g.regio), dirVan(h.regio)) });
+          break;
+        }
+      }
+      // Reizen: met het wiel gaan ze op pad naar hun andere dorpen en naar bevriende volken.
+      const reizen = [];
+      if (i.soort.tech.includes('wiel')) {
+        if (thuizen.length >= 2) for (const t of thuizen) reizen.push({ id: t.id, dir: t.dir });
+        const stammen = new Set(i.groepen.map((g) => g.stam));
+        for (const [sleutel, sp] of Object.entries(this.w.spanning || {})) {
+          if (!sp.vriend || reizen.length >= 10) continue;
+          const [a, b] = sleutel.split('|');
+          const ander = stammen.has(a) ? b : stammen.has(b) ? a : null;
+          if (!ander || stammen.has(ander)) continue;
+          const g = this.w.groepen.find((x) => x.stam === ander && x.pop > 2 && dirVan(x.regio));
+          if (g) reizen.push({ id: 'v' + g.regio, dir: dirVan(g.regio) });
+        }
+      }
       this.wezens.stelLeven(id, {
         aantal: Math.floor(wensen[id] * factor),
         thuizen,
+        fronten,
+        reizen: reizen.length >= 2 ? reizen : [],
         schaal: i.soort.genen.grootte,
         amfibie: i.soort.beweging === 'zwemmen' && i.soort.genen.land >= 0.5,
       });

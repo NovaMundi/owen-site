@@ -42,7 +42,8 @@ function opschriftTextuur(regels, B, H) {
   const tex = new THREE.CanvasTexture(d);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
-  opschriftCache.set(sleutel, tex);
+  // Is het lettertype nog niet geladen, dan niet onthouden: de volgende keer opnieuw tekenen.
+  if (!document.fonts || document.fonts.check('700 20px Fredoka')) opschriftCache.set(sleutel, tex);
   return tex;
 }
 const opschriftVlak = (tex, b, h) =>
@@ -525,7 +526,7 @@ export class BeschavingLaag {
             const bk = sid + ':' + c.regio + '-' + b;
             if (!this.bekendeBruggen.has(bk)) {
               this.bekendeBruggen.add(bk);
-              if (!eerste && this.opBrug) this.opBrug(sid);
+              if (this.opBrug) this.opBrug(sid, eerste);
             }
           }
           for (let k = 1; k < punten.length; k++) weg.push(punten[k - 1].x, punten[k - 1].y, punten[k - 1].z, punten[k].x, punten[k].y, punten[k].z);
@@ -644,7 +645,9 @@ export class BeschavingLaag {
       for (const o of this.banieren.children) o.visible = nu > o.userData.klaar;
     }
     // Nieuwe bouwwerken groeien op: eerst klein en laag, in een halve minuut helemaal af.
-    if (this.groei.length) {
+    this.groeiKlok = (this.groeiKlok || 0) + dt;
+    if (this.groei.length && this.groeiKlok > 0.08) {
+      this.groeiKlok = 0;
       const nu = performance.now(), gv = new THREE.Vector3(), gq = new THREE.Quaternion(), gs = new THREE.Vector3(), gm = new THREE.Matrix4();
       const bezig = [];
       for (const g of this.groei) {

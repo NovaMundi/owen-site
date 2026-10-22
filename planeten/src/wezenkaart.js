@@ -65,7 +65,7 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
   el.innerHTML = `<div class="wk-doos">
     <button class="rond wk-dicht" title="Dicht">✕</button>
     <div class="wk-kop">
-      <img class="wk-plaatje ${dood ? 'dood' : ''}" src="${plaatje}" alt="">
+      <img class="wk-plaatje ${dood ? 'dood' : ''}" src="${veilig(plaatje)}" alt="">
       <div class="wk-titel">
         <h2>${veilig(m)}</h2>
         <div class="wk-sub">${veilig(afkomst)}</div>
@@ -84,7 +84,7 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
     ${extra.length ? `<div class="wk-extra">${extra.map((x) => `<span>${veilig(x)}</span>`).join('')}</div>` : ''}
     <h3>Ontdekt</h3>
     <div class="wk-ontdekt">${ontdekt.length ? ontdekt.map((t) => `<span><i>${techIcoon(t.id, s, t.icoon)}</i>${veilig(t.naam)}</span>`).join('') : '<span class="dim">Nog niets</span>'}</div>
-    ${momenten.length ? `<h3>Grootste momenten</h3><div class="wk-momenten">${momenten.map((e) => `<button class="gebeurtenis belang3" data-tekst="${veilig(e.tekst)}"><span class="g-icoon">${e.icoon}</span><div class="g-tekst"><small>Jaar ${telTekst(e.jaar)}</small><span>${veilig(e.tekst)}</span></div></button>`).join('')}</div>` : ''}
+    ${momenten.length ? `<h3>Grootste momenten</h3><div class="wk-momenten">${momenten.map((e) => `<button class="gebeurtenis belang3" data-tekst="${veilig(e.tekst)}"><span class="g-icoon">${veilig(e.icoon)}</span><div class="g-tekst"><small>Jaar ${telTekst(e.jaar)}</small><span>${veilig(e.tekst)}</span></div></button>`).join('')}</div>` : ''}
     <div class="wk-knoppen">
       ${!dood && s ? '<button class="tt-klaar wk-bezoek">👀 Bezoeken</button>' : ''}
       ${s ? '<button class="tt-klaar wk-boom">🌳 Ontdekkingsboom</button>' : ''}

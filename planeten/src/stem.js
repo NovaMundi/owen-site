@@ -35,8 +35,9 @@ const magAl = () => !navigator.userActivation || navigator.userActivation.hasBee
 if (!magAl()) {
   const eersteTik = () => {
     window.removeEventListener('pointerdown', eersteTik, true);
-    if (wachtend) setTimeout(() => stem.rij(wachtend), 50);
+    const zinnen = wachtend;
     wachtend = null;
+    if (zinnen) setTimeout(() => stem.rij(zinnen), 50);
   };
   window.addEventListener('pointerdown', eersteTik, true);
 }
