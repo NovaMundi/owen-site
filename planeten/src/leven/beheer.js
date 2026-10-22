@@ -2,7 +2,7 @@
 // gegaan terwijl niemand keek, rekent elke paar seconden verder en houdt wezens en gebouwen
 // in beeld gelijk met wat er werkelijk gebeurt.
 
-import { nieuweWereld, voegSoortToe, vertrekSoort, terugSoort, stap, inhalen, soortInfo, stormKans, jarenTussen, snelBezig, meld } from './sim.js';
+import { nieuweWereld, voegSoortToe, vertrekSoort, terugSoort, stap, inhalen, soortInfo, stormKans, jarenTussen, snelBezig, meld, meters } from './sim.js';
 import { maakRegios } from './regio.js';
 
 const OPSLAG = 'planeetmakers-leven-v1';
@@ -289,6 +289,10 @@ export class Leven {
 
   info(id) {
     return this.w ? soortInfo(this.w, id) : null;
+  }
+
+  meters(id) {
+    return this.w && this.regios ? meters(this.w, this.regios, id) : null;
   }
 
   // Het kind heeft een wezen aangepast: naam en kleur ook in de wereld bijwerken.

@@ -369,3 +369,9 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .vraag-knoppen .nee::before { content: '❌ '; }
 .bak-lijst { margin: 10px 0; }
 .bak-lijst .wolk-link span { flex: 1; }
+/* Drie gezichtjes op de soortkaart: eten, water, warmte */
+.meters { display: flex; gap: 8px; margin: 6px 0 2px; }
+.meter { display: inline-flex; gap: 2px; align-items: center; border: 0; border-radius: 14px; padding: 6px 10px; font-size: 20px; background: rgba(255, 255, 255, 0.1); color: inherit; }
+.meter.goed { background: rgba(156, 255, 138, 0.18); }
+.meter.matig { background: rgba(255, 211, 77, 0.18); }
+.meter.slecht { background: rgba(255, 95, 95, 0.25); }

@@ -14,29 +14,17 @@ import { wolk } from './wolk.js';
 import { openTekentafel } from './tekentafel.js';
 import { Leven } from './leven/beheer.js';
 import { BeschavingLaag } from './leven/beeld.js';
-import { TECH, FASEN, meervoud, techNaam, snelBezig } from './leven/sim.js';
+import { TECH, FASEN, OMDAT, meervoud, techNaam, snelBezig } from './leven/sim.js';
 import { plaatjeVoorNieuweSoort } from './leven/afbeelding.js';
 import * as K from './keuzes.js';
+import { lees, schrijf, mediaKlaar } from './opslag.js';
 
 // ================= Opslag =================
 const OPSLAG = 'planeetmakers-v1';
 const WENSEN = 'planeetmakers-wensen-v1';
 const FOTOS = 'planeetmakers-fotos-v1';
-function lees(sleutel, standaard) {
-  try {
-    return JSON.parse(localStorage.getItem(sleutel)) ?? standaard;
-  } catch {
-    return standaard;
-  }
-}
-function schrijf(sleutel, waarde) {
-  try {
-    localStorage.setItem(sleutel, JSON.stringify(waarde));
-    return true;
-  } catch {
-    return false;
-  }
-}
+// Plaatjes en geluiden staan in IndexedDB (zie opslag.js): eerst die inladen.
+await mediaKlaar;
 const planeten = lees(OPSLAG, {});
 const fotos = lees(FOTOS, {});
 
@@ -524,7 +512,7 @@ async function begin(id) {
   camera.position.set(0, 0.6, 4.4).setLength(beginAfstand());
   if (planeten[id]) {
     // Ontbrekende velden aanvullen (oudere planeten of uit de wolk), zodat er nergens met "niets" gerekend wordt.
-    recept = vulAan(planeten[id]);
+    recept = metId(vulAan(planeten[id]), id);
     bouwDock();
     dock.hidden = false;
     toonNaam();
@@ -552,6 +540,19 @@ async function begin(id) {
   }
 }
 
+// Elke planeet krijgt een eigen nummer en een eigenaar, en wie hem mag zien (nu alleen de familie).
+// Nu nog niet nodig, maar straks wel: meer planeten per kind, bezoeken bij vrienden, een heelal.
+function metId(r, eigenaar) {
+  if (!r.id) {
+    r.id = crypto.randomUUID ? crypto.randomUUID() : 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    r.schema = 2;
+    r.eigenaar = eigenaar;
+    r.zichtbaar = 'familie';
+    r.gemaakt = Date.now();
+  }
+  return r;
+}
+
 const naamVan = (id) => K.MAKERS.find((m) => m.id === id).naam;
 
 function toonNaam() {
@@ -565,7 +566,7 @@ function startGeboorte() {
   const stof = new Sterrenstof();
   scene.add(stof.punten);
   geboorte = { stof, tikken: 0 };
-  recept = { ...structuredClone(KAAL), zaad: 'p-' + Math.floor(Math.random() * 1e9) };
+  recept = metId({ ...structuredClone(KAAL), zaad: 'p-' + Math.floor(Math.random() * 1e9) }, wie);
   toonMelding('Tik op het sterrenstof!');
   stem.zeg('Kijk, sterrenstof! Tik er drie keer op, dan wordt er een planeet geboren.');
   // Planeet alvast bouwen terwijl het stof draait, dan hapert de onthulling niet.
@@ -1122,11 +1123,31 @@ const PANELEN = {
         <img src="${beeldVan(wz).open}" alt="" class="${dood ? 'dood' : ''}">
         <div class="soort-info">
           <b></b>
-          <div class="soort-stand">${dood ? `Uitgestorven in jaar ${telTekst(s.uitgestorven)}` : `${rolTekst(info)} · ${info.tijdperk.icoon} ${info.tijdperk.naam} · 👪 ${telTekst(info.totaal)} · ${gevoel}`}</div>
+          <div class="soort-stand">${dood ? `Uitgestorven in jaar ${telTekst(s.uitgestorven)}${s.oorzaak && OMDAT[s.oorzaak] ? `, omdat ${OMDAT[s.oorzaak]}` : ''}` : `${rolTekst(info)} · ${info.tijdperk.icoon} ${info.tijdperk.naam} · 👪 ${telTekst(info.totaal)} · ${gevoel}`}</div>
           ${!dood && info.stammen > 1 ? `<div class="soort-stand">🏕️ ${info.stammen} stammen</div>` : ''}
+          <div class="meters"></div>
           <div class="soort-tech">${tech || '<span class="dim">Nog niets ontdekt</span>'}</div>
         </div>`;
       kaart.querySelector('b').textContent = meervoud(wz.naam);
+      // Drie gezichtjes: eten, water, warmte. Tikken leest voor hoe het gaat en waarom.
+      const m = !dood && leven.meters(wz.id);
+      if (m) {
+        const vak = kaart.querySelector('.meters');
+        for (const [sleutel, icoon, woord] of [['eten', '🍎', 'Eten'], ['water', '💧', 'Water'], ['warmte', '🌡️', 'Warmte']]) {
+          const v = m[sleutel];
+          const b = document.createElement('button');
+          b.className = 'meter ' + (v > 0.66 ? 'goed' : v > 0.33 ? 'matig' : 'slecht');
+          b.innerHTML = `<span>${icoon}</span><span>${v > 0.66 ? '😊' : v > 0.33 ? '😐' : '😟'}</span>`;
+          b.title = woord;
+          b.onclick = () => {
+            const was = stem.aan;
+            stem.aan = true;
+            stem.zeg(m.zinnen[sleutel]);
+            stem.aan = was;
+          };
+          vak.appendChild(b);
+        }
+      }
       el.appendChild(kaart);
     }
     const tijdlijn = document.createElement('div');
@@ -1701,7 +1722,7 @@ function volgCamera(dt) {
 }
 
 function rolTekst(info) {
-  if (info.rol === 'heerser') return `👑 baas ${info.rijk === 'zee' ? 'in de zee' : 'op het land'}`;
+  if (info.rol === 'heerser') return `👑 grootste bouwers ${info.rijk === 'zee' ? 'in de zee' : 'op het land'}`;
   if (info.soort.tech.includes('taal')) return '🗣️ slim';
   return '🐾 wild dier';
 }

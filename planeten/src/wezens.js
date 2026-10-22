@@ -6,6 +6,8 @@ import { maakRandom } from './ruis.js';
 import { MATEN } from './keuzes.js';
 
 const MAX_TOTAAL = 220;
+const PER_SOORT = 64; // meer van één soort tegelijk in beeld wordt het nooit (zie beheer.js)
+const NUL = new THREE.Matrix4().makeScale(0, 0, 0);
 // Huppers komen alleen tijdens de sprong vooruit, dus die gaan in de lucht extra snel.
 const SNELHEID = { lopen: 0.045, huppen: 0.09, zwemmen: 0.04, vliegen: 0.12, zweven: 0.018 };
 
@@ -72,7 +74,7 @@ export class WezensLaag {
   stelLeven(id, { aantal, thuizen, schaal = 1, amfibie = false }) {
     const s = this.soorten.get(id);
     if (!s) return;
-    s.doel = aantal;
+    s.doel = Math.min(aantal, PER_SOORT);
     s.amfibie = amfibie;
     if (schaal !== s.schaal) {
       s.schaal = schaal;
@@ -102,10 +104,9 @@ export class WezensLaag {
   weg(id) {
     const s = this.soorten.get(id);
     if (!s) return;
-    for (const d of s.dieren) {
-      this.groep.remove(d.mesh, d.schaduw);
-      d.schaduw.material.dispose();
-    }
+    for (const d of s.dieren) this.groep.remove(d.mesh);
+    this.groep.remove(s.openInst, s.dichtInst, s.schaduwInst);
+    for (const inst of [s.openInst, s.dichtInst, s.schaduwInst]) inst.dispose();
     s.open.map.dispose();
     s.dicht.map.dispose();
     s.open.dispose();
@@ -134,8 +135,24 @@ export class WezensLaag {
       m.emissiveMap = m.map;
       m.emissiveIntensity = 0.35;
     }
-    const schaduwMat = new THREE.MeshBasicMaterial({ map: schaduwTextuur(), transparent: true, depthWrite: false });
-    const s = { w, sleutel, open, dicht, schaduwMat, dieren: [], doel: aantal, schaal: 1, thuizen: null, thuisSleutel: null, midden: null, amfibie: false };
+    const schaduwMat = new THREE.MeshBasicMaterial({ map: schaduwTextuur(), transparent: true, depthWrite: false, opacity: 0.8 });
+    // Alle dieren van één soort in één keer tekenen (instancing): twee lagen voor ogen open en
+    // ogen dicht, en één voor de schaduwen. Zo blijft het vlot op een tablet, ook met 200 dieren.
+    const inst = (geo, m) => {
+      const i = new THREE.InstancedMesh(geo, m, PER_SOORT);
+      i.count = 0;
+      i.frustumCulled = false; // ze staan over de hele planeet verspreid
+      i.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      this.groep.add(i);
+      return i;
+    };
+    const s = {
+      w, sleutel, open, dicht, schaduwMat, dieren: [], doel: Math.min(aantal, PER_SOORT), schaal: 1, thuizen: null, thuisSleutel: null, midden: null, amfibie: false,
+      openInst: inst(this.vlak, open),
+      dichtInst: inst(this.vlak, dicht),
+      schaduwInst: inst(this.schaduwGeo, schaduwMat),
+    };
+    s.openInst.userData.soort = s.dichtInst.userData.soort = w.id;
     this.soorten.set(w.id, s);
   }
 
@@ -152,11 +169,7 @@ export class WezensLaag {
     }
     let nieuw = 0;
     while (s.dieren.length < s.doel) this.nieuwDier(s, nieuw++);
-    while (s.dieren.length > s.doel) {
-      const d = s.dieren.pop();
-      this.groep.remove(d.mesh, d.schaduw);
-      d.schaduw.material.dispose();
-    }
+    while (s.dieren.length > s.doel) this.groep.remove(s.dieren.pop().mesh);
   }
 
   nieuwDier(s, k) {
@@ -171,15 +184,14 @@ export class WezensLaag {
     if (!dir) dir = thuis.clone();
     const koers = new THREE.Vector3().randomDirection();
     koers.addScaledVector(dir, -koers.dot(dir)).normalize();
-    const mesh = new THREE.Mesh(this.vlak, s.open);
+    // Een onzichtbaar houvast per dier: plek, draaiing en maat. Getekend wordt via de instancing.
+    // (De camera volgt dit houvast als je op bezoek gaat.)
+    const mesh = new THREE.Object3D();
     mesh.userData.soort = s.w.id;
-    const schaduw = new THREE.Mesh(this.schaduwGeo, s.schaduwMat.clone());
-    schaduw.visible = s.w.beweging !== 'zwemmen';
-    this.groep.add(mesh, schaduw);
+    this.groep.add(mesh);
     const basisMaat = maat * (0.85 + Math.random() * 0.3);
     s.dieren.push({
       mesh,
-      schaduw,
       dir,
       koers,
       thuis,
@@ -197,12 +209,12 @@ export class WezensLaag {
     });
   }
 
-  magHier(s, dir) {
+  magHier(s, dir, land) {
     const p = this.planeet;
     const beweging = s.w.beweging;
     if (beweging === 'vliegen' || beweging === 'zweven' || s.amfibie) return true;
     const zee = p.zeeStraal;
-    const nat = zee > 0 && p.landStraal(dir) < zee - 0.0005;
+    const nat = zee > 0 && (land ?? p.landStraal(dir)) < zee - 0.0005;
     if (beweging === 'zwemmen') return zee <= 0 || nat; // geen water: dan maar op het land
     return !nat;
   }
@@ -222,14 +234,26 @@ export class WezensLaag {
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), wiebel = new THREE.Quaternion();
     const zAs = new THREE.Vector3(0, 0, 1);
     const zee = p.zeeStraal;
+    const schaduwPlek = new THREE.Vector3(), schaduwDraai = new THREE.Quaternion(), schaduwMaat = new THREE.Vector3();
+    // Is de planeet veranderd (boetseren, water erbij)? Dan de onthouden grondhoogtes vergeten.
+    if (this.grondSleutel !== p) {
+      this.grondSleutel = p;
+      for (const s of this.soorten.values()) for (const d of s.dieren) d.land = undefined;
+    }
 
     for (const s of this.soorten.values()) {
       this.bijwerken(s);
       const b = s.w.beweging;
-      for (const d of s.dieren) {
+      const aantal = s.dieren.length;
+      s.openInst.count = s.dichtInst.count = s.schaduwInst.count = aantal;
+      for (let i = 0; i < aantal; i++) {
+        const d = s.dieren[i];
         d.geboren += dt;
         if (d.geboren < 0) {
-          d.mesh.visible = d.schaduw.visible = false;
+          d.mesh.visible = false;
+          s.openInst.setMatrixAt(i, NUL);
+          s.dichtInst.setMatrixAt(i, NUL);
+          s.schaduwInst.setMatrixAt(i, NUL);
           continue;
         }
         d.mesh.visible = true;
@@ -244,12 +268,15 @@ export class WezensLaag {
         const loopt = actief && !(b === 'huppen' && Math.sin(d.fase * 6) < 0);
         if (loopt) {
           const hoek = (SNELHEID[b] * d.snel * dt) / (p.straal || 1) * Math.sqrt(d.maat / 0.014) ** 0.6;
-          const nieuweDir = d.dir.clone().multiplyScalar(Math.cos(hoek)).addScaledVector(d.koers, Math.sin(hoek));
-          const goed = this.magHier(s, nieuweDir);
-          if (goed || !this.magHier(s, d.dir)) {
+          const nieuweDir = d.dir.clone().multiplyScalar(Math.cos(hoek)).addScaledVector(d.koers, Math.sin(hoek)).normalize();
+          // De grondhoogte maar één keer per dier per beeldje opzoeken (dat is het dure deel).
+          const nieuwLand = p.landStraal(nieuweDir);
+          const goed = this.magHier(s, nieuweDir, nieuwLand);
+          if (goed || !this.magHier(s, d.dir, d.land)) {
             // Koers meedraaien zodat hij rechtdoor blijft gaan.
             d.koers.multiplyScalar(Math.cos(hoek)).addScaledVector(d.dir, -Math.sin(hoek));
-            d.dir.copy(nieuweDir).normalize();
+            d.dir.copy(nieuweDir);
+            d.land = nieuwLand;
             d.botst = Math.max(0, (d.botst || 0) - dt);
           } else {
             // Rand van het water of land: een flinke draai een andere kant op, en even niet naar
@@ -275,7 +302,12 @@ export class WezensLaag {
         if (actief && (b === 'lopen' || b === 'huppen') && Math.random() < dt * 0.1) d.pauze = 0.8 + Math.random() * 2;
 
         // ---- Hoogte ----
-        const land = p.landStraal(d.dir);
+        // Staat hij stil, dan af en toe opnieuw kijken (er kan net geboetseerd zijn onder zijn voeten).
+        if (d.land === undefined || (!loopt && this.tijd - (d.landT || 0) > 0.5)) {
+          d.land = p.landStraal(d.dir);
+          d.landT = this.tijd;
+        }
+        const land = d.land;
         const grond = Math.max(land, zee);
         let hoogte = grond;
         const t = this.tijd + d.fase;
@@ -332,28 +364,33 @@ export class WezensLaag {
         const plop = groei < 1 ? groei * (1 + Math.sin(groei * Math.PI) * 0.4) : 1;
         const breed = d.maat * beeldVan(s.w).verhouding * plop;
         d.mesh.scale.set(breed * d.spiegel, d.maat * squash * plop, 1);
+        d.mesh.updateMatrix();
 
-        // Knipperen.
+        // Knipperen: in de laag met open ogen of in die met dichte ogen.
         d.knipper -= dt;
         if (d.knipper <= 0) {
           d.dicht = 0.14;
           d.knipper = 2 + Math.random() * 5;
         }
         d.dicht -= dt;
-        d.mesh.material = d.dicht > 0 ? s.dicht : s.open;
+        s.openInst.setMatrixAt(i, d.dicht > 0 ? NUL : d.mesh.matrix);
+        s.dichtInst.setMatrixAt(i, d.dicht > 0 ? d.mesh.matrix : NUL);
 
-        // Schaduw op de grond.
+        // Schaduw op de grond (kleiner als hij hoog in de lucht is).
         if (b !== 'zwemmen') {
           const opGrond = Math.max(land, zee) + 0.0012 * p.r.grootte;
-          d.schaduw.visible = true;
-          d.schaduw.position.copy(n).multiplyScalar(opGrond);
-          d.schaduw.quaternion.setFromUnitVectors(zAs, n);
+          schaduwPlek.copy(n).multiplyScalar(opGrond);
+          schaduwDraai.setFromUnitVectors(zAs, n);
           const los = Math.max(0, hoogte - grond) / (d.maat * 4 + 0.02);
-          const sc = breed * 0.9 * Math.max(0.3, 1 - los);
-          d.schaduw.scale.set(sc, sc * 0.6, 1);
-          d.schaduw.material.opacity = Math.max(0.15, 1 - los);
-        }
+          const sc = breed * 0.9 * Math.max(0.3, 1 - los) * Math.max(0.4, 1 - los * 0.5);
+          schaduwMaat.set(sc, sc * 0.6, 1);
+          m.compose(schaduwPlek, schaduwDraai, schaduwMaat);
+          s.schaduwInst.setMatrixAt(i, m);
+        } else s.schaduwInst.setMatrixAt(i, NUL);
       }
+      s.openInst.instanceMatrix.needsUpdate = true;
+      s.dichtInst.instanceMatrix.needsUpdate = true;
+      s.schaduwInst.instanceMatrix.needsUpdate = true;
     }
   }
 
@@ -361,11 +398,16 @@ export class WezensLaag {
   raak(straal) {
     const raker = new THREE.Raycaster(straal.origin, straal.direction);
     const doelen = [];
-    for (const s of this.soorten.values()) for (const d of s.dieren) if (d.mesh.visible) doelen.push(d.mesh);
-    const hit = raker.intersectObjects(doelen, false)[0];
+    for (const s of this.soorten.values()) {
+      // De dieren lopen rond: de omvang van de laag opnieuw laten uitrekenen voor het raken.
+      s.openInst.boundingSphere = s.dichtInst.boundingSphere = null;
+      doelen.push(s.openInst, s.dichtInst);
+    }
+    const hit = raker.intersectObjects(doelen, false).find((h) => h.instanceId !== undefined);
     if (!hit) return null;
     const s = this.soorten.get(hit.object.userData.soort);
-    return { soort: s.w, dier: s.dieren.find((d) => d.mesh === hit.object) };
+    const dier = s && s.dieren[hit.instanceId];
+    return dier ? { soort: s.w, dier } : null;
   }
 
   // Kleine wezens zijn met een vinger lastig precies te raken: eerst echt raak, anders het wezen

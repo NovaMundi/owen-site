@@ -4,6 +4,7 @@
 import { geluid } from './geluid.js';
 import { stem } from './stem.js';
 import * as K from './keuzes.js';
+import { lees, schrijf } from './opslag.js';
 
 const MAAT = 768; // tekenvel in pixels
 const OOG = [24, 40, 62];
@@ -378,19 +379,8 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
 
 // ---- Halve tekening bewaren (één, op dit apparaat) ----
 const CONCEPT = 'planeetmakers-concept-v1';
-function leesConcept() {
-  try {
-    return JSON.parse(localStorage.getItem(CONCEPT));
-  } catch {
-    return null;
-  }
-}
-function zetConcept(c) {
-  try {
-    if (c) localStorage.setItem(CONCEPT, JSON.stringify(c));
-    else localStorage.removeItem(CONCEPT);
-  } catch {}
-}
+const leesConcept = () => lees(CONCEPT, null);
+const zetConcept = (c) => schrijf(CONCEPT, c);
 
 // ---- Ondergrond voor het aanpassen van een wezen ----
 // Een eerder bewaarde ruwe tekening past precies op het vel.

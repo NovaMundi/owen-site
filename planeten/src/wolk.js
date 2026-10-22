@@ -14,21 +14,7 @@ const STAND = 'planeetmakers-wolk-v1';
 const OPSLAG = { recept: 'planeetmakers-v1', wereld: 'planeetmakers-leven-v1', foto: 'planeetmakers-fotos-v1', wensen: 'planeetmakers-wensen-v1' };
 export const PLANETEN = ['owen', 'jake', 'papa'];
 
-function lees(sleutel, standaard) {
-  try {
-    return JSON.parse(localStorage.getItem(sleutel)) ?? standaard;
-  } catch {
-    return standaard;
-  }
-}
-function schrijf(sleutel, waarde) {
-  try {
-    localStorage.setItem(sleutel, JSON.stringify(waarde));
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { lees, schrijf, heeftGaten } from './opslag.js';
 
 // Vingerafdruk: is er sinds de laatste keer bijwerken iets veranderd? 'laatst' (wanneer er voor
 // het laatst gekeken is) telt niet mee: alleen kijken is geen verandering.
@@ -198,6 +184,7 @@ export const wolk = {
     if (!stand.code || bezig[wie]) return false;
     if (stand.botsingen[wie] && !forceer) return false;
     const data = this.pakket(wie) || { recept: null };
+    if (heeftGaten(data)) return false; // een plaatje is hier kwijt: liever niets sturen dan iets kapots
     const vingerafdruk = afdruk(this.pakket(wie));
     if (!forceer && vingerafdruk === stand.afdrukken[wie]) return true; // niets veranderd
     bezig[wie] = true;

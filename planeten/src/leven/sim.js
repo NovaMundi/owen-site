@@ -223,14 +223,23 @@ function klimaatStap(w, regios, dt, nu) {
   if (vulkaan.length && rnd(w) < dt * (1 / 3500) * Math.min(1, vulkaan.length / 20)) {
     const r = kies(w, vulkaan);
     k.as = Math.min(0.15, k.as + 0.1); // as in de lucht: even kouder
-    for (const g of w.groepen) if (g.regio === r.id || r.buren.includes(g.regio)) g.pop *= g.regio === r.id ? 0.5 : 0.85;
+    for (const g of w.groepen) {
+      if (g.regio !== r.id && !r.buren.includes(g.regio)) continue;
+      const voor = g.pop;
+      g.pop *= g.regio === r.id ? 0.5 : 0.85;
+      verlies(w.soorten[g.soort], 'ramp', voor - g.pop);
+    }
     zeg('🌋', 'Een vulkaan barstte uit! De as maakte de lucht een tijdje donker en koud.', 3);
     r.vulkaanJaar = w.jaar; // vers vuur: makkelijker te ontdekken
   }
   // Heel zelden een meteoriet.
   if (rnd(w) < dt / 90000) {
     const r = kies(w, regios);
-    for (const g of w.groepen) if (g.regio === r.id || r.buren.includes(g.regio)) g.pop *= 0.2;
+    for (const g of w.groepen) {
+      if (g.regio !== r.id && !r.buren.includes(g.regio)) continue;
+      verlies(w.soorten[g.soort], 'ramp', g.pop * 0.8);
+      g.pop *= 0.2;
+    }
     k.as = Math.min(0.2, k.as + 0.12);
     zeg('☄️', 'Een enorme meteoriet sloeg in op de planeet! Het werd heel lang stoffig en koud.', 3);
   }
@@ -244,11 +253,11 @@ function klimaatStap(w, regios, dt, nu) {
   k.vervuiling = klem(k.vervuiling + dt * (fabrieken * 0.000004 - (schoon ? 0.0004 : 0.00002) * k.vervuiling), 0, 1);
   if (k.vervuiling > 0.15 && !k.vlaggen.warmer) {
     k.vlaggen.warmer = 1;
-    zeg('🏭', 'De fabrieken en machines maken de lucht warmer. Er komen meer stormen.', 3);
+    zeg('🏭', 'De fabrieken en machines blazen een onzichtbaar gas de lucht in. Dat houdt de warmte van de zon vast, dus de planeet wordt warmer en er komen meer stormen.', 3);
   }
   if (k.vervuiling > 0.4 && !k.vlaggen.heet) {
     k.vlaggen.heet = 1;
-    zeg('🥵', 'Het wordt steeds warmer door alle rook. De ijskappen smelten!', 3);
+    zeg('🥵', 'Er zit nu zoveel van dat warmte-gas in de lucht dat het steeds warmer wordt. De ijskappen smelten!', 3);
   }
   if (schoon && k.vlaggen.warmer && k.vervuiling < 0.08 && !k.vlaggen.hersteld) {
     k.vlaggen.hersteld = 1;
@@ -277,6 +286,8 @@ function nuIn(r, w) {
   return { ...r, temp: klem(temp), plant, water };
 }
 
+const JACHT = 0.002; // per jaar, maal (1 + hoe groot het dorp of de stad van de jagers is)
+
 const BASIS = {
   maat: { mier: { groei: 0.22, cap: 4, kracht: 0.3 }, hond: { groei: 0.1, cap: 1, kracht: 1 }, olifant: { groei: 0.05, cap: 0.4, kracht: 2.2 }, reus: { groei: 0.025, cap: 0.15, kracht: 4 } },
 };
@@ -298,6 +309,8 @@ function karakterUitKleur(kleur) {
 // Aanleg om slim te worden: niet elk dier wordt een denker. Formaat, manier van bewegen,
 // karakter en een beetje toeval bepalen hoe snel hersenen kunnen groeien.
 const SLIM_DREMPEL = 1.35; // daarboven kunnen ze leren praten
+// Ongeveer de helft van de soorten haalt de drempel nooit (aanleg onder ±0,95).
+const slimPlafond = (g) => 0.9 + (g.aanleg ?? 1) * 0.48;
 function aanlegVoor(w, maat, beweging, k) {
   const m = { mier: 0.55, hond: 1.1, olifant: 1.2, reus: 0.9 }[maat] ?? 1;
   const b = { lopen: 1.1, huppen: 1, zwemmen: 0.9, vliegen: 0.8, zweven: 0.7 }[beweging] ?? 1;
@@ -431,6 +444,48 @@ function capaciteitVan(soort, r, w) {
   return 80 * b.cap * reus * eten * water * klimaat * onderdak * leef * oppervlak * winter;
 }
 
+// Hoeveel één wezen eet (groot eet meer). Om concurrentie tussen klein en groot eerlijk te tellen.
+function verbruik(s) {
+  const b = BASIS.maat[s.maat] || BASIS.maat.hond;
+  return Math.pow(s.genen.grootte, 0.8) / b.cap;
+}
+
+// Waarom een groep krimpt: wat ontbreekt er het meest? Dat wordt het "omdat" in het verhaal.
+function tekortIn(soort, r, drukDoor) {
+  const g = soort.genen;
+  if (drukDoor > 0.5) return 'concurrentie';
+  const water = soort.beweging === 'zwemmen' && !r.land ? 1 : klem(r.water * 1.4);
+  const fit = klimaatFit(soort, r);
+  const lief = 0.55 - g.kou * 0.45 + g.hitte * 0.4;
+  const eten = klem((r.land ? r.plant * g.plant + (r.kust ? r.zeevoedsel * 0.5 : 0) : r.zeevoedsel) / 0.8);
+  const laagste = Math.min(water, fit, eten);
+  if (laagste === water && water < 0.6) return 'dorst';
+  if (laagste === fit && fit < 0.6) return r.temp < lief ? 'kou' : 'hitte';
+  return 'honger';
+}
+function verlies(soort, oorzaak, aantal) {
+  if (!soort || !(aantal > 0)) return;
+  soort.verlies ||= {};
+  soort.verlies[oorzaak] = (soort.verlies[oorzaak] || 0) + aantal;
+}
+export const OMDAT = {
+  honger: 'er niet genoeg eten was',
+  dorst: 'er te weinig water was',
+  kou: 'het te koud werd',
+  hitte: 'het te heet werd',
+  concurrentie: 'andere dieren het eten opaten',
+  jacht: 'er te veel op ze gejaagd werd',
+  oorlog: 'ze te veel moesten vechten',
+  ziekte: 'een ziekte ze te pakken kreeg',
+  ramp: 'een ramp hun plek verwoestte',
+};
+export function grootsteOorzaak(soort) {
+  const v = soort.verlies || {};
+  let beste = null;
+  for (const [k, n] of Object.entries(v)) if (!beste || n > v[beste]) beste = k;
+  return beste;
+}
+
 // Warmte: elke soort heeft een lievelingstemperatuur die met de genen meeschuift.
 function klimaatFit(soort, r) {
   const g = soort.genen, h = (x) => soort.tech.includes(x);
@@ -490,6 +545,20 @@ export function stap(w, basisRegios, dt, nu) {
       }
     }
     let onderBaas = 0;
+    soort.verlies ||= {};
+    for (const k of Object.keys(soort.verlies)) soort.verlies[k] *= Math.exp(-dt / 2000); // oude oorzaken vervagen
+    // Een getekend wezen heeft altijd één schuilplek: het gebied waar het het best past. Daar telt
+    // de concurrentie maar half. Zo kan een wezen van het kind wel heel klein worden, maar sterft
+    // het zelden uit.
+    let schuil = null;
+    if (!soort.afkomst) {
+      let best = -1;
+      for (const g of groepen) {
+        const r = regios[g.regio];
+        const k = r ? capaciteit(soort, r) : 0;
+        if (k > best) (best = k), (schuil = g);
+      }
+    }
 
     for (const g of groepen) {
       const r = regios[g.regio];
@@ -497,23 +566,28 @@ export function stap(w, basisRegios, dt, nu) {
         g.pop = 0;
         continue;
       }
-      // Eten delen met andere soorten in hetzelfde gebied. Elke soort gebruikt een deel van wat
-      // het gebied voor hem kan opleveren; andere dieren eten grotendeels ander eten (overlap).
-      // Wie beter past (kou, hitte) kan hier meer wezens voeden en houdt dus meer over.
+      // Eten delen met andere soorten in hetzelfde gebied (Lotka-Volterra). Andere dieren eten
+      // deels ander eten (overlap), en een groot dier eet meer dan een klein dier. Wie beter bij
+      // het gebied past, kan er meer wezens voeden en drukt de ander er langzaam uit.
       const buren = perRegio.get(g.regio) || [];
       const overlap = (s2) => {
         if (s2.beweging !== soort.beweging && (s2.beweging === 'zwemmen' || soort.beweging === 'zwemmen')) return 0.1;
         return s2.maat === soort.maat ? 0.5 : 0.3;
       };
+      const eigenVerbruik = verbruik(soort);
       let gebruikt = 0;
       for (const x of buren) {
         const s2 = w.soorten[x.soort];
         if (x === g || !s2) continue;
-        const k2 = capaciteit(s2, r);
-        gebruikt += overlap(s2) * (k2 > 0 ? Math.min(1.2, x.pop / k2) : 0);
+        gebruikt += overlap(s2) * x.pop * (verbruik(s2) / eigenVerbruik);
       }
-      let cap = capaciteit(soort, r) * Math.max(0.05, 1 - gebruikt);
+      if (g === schuil) gebruikt *= 0.5;
+      const K = capaciteit(soort, r);
+      let cap = Math.max(K * 0.01, K - gebruikt);
+      const drukDoor = K > 0 ? Math.min(1, gebruikt / K) : 0; // hoeveel anderen hier wegeten
       if (g.oorlog) cap *= 0.8;
+      // Een groep die lang apart leeft, past zich langzaam aan zijn plek aan (wie past, blijft over).
+      if (g.apart) cap *= 1 + 0.5 * Math.min(1, g.apart / APART_NA);
       // Een oerwoud zit vol wilde dieren, maar is lastig voor de heerser zolang die geen metaal heeft.
       if (r.oerwoud) cap *= isHeerser ? (soort.tech.includes('metaal') ? 0.9 : 0.45) : 1.3;
       // Waar de heerser dorpen en steden bouwt, is minder ruimte voor wilde dieren, en er wordt gejaagd.
@@ -524,7 +598,9 @@ export function stap(w, basisRegios, dt, nu) {
           const nv = niveau(s2, x);
           if (nv >= 4) cap *= Math.max(0.4, 1 - 0.12 * (nv - 3));
           if (s2.tech.includes('stokken') && !s2.tech.includes('schoon') && x.pop > 20 && rijk(s2) === rijk(soort)) {
-            g.pop *= Math.exp(-dt * 0.00025 * (1 + nv));
+            const voor = g.pop;
+            g.pop *= Math.exp(-dt * JACHT * (1 + nv));
+            verlies(soort, 'jacht', voor - g.pop);
             if (!s2.vlaggen['jaagt_' + soort.id]) {
               s2.vlaggen['jaagt_' + soort.id] = 1;
               verhaal(w, s2, 2, '🏹', `De ${meervoud(s2.naam)} gingen op de ${meervoud(soort.naam)} jagen.`, nu);
@@ -537,13 +613,16 @@ export function stap(w, basisRegios, dt, nu) {
       if (totaal < 1.6) {
         g.pop -= dt * 0.0006 * g.pop; // langzaam oud worden
       } else if (cap < 0.5) {
+        const voor = g.pop;
         g.pop *= Math.exp(-0.08 * dt);
         honger += g.pop;
+        verlies(soort, tekortIn(soort, r, drukDoor), voor - g.pop);
       } else {
         // Groeien tot het gebied vol is (exacte oplossing, werkt ook met grote stappen).
         const p = Math.max(g.pop, 1e-6);
         const nieuw = cap / (1 + ((cap - p) / p) * Math.exp(-groei * dt));
         if (nieuw < g.pop * 0.98) honger += g.pop - nieuw;
+        if (nieuw < g.pop) verlies(soort, tekortIn(soort, r, drukDoor), g.pop - nieuw);
         g.pop = nieuw;
       }
       g.cap = cap;
@@ -617,7 +696,10 @@ export function stap(w, basisRegios, dt, nu) {
     const volheid = groepen.reduce((s, g) => s + (g.cap ? Math.min(1.2, g.pop / g.cap) : 0), 0) / Math.max(1, groepen.length);
     if (totaal > 500 && volheid > 0.9 && rnd(w) < dt / 30000) {
       const ernst = soort.tech.includes('schrift') ? 0.75 : 0.5; // wie kan opschrijven, leert van ziektes
-      for (const g of groepen) g.pop *= ernst;
+      for (const g of groepen) {
+        verlies(soort, 'ziekte', g.pop * (1 - ernst));
+        g.pop *= ernst;
+      }
       soort.vlaggen.ziektes = (soort.vlaggen.ziektes || 0) + 1;
       verhaal(w, soort, soort.vlaggen.ziektes === 1 ? 2 : 1, '🤒', `Een ziekte trof de ${meervoud(soort.naam)}. Veel van hen werden ziek, maar de sterksten bleven over.`, nu);
     }
@@ -631,7 +713,11 @@ export function stap(w, basisRegios, dt, nu) {
     // samenleven. Daarna helpt praten en leren zelf ook mee.
     if (g0.aanleg === undefined) g0.aanleg = 1;
     const druk = Math.max(0, (rijkdom - 0.6) + (w.planeet?.seizoenen || 0) * 0.5 + g0.samen * 0.4 + Math.min(1, groepen.length / 30) * 0.3);
-    g0.slim = Math.min(3, g0.slim + dt * 0.00001 * druk * g0.aanleg * (1 - deelOnder * 0.7) + (isHeerser ? tempo * 0.15 * soort.tech.length / 8 : 0));
+    // Aanleg bepaalt hoe slim een soort hooguit kan worden: niet elk dier wordt een denker.
+    // Wie eenmaal praat, kan door leren en elkaar dingen vertellen nog wat verder komen.
+    const plafond = Math.min(3, slimPlafond(g0) + (isHeerser ? 0.8 : 0));
+    const slimNieuw = Math.min(plafond, g0.slim + dt * 0.00001 * druk * g0.aanleg * (1 - deelOnder * 0.7) + (isHeerser ? tempo * 0.15 * soort.tech.length / 8 : 0));
+    g0.slim = Math.max(g0.slim, slimNieuw); // nooit dommer worden
     const vol = groepen.reduce((s, g) => s + (g.cap ? g.pop / g.cap : 0), 0) / Math.max(1, groepen.length);
     g0.grootte = klem(g0.grootte + (vol < 0.5 ? 0.2 : -0.2) * tempo * 0.5, 0.5, 2.2);
     if (soort.beweging === 'zwemmen' && g0.land < 1) {
@@ -648,9 +734,18 @@ export function stap(w, basisRegios, dt, nu) {
       verhaal(w, soort, soort.vlaggen.honger ? 1 : 2, '😟', hongerTekst(soort, groepen, regios), nu);
       soort.vlaggen.honger = w.jaar;
     }
-    if (nu_totaal < 0.5) {
+    // Het kind heeft gezien dat het slecht gaat (tijdens het spelen, niet tijdens het inhalen).
+    if (!w._inhalen && soort.piek > 20 && nu_totaal < soort.piek * 0.3) soort.vlaggen.gewaarschuwd = 1;
+    // Een getekend wezen sterft nooit uit terwijl het kind weg was, zonder dat het kind eerder
+    // heeft kunnen zien dat het slecht ging. Dan blijft er een laatste groepje over.
+    if (w._inhalen && !soort.afkomst && !soort.vlaggen.gewaarschuwd && nu_totaal < 10 && nu_totaal > 0 && soort.piek >= 10) {
+      const beste = groepen.reduce((a, g) => (g.pop > (a?.pop ?? -1) ? g : a), null);
+      if (beste) beste.pop += 10 - nu_totaal;
+    } else if (nu_totaal < 0.5) {
       soort.uitgestorven = Math.floor(w.jaar);
-      verhaal(w, soort, 3, '🪦', `De laatste ${soort.naam} is er niet meer. De ${meervoud(soort.naam)} zijn uitgestorven.`, nu);
+      const oorzaak = grootsteOorzaak(soort);
+      soort.oorzaak = oorzaak;
+      verhaal(w, soort, 3, '🪦', `De ${meervoud(soort.naam)} zijn uitgestorven${oorzaak ? `, omdat ${OMDAT[oorzaak]}` : ''}. De laatste ${soort.naam} is er niet meer.${soort.afkomst ? '' : ' Wat zou daar wél kunnen leven? Teken het maar!'}`, nu);
     }
     // Mijlpalen in aantal.
     for (const [grens, tekst] of [[10, 'Er zijn nu al 10 '], [100, 'Er zijn nu 100 '], [1000, 'Duizend '], [10000, 'Tienduizend '], [100000, 'Honderdduizend '], [1000000, 'Een miljoen ']]) {
@@ -737,7 +832,7 @@ function ontdek(w, soort, groepen, regios, dt, nu) {
     // grote voorsprong en wordt de baas van zijn rijk (maar ook dat kan weer veranderen).
     if (t.id === 'landbouw' && !alBaas) {
       soort.vlaggen.heerserSinds = w.jaar;
-      verhaal(w, soort, 3, '👑', `De ${m} zijn nu de belangrijkste wezens ${rijk(soort) === 'zee' ? 'in de zee' : 'op het land'}. Zij worden de baas!`, nu);
+      verhaal(w, soort, 3, '👑', `De ${m} waren de eersten met akkers ${rijk(soort) === 'zee' ? 'in de zee' : 'op het land'}. Ze krijgen meer eten, bouwen dorpen en nemen steeds meer ruimte in. Andere dieren moeten opschuiven.`, nu);
     }
     if (t.id === 'schoon') {
       for (const ander of Object.values(w.soorten)) {
@@ -823,12 +918,14 @@ function genEvents(w, soort, nu) {
       verhaal(w, soort, 2, icoon, tekst, nu);
     }
   };
-  drempel('vacht', g.kou > 0.35, '🧥', `De ${m} kregen in de loop van de tijd een dikke vacht tegen de kou.`);
-  drempel('hitte', g.hitte > 0.35, '🌵', `De ${m} kunnen nu goed tegen de hitte.`);
-  drempel('groot', g.grootte > 1.3, '📏', `De ${m} zijn veel groter geworden dan vroeger.`);
-  drempel('klein', g.grootte < 0.75, '🤏', `De ${m} zijn kleiner geworden, zo hebben ze minder eten nodig.`);
-  drempel('slim', g.slim > SLIM_DREMPEL - 0.05, '🧠', `De ${m} hebben grotere hersenen gekregen. Ze maken steeds meer geluidjes naar elkaar...`);
-  drempel('pootjes', soort.beweging === 'zwemmen' && g.land >= 0.5, '🦵', `Sommige ${m} kregen pootjes en kropen het land op!`);
+  // Evolutie gaat via selectie: niet "ze kregen een vacht", maar "wie een dikke vacht had,
+  // bleef over en kreeg de meeste kindjes".
+  drempel('vacht', g.kou > 0.35, '🧥', `Het is koud waar de ${m} wonen. Wie een dikke vacht had, hield het het langst vol en kreeg de meeste kindjes. Na heel veel jaren hebben bijna alle ${m} een dikke vacht.`);
+  drempel('hitte', g.hitte > 0.35, '🌵', `Het is heet waar de ${m} wonen. Wie goed tegen de hitte kon, bleef het vaakst over. Zo kunnen bijna alle ${m} nu goed tegen de hitte.`);
+  drempel('groot', g.grootte > 1.3, '📏', `Er was veel ruimte en eten. De grootste ${m} waren het sterkst en kregen de meeste kindjes. Zo werden de ${m} langzaam steeds groter.`);
+  drempel('klein', g.grootte < 0.75, '🤏', `Er was weinig eten. Kleine ${m} hebben minder nodig, dus die bleven vaker over. Zo werden de ${m} langzaam kleiner.`);
+  drempel('slim', g.slim > SLIM_DREMPEL - 0.05, '🧠', `De slimste ${m} vonden het meeste eten en kregen de meeste kindjes. Na heel veel jaren hebben de ${m} grotere hersenen. Ze maken steeds meer geluidjes naar elkaar...`);
+  drempel('pootjes', soort.beweging === 'zwemmen' && g.land >= 0.5, '🦵', `Het werd vol in de zee. ${hoofd(m)} die een stukje op het land konden kruipen, vonden daar eten. Na heel lang hebben sommige ${m} echte pootjes!`);
 }
 
 // ---------- Ruzie, oorlog en vrede ----------
@@ -894,8 +991,11 @@ function ruzies(w, regios, stapDt, nu) {
           // Ook bij een grote stap nooit verder dan 40% van wat er voor de oorlog was.
           a.voorOorlog ||= a.pop;
           b.voorOorlog ||= b.pop;
+          const [pa, pb] = [a.pop, b.pop];
           a.pop = Math.min(a.pop, Math.max(a.pop * Math.exp(-0.012 * dt * (kb / (ka + kb))), a.voorOorlog * 0.4));
           b.pop = Math.min(b.pop, Math.max(b.pop * Math.exp(-0.012 * dt * (ka / (ka + kb))), b.voorOorlog * 0.4));
+          verlies(sa, 'oorlog', pa - a.pop);
+          verlies(sb, 'oorlog', pb - b.pop);
           sp.waarde -= dt * 0.01; // vechten maakt moe
           if (sp.waarde < 0.6 || rnd(w) < 1 - Math.exp(-dt * 0.006)) {
             sp.oorlog = false;
@@ -937,6 +1037,7 @@ const hoofd = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const MAX_SOORTEN = 6;
 const KRUIS_NA = 8000; // jaren samenleven (±5,5 dag)
 const APART_NA = 10000; // jaren apart (±1 week)
+const KRUIS_BINNEN = 30000; // daarna zijn twee verwante soorten te ver uit elkaar gegroeid
 
 function nieuweSoorten(w, regios, dt, nu) {
   const levend = Object.values(w.soorten).filter((s) => s.uitgestorven === null);
@@ -970,7 +1071,10 @@ function nieuweSoorten(w, regios, dt, nu) {
         c.jaren += dt;
         if (c.klaar || c.jaren < KRUIS_NA) continue;
         const sa = w.soorten[a.soort], sb = w.soorten[b.soort];
-        if (!sa || !sb || familie(sa, sb)) continue; // geen kruising binnen dezelfde familie
+        // Zoals echt: alleen soorten die nauw verwant zijn en nog niet zo lang geleden uit elkaar
+        // gingen, kunnen samen jongen krijgen. Een vis en een vogel nooit.
+        if (!sa || !sb || !familie(sa, sb)) continue;
+        if (w.jaar - Math.max(sa.sinds || 0, sb.sinds || 0) > KRUIS_BINNEN) continue;
         if (rijk(sa) !== rijk(sb)) continue; // een vis en een landdier krijgen geen jongen samen
         // Lijken ze op elkaar, dan lukt het makkelijker.
         const maten = ['mier', 'hond', 'olifant', 'reus'];
@@ -996,7 +1100,14 @@ function nieuweSoorten(w, regios, dt, nu) {
     if ((s.vlaggen.splitsingen || 0) >= 2 || s.vlaggen['split_' + r.soort]) continue;
     const ander = r.soort !== (s.thuisLand || r.soort) && ['ijs', 'woestijn', 'lava', 'magie', 'berg', 'zee'].includes(r.soort);
     const alleen = !r.buren.some((id) => bewoond.has(g.soort + '|' + id));
-    g.apart = ander && (alleen || r.soort === 'ijs' || r.soort === 'lava') ? (g.apart || 0) + dt : 0;
+    const was = g.apart || 0;
+    g.apart = ander && (alleen || r.soort === 'ijs' || r.soort === 'lava') ? was + dt : 0;
+    // Halverwege: de groep verandert al langzaam (selectie), lang voordat het een nieuwe soort is.
+    if (was < APART_NA / 2 && g.apart >= APART_NA / 2 && !s.vlaggen['apart_' + r.soort]) {
+      s.vlaggen['apart_' + r.soort] = 1;
+      const wat = { ijs: 'tegen de kou', woestijn: 'tegen de hitte en de droogte', lava: 'tegen de hitte', berg: 'op de steile bergen', zee: 'in het water', magie: 'bij de kristallen' }[r.soort] || 'daar';
+      verhaal(w, s, 2, '🔎', `De ${meervoud(s.naam)}${plekTekst(r)} zien de anderen nooit meer. Wie het best ${wat} kan, blijft daar over. Langzaam gaan ze er anders uitzien...`, nu);
+    }
     if (g.apart > APART_NA && rnd(w) < dt / 8000) {
       if (afsplitsing(w, s, g, r, nu, naamBestaat)) {
         w.laatsteNieuweSoort = w.jaar;
@@ -1047,7 +1158,7 @@ function kruising(w, sa, sb, ga, gb, r, nu, naamBestaat) {
   s.piek = pop;
   w.soorten[s.id] = s;
   w.groepen.push({ soort: s.id, regio: r.id, pop, stam: meervoud(naam), oorlog: null, sinds: w.jaar });
-  verhaal(w, s, 3, '🧬', `De ${meervoud(sa.naam)} en de ${meervoud(sb.naam)} leefden zo lang samen dat er een nieuwe soort ontstond: de ${meervoud(naam)}!`, nu);
+  verhaal(w, s, 3, '🧬', `De ${meervoud(sa.naam)} en de ${meervoud(sb.naam)} hebben dezelfde opa's en oma's van heel lang geleden. Ze lijken nog zo op elkaar dat ze samen jongen kregen. Zo ontstonden de ${meervoud(naam)}!`, nu);
   return true;
 }
 
@@ -1090,7 +1201,7 @@ function afsplitsing(w, ouder, g, r, nu, naamBestaat) {
   g.soort = s.id;
   g.stam = meervoud(naam);
   g.apart = 0;
-  verhaal(w, s, 3, '🧬', `De ${meervoud(ouder.naam)}${plekTekst(r)} leefden zo lang apart dat ze een eigen soort werden: de ${meervoud(naam)}!`, nu);
+  verhaal(w, s, 3, '🧬', `Een groep ${meervoud(ouder.naam)} woonde heel lang${plekTekst(r)}, ver van de anderen. Daar bleven steeds de ${meervoud(ouder.naam)} over die het best bij die plek pasten. Na duizenden jaren waren ze zo anders dat ze een nieuwe soort werden: de ${meervoud(naam)}!`, nu);
   return true;
 }
 
@@ -1099,11 +1210,45 @@ function afsplitsing(w, ouder, g, r, nu, naamBestaat) {
 export function inhalen(w, regios, jaren, nu) {
   let rest = Math.min(jaren, 200000);
   const stapGrootte = Math.max(0.5, Math.min(100, rest / 1500));
-  while (rest > 1e-6) {
-    const dt = Math.min(stapGrootte, rest);
-    stap(w, regios, dt, nu);
-    rest -= dt;
+  w._inhalen = true;
+  try {
+    while (rest > 1e-6) {
+      const dt = Math.min(stapGrootte, rest);
+      stap(w, regios, dt, nu);
+      rest -= dt;
+    }
+  } finally {
+    delete w._inhalen;
   }
+}
+
+// ---------- Drie meters voor het kind: eten, water, warmte ----------
+// 1 = prima, 0 = heel slecht. Plus een zin met "omdat", zodat het kind snapt waarom.
+export function meters(w, basisRegios, id) {
+  const s = w.soorten[id];
+  if (!s || s.uitgestorven !== null) return null;
+  const groepen = w.groepen.filter((g) => g.soort === id && g.pop > 0.3 && basisRegios[g.regio]);
+  if (!groepen.length) return null;
+  let som = 0, eten = 0, water = 0, warmte = 0, temp = 0;
+  for (const g of groepen) {
+    const r = nuIn(basisRegios[g.regio], w);
+    som += g.pop;
+    eten += g.pop * (g.cap ? klem((g.cap / Math.max(g.pop, 1e-6) - 0.75) / 0.4) : 0.5);
+    water += g.pop * (s.beweging === 'zwemmen' && !r.land ? 1 : klem((r.water * 1.4 - 0.15) / 0.6));
+    warmte += g.pop * klem((klimaatFit(s, r) - 0.3) / 0.5);
+    temp += g.pop * r.temp;
+  }
+  const m = { eten: eten / som, water: water / som, warmte: warmte / som };
+  const lief = 0.55 - s.genen.kou * 0.45 + s.genen.hitte * 0.4;
+  const koud = temp / som < lief;
+  const naam = meervoud(s.naam);
+  const vol = s.verlies && (s.verlies.concurrentie || 0) > (s.verlies.honger || 0);
+  m.zinnen = {
+    eten: m.eten > 0.66 ? `De ${naam} hebben genoeg te eten.` : m.eten > 0.33 ? `De ${naam} hebben net genoeg te eten, omdat er al veel van hen zijn.` : `De ${naam} hebben honger, omdat ${vol ? 'andere dieren hun eten opeten' : 'er te weinig eten is voor zoveel wezens'}.`,
+    water: m.water > 0.66 ? `Er is genoeg water voor de ${naam}.` : m.water > 0.33 ? `Het water is soms op, omdat het droog is waar ze wonen.` : `De ${naam} hebben dorst, omdat het heel droog is waar ze wonen.`,
+    warmte: m.warmte > 0.66 ? `De ${naam} vinden het lekker warm, niet te heet en niet te koud.` : `Het is ${m.warmte > 0.33 ? 'een beetje' : 'veel'} te ${koud ? 'koud' : 'heet'} voor de ${naam}${s.tech.includes('vuur') || !koud ? '.' : '. Vuur zou helpen!'}`,
+  };
+  return m;
 }
 
 // ---------- Samenvatting voor het scherm ----------
