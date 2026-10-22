@@ -19,6 +19,7 @@ import { plaatjeVoorNieuweSoort } from './leven/afbeelding.js';
 import * as K from './keuzes.js';
 import { lees, schrijf, mediaKlaar, SANDBOX } from './opslag.js';
 import { icoon } from './iconen.js';
+import { openKiezen } from './kiezen.js';
 
 // ================= Opslag =================
 const OPSLAG = 'planeetmakers-v1';
@@ -2150,6 +2151,46 @@ function aanpassenAanScherm() {
 window.addEventListener('resize', aanpassenAanScherm);
 aanpassenAanScherm();
 
+// ================= Zuinig op zwakke tablets =================
+// Haalt het spel geen ±28 beelden per seconde, dan stap voor stap iets uit: eerst de gloed,
+// dan iets minder scherp, dan de begroeiing van dichtbij. Onthouden per apparaat.
+const zuinig = {
+  niveau: 0,
+  som: 0,
+  aantal: 0,
+  sinds: 0,
+  fps: 0,
+  zet(n) {
+    this.niveau = Math.min(3, n);
+    if (this.niveau >= 2) renderer.setPixelRatio(1);
+    aanpassenAanScherm();
+    try {
+      localStorage.setItem('planeetmakers-zuinig', String(this.niveau));
+    } catch {}
+  },
+  meet(dt) {
+    if (!planeet || geboorte || dt <= 0) return;
+    this.som += dt;
+    this.aantal++;
+    if (this.som < 4) return;
+    this.fps = this.aantal / this.som;
+    const fpsEl = document.querySelector('#tijdknoppen .tk-fps');
+    if (fpsEl) fpsEl.textContent = Math.round(this.fps) + ' fps · stand ' + this.niveau;
+    // Pas na de eerste seconden meten (dan wordt er nog van alles klaargezet).
+    if (performance.now() - this.sinds > 8000 && this.fps < 28 && this.niveau < 3) {
+      this.zet(this.niveau + 1);
+      this.sinds = performance.now();
+    }
+    this.som = 0;
+    this.aantal = 0;
+  },
+};
+try {
+  zuinig.niveau = Math.min(3, Number(localStorage.getItem('planeetmakers-zuinig')) || 0);
+} catch {}
+if (zuinig.niveau >= 2) renderer.setPixelRatio(1);
+zuinig.sinds = performance.now();
+
 // ================= Hoofdlus =================
 const klok = new THREE.Clock();
 const zonPlek = new THREE.Vector3();
@@ -2237,7 +2278,7 @@ renderer.setAnimationLoop((nu) => {
     planeet.update(dt, zonRichting.copy(zonPlek).normalize());
     if (!geboorte) {
       weerStap(dt);
-      planeet.detail(camera);
+      planeet.detail(camera, zuinig.niveau < 3);
     }
   }
   flitsKracht = Math.max(0, flitsKracht - dt * 3.5);
@@ -2251,12 +2292,19 @@ renderer.setAnimationLoop((nu) => {
   if (geboorte) geboorte.stof.update(dt);
   groeiAnimatie(nu);
   vuurwerk.update(dt);
-  composer.render();
+  // Gloed alleen als de tablet het aankan (zie zuinig hieronder).
+  if (zuinig.niveau >= 1) renderer.render(scene, camera);
+  else composer.render();
+  zuinig.meet(dt);
 });
 
 window.__maker = { camera, controls, wezens, leven, beschaving, weer, maakStorm, get planeet() { return planeet; }, get recept() { return recept; }, get volg() { return volg; } }; // alleen voor testen
 // Geopend via een koppel-link (?familie=...)? Dan hoort dit apparaat voortaan bij de familie.
 if (wolk.koppelUitLink()) setTimeout(() => toonMelding('☁️ Gekoppeld! De planeten komen eraan...', 3500), 300);
+$('#kiesknop').addEventListener('click', () => {
+  geluid.klik();
+  openKiezen({ makers: K.MAKERS, opBewaard: () => wolk.planStuur('wensen', 2000) });
+});
 $('#wolkknop').addEventListener('click', () => {
   geluid.klik();
   toonWolk();
@@ -2270,7 +2318,7 @@ if (SANDBOX) {
   const el = document.createElement('div');
   el.id = 'tijdknoppen';
   el.className = "dicht";
-  el.innerHTML = `<button class="tk-titel">🧪 Tijd</button>
+  el.innerHTML = `<button class="tk-titel">🧪 Tijd</button><span class="tk-fps"></span>
     <button data-min="60">+1 uur</button><button data-min="1440">+1 dag</button><button data-min="10080">+1 week</button><button data-min="43200">+1 maand</button>
     <span class="tk-scheiding"></span>
     <button data-snel="1" class="aan">1x</button><button data-snel="60">60x</button><button data-snel="600">600x</button>`;

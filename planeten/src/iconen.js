@@ -14,6 +14,7 @@ const LIJST = [
   // knoppen
   'ui-teken', 'ui-slot', 'ui-tover', 'ui-krijt', 'ui-bezoek', 'ui-luister', 'ui-weg', 'ui-huis', 'ui-stem', 'ui-oeps', 'ui-wolk', 'ui-prullenbak',
   // bouwwerken (ook voorbeeld voor de 3D-vormen)
+  'kies-regen', 'kies-bliksem', 'kies-boom', 'kies-museum', 'kies-stickers', 'kies-cadeau',
   'bouw-hol', 'bouw-hut', 'bouw-koraal', 'bouw-iglo', 'bouw-huis', 'bouw-fabriek', 'bouw-vuur', 'bouw-akker',
 ];
 const BESCHIKBAAR = new Set(LIJST);

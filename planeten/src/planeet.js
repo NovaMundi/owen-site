@@ -205,15 +205,16 @@ export class Planeet {
   }
 
   // Elk beeldje: kijk je van dichtbij, dan groeit er begroeiing rond die plek (zie begroeiing.js).
-  detail(camera) {
+  detail(camera, begroeiing = true) {
     if (!this.geo || !this.r || !this.geo.attributes.bodem) return;
+    if (!begroeiing && this.begroeiing) this.begroeiing.groep.visible = false;
     if (!this.begroeiing) {
       this.begroeiing = new Begroeiing(this, this.wind);
       this.groep.add(this.begroeiing.groep);
     }
     this.groep.updateWorldMatrix(true, false);
     const lok = this.groep.worldToLocal(camera.position.clone());
-    this.begroeiing.bij(lok);
+    if (begroeiing) this.begroeiing.bij(lok);
     // Dichtbij: de dampkring en de wolken worden doorzichtig, zodat je de grond goed ziet.
     // Van ver blijft de planeet mooi blauw omrand.
     const h = lok.length();

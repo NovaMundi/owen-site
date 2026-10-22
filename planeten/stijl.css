@@ -436,3 +436,20 @@ h1 .logo { width: min(640px, 82vw); height: auto; display: block; margin: 0 auto
 #geluidmenu .aan-uit.uit-gezet::after { content: 'UIT'; color: #ff8a8a; }
 @media (max-width: 560px) { .balk .rond { width: 52px; height: 52px; } .balk .rond small { display: none; } }
 .soort-tech .slaapt { filter: grayscale(1); opacity: 0.55; }
+#tijdknoppen .tk-fps { grid-column: 1 / -1; font-size: 12px; text-align: center; opacity: 0.8; }
+#tijdknoppen.dicht .tk-fps { display: block; }
+/* Wat wil jij erbij? (keuzekaarten voor de jongens) */
+#kiesknop { margin: 18px auto 0; display: block; font-size: 20px; }
+#kiezen { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(5, 6, 15, 0.82); padding: 16px; overflow-y: auto; }
+.kies-doos { background: var(--glas, rgba(30, 32, 48, 0.95)); border: 1px solid var(--rand, rgba(255,255,255,0.15)); border-radius: 26px; padding: 22px; text-align: center; max-width: 520px; width: 100%; }
+.kies-doos.breed { max-width: 900px; }
+.kies-wie { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
+.kies-naam { font-size: 24px; min-width: 130px; }
+.kies-kaarten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0; }
+.kies-kaart { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; border-radius: 20px; border: 3px solid transparent; background: rgba(255, 255, 255, 0.08); color: #fff; font: inherit; font-size: 17px; font-weight: 600; }
+.kies-kaart .kies-plaat { width: 120px; height: 120px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.35)); }
+.kies-kaart.aan { border-color: #ffd34d; background: rgba(255, 211, 77, 0.18); transform: scale(1.03); }
+.kies-kaart .hartje { position: absolute; top: 6px; right: 10px; font-style: normal; font-size: 26px; display: none; }
+.kies-kaart.aan .hartje { display: block; animation: wiebel 1s ease-in-out infinite; }
+@media (max-width: 560px) { .kies-kaarten { grid-template-columns: repeat(2, 1fr); } .kies-kaart .kies-plaat { width: 90px; height: 90px; } }
+.kies-doos { background: #1b1d2c; }
