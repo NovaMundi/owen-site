@@ -479,3 +479,32 @@ img.tikbaar { cursor: pointer; }
 .wk-momenten .gebeurtenis { text-align: left; border: 0; color: inherit; font: inherit; width: 100%; }
 .wk-knoppen { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
 @media (max-width: 560px) { .wk-cijfers { grid-template-columns: repeat(2, 1fr); } .wk-plaatje { width: 100px; height: 100px; } }
+/* Ontdekkingsboom (zoals de technologieboom in Civilization) */
+.soort-tech, .wk-ontdekt { cursor: pointer; }
+#ontdekkingsboom { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(5, 6, 15, 0.85); padding: 12px; }
+.ob-doos { background: #161828; border: 1px solid var(--rand); border-radius: 24px; width: min(1100px, 100%); max-height: calc(100vh - 24px); display: flex; flex-direction: column; overflow: hidden; }
+.ob-kop { display: flex; align-items: center; gap: 12px; padding: 14px 16px 8px; }
+.ob-kop img { width: 54px; height: 54px; object-fit: contain; }
+.ob-kop h2 { margin: 0; font-size: 22px; }
+.ob-kop small { opacity: 0.75; }
+.ob-kop .ob-dicht { margin-left: auto; }
+.ob-veld { overflow: auto; flex: 1; min-height: 0; -webkit-overflow-scrolling: touch; }
+.ob-boom { position: relative; margin: 0 auto; }
+.ob-boom svg { position: absolute; inset: 0; pointer-events: none; }
+.ob-boom path { fill: none; stroke-width: 4; stroke: rgba(255, 255, 255, 0.12); }
+.ob-boom path.open { stroke: rgba(255, 255, 255, 0.55); stroke-dasharray: 8 6; }
+.ob-boom path.klaar { stroke: #ffd34d; }
+.ob-boom path.of { stroke-dasharray: 4 6; }
+.ob-boom .of-tekst { fill: rgba(255, 255, 255, 0.6); font-size: 13px; font-weight: 600; text-anchor: middle; }
+.knoop { position: absolute; width: 128px; height: 84px; border-radius: 18px; border: 2px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); color: #fff; font: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 4px; opacity: 0.45; filter: grayscale(0.8); }
+.knoop .ic { font-size: 26px; line-height: 1.1; }
+.knoop b { font-size: 13px; line-height: 1.1; text-align: center; }
+.knoop small { font-size: 11px; opacity: 0.85; }
+.knoop.ontdekt { opacity: 1; filter: none; background: linear-gradient(160deg, rgba(255, 211, 77, 0.28), rgba(255, 154, 58, 0.18)); border-color: rgba(255, 211, 77, 0.6); }
+.knoop.volgende { opacity: 1; filter: none; border: 2px dashed #9cff8a; background: rgba(156, 255, 138, 0.1); animation: wiebel 2.4s ease-in-out infinite; }
+.knoop.slaapt { opacity: 0.8; filter: grayscale(1); border-style: dotted; }
+.knoop.gekozen { box-shadow: 0 0 0 3px #fff, 0 0 18px rgba(255, 255, 255, 0.5); }
+.knoop .balk { display: block; width: 90px; height: 7px; border-radius: 4px; background: rgba(255, 255, 255, 0.15); margin-top: 3px; overflow: hidden; }
+.knoop .balk i { display: block; height: 100%; background: #9cff8a; }
+.ob-uitleg { padding: 12px 18px 16px; font-size: 16px; line-height: 1.35; border-top: 1px solid var(--rand); min-height: 56px; }

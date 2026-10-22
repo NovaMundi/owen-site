@@ -7,6 +7,7 @@ import { geluid } from './geluid.js';
 import { beeldVan } from './wezens.js';
 import { TECH, OMDAT, meervoud, techNaam, geloofNaam, godNaam } from './leven/sim.js';
 import { MAKERS } from './keuzes.js';
+import { openOntdekkingsboom } from './ontdekkingsboom.js';
 
 const telTekst = (n) => {
   n = Math.floor(n);
@@ -85,6 +86,7 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
     ${momenten.length ? `<h3>Grootste momenten</h3><div class="wk-momenten">${momenten.map((e) => `<button class="gebeurtenis belang3" data-tekst="${veilig(e.tekst)}"><span class="g-icoon">${e.icoon}</span><div class="g-tekst"><small>Jaar ${telTekst(e.jaar)}</small><span>${veilig(e.tekst)}</span></div></button>`).join('')}</div>` : ''}
     <div class="wk-knoppen">
       ${!dood && s ? '<button class="tt-klaar wk-bezoek">👀 Bezoeken</button>' : ''}
+      ${s ? '<button class="tt-klaar wk-boom">🌳 Ontdekkingsboom</button>' : ''}
       <button class="tt-klaar wk-luister">🔊 Luister</button>
       <button class="tt-klaar wk-lees">📖 Lees voor</button>
     </div>
@@ -107,6 +109,8 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
     opBezoek && opBezoek();
   });
   el.querySelector('.wk-luister').onclick = () => opGeluid && opGeluid();
+  el.querySelector('.wk-boom')?.addEventListener('click', () => openOntdekkingsboom({ wezen, leven }));
+  el.querySelector('.wk-ontdekt')?.addEventListener('click', () => openOntdekkingsboom({ wezen, leven }));
   el.querySelectorAll('.wk-momenten .gebeurtenis').forEach((b) => (b.onclick = () => stem.zeg(b.dataset.tekst)));
   el.querySelectorAll('.wk-meters .meter').forEach((b) => (b.onclick = () => stem.zeg(meters.zinnen[b.dataset.k])));
 

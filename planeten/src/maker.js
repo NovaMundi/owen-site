@@ -21,6 +21,7 @@ import { lees, schrijf, mediaKlaar, SANDBOX } from './opslag.js';
 import { icoon } from './iconen.js';
 import { openKiezen } from './kiezen.js';
 import { toonWezenKaart } from './wezenkaart.js';
+import { openOntdekkingsboom } from './ontdekkingsboom.js';
 
 // ================= Opslag =================
 const OPSLAG = 'planeetmakers-v1';
@@ -1167,6 +1168,7 @@ const PANELEN = {
       kaart.querySelector('b').textContent = meervoud(wz.naam);
       kaart.querySelector('img').classList.add('tikbaar');
       kaart.querySelector('img').addEventListener('click', () => openKaart(wz));
+      kaart.querySelector('.soort-tech').addEventListener('click', () => openOntdekkingsboom({ wezen: wz, leven }));
       // Drie gezichtjes: eten, water, warmte. Tikken leest voor hoe het gaat en waarom.
       const m = !dood && leven.meters(wz.id);
       if (m) {

@@ -48,7 +48,7 @@ export const TECH = [
   { id: 'raket', naam: 'Raketten', icoon: '🚀', kosten: 4200000, na: [['stroom', 'kristal'], 'sterren', 'machines'] },
   { id: 'schoon', naam: 'Schone energie', icoon: '🌱', kosten: 3400000, na: ['stroom'] },
 ];
-const TECH_BY = Object.fromEntries(TECH.map((t) => [t.id, t]));
+export const TECH_BY = Object.fromEntries(TECH.map((t) => [t.id, t]));
 
 function naOk(t, soort) {
   // Een volk dat bij de lava woont, kent het vuur al voordat het kan praten.
@@ -317,7 +317,7 @@ function karakterUitKleur(kleur) {
 
 // Aanleg om slim te worden: niet elk dier wordt een denker. Formaat, manier van bewegen,
 // karakter en een beetje toeval bepalen hoe snel hersenen kunnen groeien.
-const SLIM_DREMPEL = 1.35; // daarboven kunnen ze leren praten
+export const SLIM_DREMPEL = 1.35; // daarboven kunnen ze leren praten
 // Ongeveer de helft van de soorten haalt de drempel nooit (aanleg onder ±0,95).
 const slimPlafond = (g) => 0.9 + (g.aanleg ?? 1) * 0.48;
 function aanlegVoor(w, maat, beweging, k) {
@@ -889,7 +889,10 @@ function ontdek(w, soort, groepen, regios, dt, nu) {
       if (baasje) verhaal(w, soort, 3, '🗝️', `De ${m} leerden praten. Het eerste wat ze zeiden: "We willen geen huisdier meer zijn!" Ze namen afscheid van de ${meervoud(baasje.naam)} en gingen hun eigen weg.`, nu);
     }
     const tn = techNaam(t.id, soort);
-    verhaal(w, soort, t.id === 'nesten' || t.id === 'stokken' ? 2 : 3, tn.icoon, ontdekTekst(t.id, m, bron, soort), nu);
+    const tekst = ontdekTekst(t.id, m, bron, soort);
+    // Onthouden wanneer en hoe (voor de ontdekkingsboom).
+    (soort.ontdekt ||= {})[t.id] = { jaar: Math.floor(w.jaar), hoe: tekst };
+    verhaal(w, soort, t.id === 'nesten' || t.id === 'stokken' ? 2 : 3, tn.icoon, tekst, nu);
     // Meerdere soorten kunnen slim worden. Wie als eerste akkers heeft en dorpen bouwt, krijgt een
     // grote voorsprong en wordt de baas van zijn rijk (maar ook dat kan weer veranderen).
     if (t.id === 'landbouw' && !alBaas) {
@@ -1253,6 +1256,7 @@ function ruzies(w, regios, stapDt, nu) {
             const kan = naar.tech.includes('taal') && van.tech.find((t) => !naar.tech.includes(t) && naOk(TECH_BY[t], naar) && t !== 'vuur' && t !== 'taal' && TECH_BY[t].kosten <= 100000);
             if (kan && rnd(w) < 1 - Math.exp(-dt * 0.002)) {
               naar.tech.push(kan);
+              (naar.ontdekt ||= {})[kan] = { jaar: Math.floor(w.jaar), hoe: `Geleerd van de ${meervoud(van.naam)}.` };
               verhaal(w, naar, 2, '🎓', `De ${meervoud(van.naam)} leerden de ${meervoud(naar.naam)} ${TECH_BY[kan].naam.toLowerCase()}.`, nu);
             }
           }
