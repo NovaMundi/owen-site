@@ -18,6 +18,7 @@ import { TECH, FASEN, OMDAT, meervoud, techNaam, snelBezig } from './leven/sim.j
 import { plaatjeVoorNieuweSoort } from './leven/afbeelding.js';
 import * as K from './keuzes.js';
 import { lees, schrijf, mediaKlaar, SANDBOX } from './opslag.js';
+import { icoon } from './iconen.js';
 
 // ================= Opslag =================
 const OPSLAG = 'planeetmakers-v1';
@@ -636,7 +637,7 @@ function bouwDock() {
     const k = document.createElement('button');
     k.className = 'gereedschap';
     k.dataset.id = g.id;
-    k.innerHTML = `<span class="icoon">${g.icoon}</span><span class="label">${g.label}</span>`;
+    k.innerHTML = `<span class="icoon">${icoon(g.id, g.icoon)}</span><span class="label">${g.label}</span>`;
     if (!gebruikt.includes(g.id) && eersteNieuw && g.id !== 'wens') {
       k.classList.add('wenk');
       eersteNieuw = false;
@@ -711,7 +712,7 @@ function toonPaneel(id, opnieuw) {
     if (volgende) volgende.classList.add('wenk');
   }
   paneel.hidden = false;
-  paneel.innerHTML = `<div class="kop"><span>${g.icoon} ${g.label}</span><button class="lees" title="Voorlezen">🔈</button><button class="dicht" title="Dicht">✕</button></div><div class="inhoud"></div>`;
+  paneel.innerHTML = `<div class="kop"><span class="kop-titel">${icoon(g.id, g.icoon)} ${g.label}</span><button class="lees" title="Voorlezen">🔈</button><button class="dicht" title="Dicht">✕</button></div><div class="inhoud"></div>`;
   paneel.querySelector('.lees').onclick = () => {
     const was = stem.aan;
     stem.aan = true;
@@ -788,7 +789,7 @@ const PANELEN = {
     for (const v of K.VORMEN) {
       const huidig = Object.entries(v.zet).every(([a, b]) => recept[a] === b);
       k.appendChild(
-        knop(`<span class="groot">${v.icoon}</span><span>${v.label}</span>`, 'kaart', (b) => {
+        knop(`<span class="groot">${icoon("vorm-" + v.id, v.icoon)}</span><span>${v.label}</span>`, 'kaart', (b) => {
           bewaarStap();
           Object.assign(recept, v.zet);
           kies(k, b);
@@ -978,7 +979,7 @@ const PANELEN = {
     const huidig = recept.boomVormen && recept.boomVormen.length ? recept.boomVormen : [recept.boomVorm || 'den'];
     for (const b of K.BOMEN) {
       k1.appendChild(
-        knop(`<span class="groot">${b.icoon}</span><span>${b.label}</span>`, 'kaart', () => {
+        knop(`<span class="groot">${icoon("boom-" + b.id, b.icoon)}</span><span>${b.label}</span>`, 'kaart', () => {
           const aan = huidig.includes(b.id);
           if (aan && huidig.length === 1) return;
           bewaarStap();
@@ -1061,9 +1062,9 @@ const PANELEN = {
       const knoppen = document.createElement('div');
       knoppen.className = 'wezen-knoppen';
       // Elke knop heeft een woordje eronder; lang drukken leest het voor.
-      const label = (icoon, woord) => `<span>${icoon}</span><small>${woord}</small>`;
+      const label = (emoji, woord, id) => `<span>${icoon(id, emoji)}</span><small>${woord}</small>`;
       knoppen.append(
-        knop(label(w.echt ? '🔒' : '✏️', w.echt ? 'Op slot' : 'Teken'), 'kleurbol plus wezenknop' + (w.echt ? ' op-slot' : ''), async () => {
+        knop(label(w.echt ? '🔒' : '✏️', w.echt ? 'Op slot' : 'Teken', w.echt ? 'ui-slot' : 'ui-teken'), 'kleurbol plus wezenknop' + (w.echt ? ' op-slot' : ''), async () => {
           geluid.klik();
           // Eenmaal echt gemaakt is een wezen af: niet meer aanpassen.
           if (w.echt) {
@@ -1082,23 +1083,23 @@ const PANELEN = {
           stem.zeg(`${nieuw.naam} ziet er nu zo uit!`);
           toonPaneel('wezens', false);
         }, { titel: 'Aanpassen of inkleuren' }),
-        knop(label(w.echt && w.weergave === 'echt' ? '🖍️' : '✨', w.echt ? (w.weergave === 'echt' ? 'Tekening' : 'Echt') : 'Maak echt'), 'kleurbol plus wezenknop toverknop', () => maakEchtKnop(w), { titel: w.echt ? (w.weergave === 'echt' ? 'Terug naar de tekening' : 'Laat de echte versie zien') : 'Maak echt' }),
-        knop(label('👀', 'Bezoek'), 'kleurbol plus wezenknop', () => {
+        knop(label(w.echt && w.weergave === 'echt' ? '🖍️' : '✨', w.echt ? (w.weergave === 'echt' ? 'Tekening' : 'Echt') : 'Maak echt', w.echt && w.weergave === 'echt' ? 'ui-krijt' : 'ui-tover'), 'kleurbol plus wezenknop toverknop', () => maakEchtKnop(w), { titel: w.echt ? (w.weergave === 'echt' ? 'Terug naar de tekening' : 'Laat de echte versie zien') : 'Maak echt' }),
+        knop(label('👀', 'Bezoek', 'ui-bezoek'), 'kleurbol plus wezenknop', () => {
           const d = wezens.willekeurigDier(w.id);
           if (d) {
             geluid.zwiep();
             bezoek(d, w);
           }
         }, { titel: 'Bezoeken' }),
-        knop(label('🔊', 'Luister'), 'kleurbol plus wezenknop', () => maakGeluid(w, 1), { titel: 'Luister' }),
-        knop(label('📜', 'Verhaal'), 'kleurbol plus wezenknop', () => {
+        knop(label('🔊', 'Luister', 'ui-luister'), 'kleurbol plus wezenknop', () => maakGeluid(w, 1), { titel: 'Luister' }),
+        knop(label('📜', 'Verhaal', 'verhaal'), 'kleurbol plus wezenknop', () => {
           geluid.klik();
           toonPaneel('verhaal', true);
         }, { titel: 'Hun verhaal' })
       );
       // Weghalen staat apart (niet naast het verhaal) en gaat alleen met vasthouden. Het wezen
       // vertrekt met een ruimteschip; met de oeps-knop komt het met zijn hele verhaal terug.
-      const weg = knop(`<span class="houd-ring"></span>${label('🛸', 'Weg')}`, 'kleurbol plus wezenknop wezen-weg', () => {}, { titel: 'Weg met het ruimteschip' });
+      const weg = knop(`<span class="houd-ring"></span>${label('🛸', 'Weg', 'ui-weg')}`, 'kleurbol plus wezenknop wezen-weg', () => {}, { titel: 'Weg met het ruimteschip' });
       houdVast(weg, {
         uitleg: `Moet ${w.naam} met het ruimteschip weg?`,
         klaar: () => {
@@ -1278,7 +1279,7 @@ const PANELEN = {
     );
     el.appendChild(d);
     const [r, k] = rij();
-    k.appendChild(knop('<span class="groot">🎉</span><span>Mijn planeet is klaar!</span>', 'kaart feest', feest));
+    k.appendChild(knop(`<span class="groot">${icoon('feest', '🎉')}</span><span>Mijn planeet is klaar!</span>`, 'kaart feest', feest));
     el.appendChild(r);
     // Alleen je eigen planeet kun je weggooien. En ook dan gaat hij eerst naar de prullenbak,
     // waar papa hem nog een maand terug kan halen.
@@ -1643,7 +1644,7 @@ function kiesHuid(w) {
     for (const h of K.HUIDEN) {
       const b = document.createElement('button');
       b.className = 'kaart';
-      b.innerHTML = `<span class="groot">${h.icoon}</span><span>${h.label}</span>`;
+      b.innerHTML = `<span class="groot">${icoon("huid-" + h.id, h.icoon)}</span><span>${h.label}</span>`;
       b.onclick = () => {
         geluid.plop();
         v.hidden = true;
@@ -2065,7 +2066,7 @@ knopTerug.addEventListener('click', terug);
 const knopStem = $('#stemknop');
 knopStem.addEventListener('click', () => {
   stem.aan = !stem.aan;
-  knopStem.textContent = stem.aan ? '🗣️' : '🤐';
+  knopStem.classList.toggle('gedempt', !stem.aan);
   if (!stem.aan) stem.stil();
   else stem.zeg('Ik lees weer voor!');
 });
@@ -2234,11 +2235,13 @@ if (SANDBOX) {
   $('#start').insertAdjacentHTML('afterbegin', '<div class="zandbak-band">🧪 Testomgeving: niets hiervan komt op de echte planeten</div>');
   const el = document.createElement('div');
   el.id = 'tijdknoppen';
-  el.innerHTML = `<span class="tk-titel">🧪 Tijd</span>
+  el.className = "dicht";
+  el.innerHTML = `<button class="tk-titel">🧪 Tijd</button>
     <button data-min="60">+1 uur</button><button data-min="1440">+1 dag</button><button data-min="10080">+1 week</button><button data-min="43200">+1 maand</button>
     <span class="tk-scheiding"></span>
     <button data-snel="1" class="aan">1x</button><button data-snel="60">60x</button><button data-snel="600">600x</button>`;
   makerScherm.appendChild(el);
+  el.querySelector('.tk-titel').addEventListener('click', () => el.classList.toggle('dicht'));
   el.querySelectorAll('[data-min]').forEach((b) =>
     b.addEventListener('click', async () => {
       if (!leven.actief) return toonMelding('Er leeft nog niets op deze planeet. Teken eerst een wezen!', 2500);

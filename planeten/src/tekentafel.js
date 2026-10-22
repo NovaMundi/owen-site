@@ -5,6 +5,7 @@ import { geluid } from './geluid.js';
 import { stem } from './stem.js';
 import * as K from './keuzes.js';
 import { lees, schrijf } from './opslag.js';
+import { icoon } from './iconen.js';
 
 const MAAT = 768; // tekenvel in pixels
 const OOG = [24, 40, 62];
@@ -303,16 +304,16 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
           houder.appendChild(b);
         }
       };
-      kaarten(el.querySelector('.tt-beweging'), K.BEWEGINGEN, (b) => b.id === w.beweging, (b) => `<span class="groot">${b.icoon}</span><span>${b.label}</span>`, (b) => {
+      kaarten(el.querySelector('.tt-beweging'), K.BEWEGINGEN, (b) => b.id === w.beweging, (b) => `<span class="groot">${icoon("beweeg-" + b.id, b.icoon)}</span><span>${b.label}</span>`, (b) => {
         w.beweging = b.id;
         dier.className = 'tt-dier loop-' + b.id + (w.kijkt === 'links' ? ' gespiegeld' : '');
         stem.zeg(b.id === 'zwemmen' && !heeftWater() ? 'Je planeet heeft nog geen water! Giet eerst wat water, anders gaat hij over het land.' : b.zeg);
       });
-      kaarten(el.querySelector('.tt-groot'), K.MATEN, (m) => m.id === w.maat, (m) => `<span class="groot">${m.icoon}</span><span>${m.label}</span>`, (m) => {
+      kaarten(el.querySelector('.tt-groot'), K.MATEN, (m) => m.id === w.maat, (m) => `<span class="groot">${icoon("maat-" + m.id, m.icoon)}</span><span>${m.label}</span>`, (m) => {
         w.maat = m.id;
         dier.style.setProperty('--maat', { mier: 0.45, hond: 0.7, olifant: 0.9, reus: 1.05 }[m.id]);
       });
-      kaarten(el.querySelector('.tt-huid'), K.HUIDEN, (h) => h.id === w.huid, (h) => `<span class="groot">${h.icoon}</span><span>${h.label}</span>`, (h) => {
+      kaarten(el.querySelector('.tt-huid'), K.HUIDEN, (h) => h.id === w.huid, (h) => `<span class="groot">${icoon("huid-" + h.id, h.icoon)}</span><span>${h.label}</span>`, (h) => {
         if (w.huid !== h.id && w.echt) w.echt = null; // andere huid: het echte plaatje klopt niet meer
         w.huid = h.id;
         stem.zeg(h.label);

@@ -386,3 +386,23 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 #tijdknoppen { display: grid; grid-template-columns: 1fr 1fr; }
 #tijdknoppen .tk-titel, #tijdknoppen .tk-scheiding { grid-column: 1 / -1; }
 #tijdknoppen [data-snel="600"] { grid-column: 1 / -1; }
+/* Getekende icoontjes (Higgsfield) */
+.ico { width: 1.25em; height: 1.25em; object-fit: contain; vertical-align: middle; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); }
+.gereedschap .icoon .ico { width: 44px; height: 44px; transition: transform 0.15s; }
+.gereedschap.aan .icoon .ico { transform: scale(1.12) rotate(-4deg); }
+.gereedschap.wenk .icoon .ico { animation: wiebel 1.2s ease-in-out infinite; }
+@keyframes wiebel { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-8deg) scale(1.06); } 75% { transform: rotate(8deg) scale(1.06); } }
+.kop-titel .ico { width: 30px; height: 30px; margin-right: 4px; }
+.kaart.feest .groot .ico { width: 44px; height: 44px; }
+@media (max-width: 860px) { .gereedschap .icoon .ico { width: 36px; height: 36px; } }
+#tijdknoppen.dicht > :not(.tk-titel) { display: none; }
+#tijdknoppen.dicht { display: block; padding: 4px; }
+#tijdknoppen .tk-titel { background: none; color: #ffd34d; font-size: 15px; }
+.kaart .groot .ico { width: 52px; height: 52px; }
+.balk .rond .ico { width: 30px; height: 30px; }
+.rond .ico { width: 34px; height: 34px; }
+#stemknop.gedempt .ico { opacity: 0.35; filter: grayscale(1); }
+#stemknop.gedempt::after { content: ''; position: absolute; left: 20%; right: 20%; top: 50%; height: 4px; background: #ff5f5f; transform: rotate(-35deg); border-radius: 2px; }
+#stemknop { position: relative; }
+#wolkknop .ico { width: 40px; height: 40px; }
+.wezenknop .ico { width: 30px; height: 30px; }
