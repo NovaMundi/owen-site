@@ -1,6 +1,6 @@
 {
   "health": "green",
   "stage": "live",
-  "next": "Testsessie Planeetmakers met de jongens op de Galaxy-tablets: laten spelen, \"Wat wil jij erbij?\" laten kiezen, fps in ?sandbox=1 bekijken",
-  "note": "Planeetmakers mierennest: oorlog (leger naar de grens) en reizigers zichtbaar, geschiedenisgrafiek in verhaalboek, 10 fixes uit bugreview (o.a. XSS)"
+  "next": "Testsessie Planeetmakers met de jongens; vóór 15 nov elke tablet de planeten één keer laten openen (sleutel-overgang)",
+  "note": "Panelgesprek 2 (6 experts, debat) uitgevoerd: wolk beveiligd met sleutel per apparaat, verliesmoment, zachtere teksten, korte ontdekkingsboom, gebed met spelersnaam, kijk mee. Daarna feature freeze tot de test."
 }
