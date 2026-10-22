@@ -199,6 +199,14 @@ export class BeschavingLaag {
     const raketten = Object.values(wereld.soorten).filter((s) => s.tech.includes('raket')).length;
     const sleutel = groepen.map((x) => `${x.g.regio}${x.s.id}${x.n}${x.s.vlaggen.heuvels ? 'h' : ''}${x.s.tech.length}`).join(',') + `|${boten}|${raketten}|${planeet.zeeR}|${planeet.maxR}|${recept.grootte}`;
     if (sleutel === this.sleutel) return;
+    // Niet bij elke kleine verandering alles opnieuw neerzetten (dat hapert op een tablet): hooguit
+    // eens per 6 seconden, behalve als de planeet zelf veranderd is of er nog niets staat.
+    const planeetSleutel = `${planeet.zeeR}|${planeet.maxR}|${recept.grootte}|${planeet.kwaliteit}`;
+    const nu = performance.now();
+    if (this.sleutel && planeetSleutel === this.planeetSleutel && nu - (this.laatsteZet || 0) < 6000) return;
+    if (planeetSleutel !== this.planeetSleutel) this.grond = new Map(); // grondhoogtes opnieuw
+    this.planeetSleutel = planeetSleutel;
+    this.laatsteZet = nu;
     this.sleutel = sleutel;
     this.leeg(false);
 
@@ -207,9 +215,17 @@ export class BeschavingLaag {
     const zee = planeet.zeeStraal;
     this.zeeStraal = zee;
     const vuurPos = [], vuurSize = [], lichtPos = [], lichtSize = [], weg = [];
+    // De grondhoogte is duur om uit te rekenen; elke plek maar één keer.
+    this.grond ||= new Map();
+    const grondOnder = (dir) => {
+      const k = `${dir.x.toFixed(4)},${dir.y.toFixed(4)},${dir.z.toFixed(4)}`;
+      let r = this.grond.get(k);
+      if (r === undefined) this.grond.set(k, (r = planeet.landStraal(dir)));
+      return r;
+    };
     const plaats = (mesh, dir, schaal, kleurHex, hoek = 0, onder = false) => {
       if (mesh.count >= mesh.instanceMatrix.count) return null;
-      const r = planeet.landStraal(dir);
+      const r = grondOnder(dir);
       if (!onder && zee > 0 && r < zee) return null; // niet in het water bouwen
       v.copy(dir).multiplyScalar(r - schaal.y * 0.05);
       q.setFromUnitVectors(omhoog, dir).multiply(draai.setFromAxisAngle(omhoog, hoek));
@@ -219,9 +235,12 @@ export class BeschavingLaag {
       mesh.count++;
       return v.clone();
     };
+    // Vaste plekken (uit het eigen toevalsgetal van dat dorp): opnieuw neerzetten verschuift niets.
     const verspreid = (rnd, midden, straal) => {
-      const t = new THREE.Vector3().randomDirection();
-      t.addScaledVector(midden, -t.dot(midden)).normalize();
+      const a = new THREE.Vector3(Math.abs(midden.y) > 0.9 ? 1 : 0, Math.abs(midden.y) > 0.9 ? 0 : 1, 0).cross(midden).normalize();
+      const b = new THREE.Vector3().crossVectors(midden, a);
+      const hoek = rnd() * Math.PI * 2;
+      const t = a.multiplyScalar(Math.cos(hoek)).addScaledVector(b, Math.sin(hoek));
       return midden.clone().addScaledVector(t, Math.sqrt(rnd()) * straal).normalize();
     };
 
@@ -323,7 +342,7 @@ export class BeschavingLaag {
           let nat = false;
           for (let k = 0; k <= 10; k++) {
             const dir = c.dir.clone().lerp(doel, k / 10).normalize();
-            const r = planeet.landStraal(dir);
+            const r = grondOnder(dir);
             if (zee > 0 && r < zee) nat = true; // geen wegen over zee
             punten.push(dir.multiplyScalar(Math.max(r, zee) + 0.0012 * recept.grootte));
           }
