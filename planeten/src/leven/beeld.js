@@ -193,7 +193,7 @@ export class BeschavingLaag {
   zet(wereld, regios, planeet, recept) {
     if (!wereld || !regios || !planeet) return this.leeg();
     const groepen = wereld.groepen
-      .map((g) => ({ g, s: wereld.soorten[g.soort], n: wereld.soorten[g.soort] ? niveau(wereld.soorten[g.soort], g) : 0 }))
+      .map((g) => ({ g, s: wereld.soorten[g.soort], n: wereld.soorten[g.soort] ? this.toonNiveau(g, wereld.soorten[g.soort]) : 0 }))
       .filter((x) => x.s && x.n > 0 && regios[x.g.regio]);
     const boten = groepen.filter((x) => x.s.tech.includes('boten') && regios[x.g.regio].kust).length;
     const raketten = Object.values(wereld.soorten).filter((s) => s.tech.includes('raket')).length;
@@ -248,7 +248,8 @@ export class BeschavingLaag {
     for (const { g, s, n } of groepen) {
       const reg = regios[g.regio];
       const midden = new THREE.Vector3(...reg.dir);
-      const rnd = maakRandom(g.regio + s.id);
+      // Elk soort bouwwerk een eigen vaste reeks: komt er een hutje bij, dan blijft de rest staan.
+      const stroom = (k) => maakRandom(g.regio + s.id + k);
       const maat = Math.min(0.022, Math.max(0.006, (MATEN.find((m) => m.id === s.maat) || MATEN[1]).maat * (s.genen.grootte || 1)));
       const onder = s.beweging === 'zwemmen' && !reg.land; // koraaldorpen op de zeebodem
       const eigen = s.kleur ? new THREE.Color().setHSL(s.kleur.h, Math.min(0.75, s.kleur.s), 0.55).getHexString() : 'c0704a';
@@ -256,16 +257,17 @@ export class BeschavingLaag {
       const land = s.thuisLand;
       const wandKleur = onder ? '#ff9ec7' : land === 'woestijn' ? '#c99a6b' : land === 'lava' ? '#3d3936' : land === 'berg' ? '#9a948c' : '#e8d3a8';
       const dakKleur = onder ? '#5ad1c4' : land === 'woestijn' ? '#b07f55' : land === 'lava' ? '#5c534c' : '#' + eigen;
-      const straal = 0.035 + n * 0.012;
+      const straal = 0.07; // vaste grootte: als een dorp groeit, schuift er niets op
       // Zwermheuvels van soorten die niet praten maar wel samen bouwen.
       if (s.vlaggen.heuvels && !s.tech.includes('taal') && g.pop > 20 && !onder) {
+        const rnd = stroom('h');
         const aantal = Math.min(5, 1 + Math.floor(Math.log10(g.pop)));
         for (let i = 0; i < aantal; i++) {
           const h = maat * (1.1 + rnd() * 1.3);
           plaats(this.heuvel, verspreid(rnd, midden, straal), new THREE.Vector3(h * 0.6, h, h * 0.6), ['#a8784e', '#9a6c45', '#b88a5c'][i % 3], rnd() * 6);
         }
       }
-      if (n >= 1) for (let i = 0; i < 3; i++) plaats(this.hol, verspreid(rnd, midden, straal), sc.set(maat * 0.9, maat * 0.45, maat * 0.9).clone(), onder ? '#c98a6a' : '#4a3a2e', 0, onder);
+      if (n >= 1) for (let i = 0, rnd = stroom('o'); i < 3; i++) plaats(this.hol, verspreid(rnd, midden, straal), sc.set(maat * 0.9, maat * 0.45, maat * 0.9).clone(), onder ? '#c98a6a' : '#4a3a2e', 0, onder);
       if (n >= 2 && !onder) {
         const p = plaats(this.hol, midden.clone(), new THREE.Vector3(maat * 0.6, maat * 0.12, maat * 0.6), '#6b6b6b');
         if (p) {
@@ -274,7 +276,7 @@ export class BeschavingLaag {
         }
       }
       const hutten = n >= 6 ? 0 : n === 5 ? 6 : n === 4 ? 9 : n === 3 ? 4 : 0;
-      for (let i = 0; i < hutten; i++) {
+      for (let i = 0, rnd = stroom('u'); i < hutten; i++) {
         const dir = verspreid(rnd, midden, straal);
         const s3 = new THREE.Vector3(maat * 1.3, maat * 1.3, maat * 1.3);
         if (onder) plaats(this.koraal, dir, s3.clone().multiplyScalar(0.6), ['#ff7eb6', '#ff9a5a', '#b48cff', '#5ad1c4'][i % 4], rnd() * 6, true); // koraalhuizen
@@ -283,14 +285,14 @@ export class BeschavingLaag {
       }
       if (n >= 4 && !onder) {
         const akkerKleuren = ['#e7c65a', '#9ccc5a', '#c9a24a', '#7fbf4a'];
-        for (let i = 0; i < (n >= 5 ? 8 : 5); i++) {
+        for (let i = 0, rnd = stroom('a'); i < (n >= 5 ? 8 : 5); i++) {
           const dir = verspreid(rnd, midden, straal * 1.6);
           plaats(this.akker, dir, new THREE.Vector3(maat * 2.6, maat, maat * 2.6), akkerKleuren[i % 4], rnd() * 6);
         }
       }
       if (n >= 5) {
         const aantal = n === 6 ? 34 : 16;
-        for (let i = 0; i < aantal; i++) {
+        for (let i = 0, rnd = stroom('g' + n); i < aantal; i++) {
           const dir = verspreid(rnd, midden, straal * (n === 6 ? 1.1 : 0.9));
           const hoog = maat * (n === 6 ? 1.5 + rnd() ** 2 * 5 : 1 + rnd() * 1.8);
           const breed = maat * (0.9 + rnd() * 0.6);
@@ -299,7 +301,7 @@ export class BeschavingLaag {
           if (p && (n === 6 || s.tech.includes('stroom') || s.tech.includes('kristal'))) {
             const lagen = Math.max(1, Math.round(hoog / maat));
             for (let k = 0; k < lagen; k++) {
-              lichtPos.push(p.clone().addScaledVector(dir, hoog * (0.25 + (0.6 * k) / lagen)).addScaledVector(new THREE.Vector3().randomDirection(), breed * 0.4));
+              lichtPos.push(p.clone().addScaledVector(dir, hoog * (0.25 + (0.6 * k) / lagen)).addScaledVector(new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(), breed * 0.4));
               lichtSize.push(maat * 0.35);
             }
           }
@@ -309,14 +311,14 @@ export class BeschavingLaag {
       // en gaat de rook uit. Zo zie je op de planeet zelf wat schone energie betekent.
       if (n >= 5 && !onder && s.tech.includes('machines')) {
         const schoon = s.tech.includes('schoon');
-        for (let i = 0; i < (schoon ? 1 : 3); i++) {
+        for (let i = 0, rnd = stroom('f'); i < (schoon ? 1 : 3); i++) {
           const dir = verspreid(rnd, midden, straal * 1.35);
           const sch = new THREE.Vector3(maat * 2.2, maat * 2.2, maat * 2.2);
           const p = plaats(this.fabriek, dir, sch, ['#c9b8a0', '#b9c2cc', '#d8c7a6'][i % 3], rnd() * 6);
           if (p && !schoon) this.rookBronnen.push({ pos: p.clone().addScaledVector(dir, maat * 2.4), dir: dir.clone(), maat, fase: rnd() });
         }
         if (schoon) {
-          for (let i = 0; i < 4; i++) {
+          for (let i = 0, rnd = stroom('m'); i < 4; i++) {
             const dir = verspreid(rnd, midden, straal * 1.7);
             const sch = maat * 2.6;
             const hoek = rnd() * 6;
@@ -390,6 +392,21 @@ export class BeschavingLaag {
       m.instanceMatrix.needsUpdate = true;
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     }
+  }
+
+  // Een dorp gaat meteen omhoog als het groeit, maar pas na een halve minuut omlaag. Anders springt
+  // een dorp dat net rond een grens zit steeds heen en weer tussen hutjes en een stad.
+  toonNiveau(g, s) {
+    const n = niveau(s, g);
+    this.getoond ||= new Map();
+    const k = g.regio + '|' + s.id;
+    const was = this.getoond.get(k);
+    const nu = performance.now();
+    if (!was || n >= was.n || nu - was.t > 30000) {
+      this.getoond.set(k, { n, t: nu });
+      return n;
+    }
+    return was.n;
   }
 
   vulPunten(p, posities, maten) {
