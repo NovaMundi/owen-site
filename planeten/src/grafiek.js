@@ -2,7 +2,7 @@
 // van het begin tot nu (zoals de demografie in Civilization). Grote momenten staan als stip op de
 // tijdlijn eronder; tik erop en je hoort wat er gebeurde.
 
-const B = 320, H = 150, L = 34, R = 8, T = 10, O = 22; // maat en randen (links ruimte voor getallen)
+const B = 320, H = 160, L = 34, R = 8, T = 10, O = 30; // maat en randen (links ruimte voor getallen)
 
 const veilig = (t) => String(t ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
 const telKort = (n) => (n >= 1e6 ? Math.round(n / 1e5) / 10 + 'm' : n >= 1000 ? Math.round(n / 100) / 10 + 'k' : String(Math.round(n)));
@@ -43,10 +43,10 @@ export function geschiedenisGrafiek(w, plaatjes, opTik) {
   // Stippen die over elkaar zouden vallen: alleen de nieuwste laten zien.
   let vorige = Infinity;
   momenten.reverse().forEach((e) => {
-    if (vorige - x(e.jaar) < 15) return;
+    if (vorige - x(e.jaar) < 26) return;
     vorige = x(e.jaar);
     const k = w.kroniek.indexOf(e);
-    svg += `<g class="gr-moment" data-k="${k}"><circle cx="${x(e.jaar)}" cy="${H - O / 2 + 1}" r="8"/><text x="${x(e.jaar)}" y="${H - O / 2 + 5}">${veilig(e.icoon)}</text></g>`;
+    svg += `<g class="gr-moment" data-k="${k}"><circle cx="${x(e.jaar)}" cy="${H - O / 2 + 1}" r="12"/><text x="${x(e.jaar)}" y="${H - O / 2 + 6}">${veilig(e.icoon)}</text></g>`;
   });
 
   const el = document.createElement('div');

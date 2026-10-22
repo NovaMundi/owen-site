@@ -58,7 +58,9 @@ function diepteVan() {
   return d;
 }
 
-export function openOntdekkingsboom({ wezen, leven }) {
+// Standaard de korte weergave (wat ze kunnen en de volgende stap, ook voor een kind van 6);
+// de hele boom zit achter een knop, voor Owen en papa.
+export function openOntdekkingsboom({ wezen, leven, heel = false }) {
   const info = leven.info(wezen.id);
   if (!info) return;
   const s = info.soort;
@@ -117,11 +119,20 @@ export function openOntdekkingsboom({ wezen, leven }) {
   }).join('');
 
   const pad = s.beweging === 'zwemmen' ? ' (het pad van de zee)' : s.beweging === 'vliegen' ? ' (het pad van de lucht)' : '';
+  // Korte weergave: wat ze al kunnen (kleine plaatjes) en waar ze nu mee bezig zijn (groot).
+  const kunnen = TECH.filter((t) => heeft(t.id));
+  const bezig = TECH.filter((t) => status(t) === 'volgende');
+  const kort = `<div class="ob-kort">
+      <h3>Dit kunnen ze al</h3>
+      <div class="ob-kunnen">${kunnen.length ? kunnen.map((t) => `<button class="knoop klein" data-id="${t.id}" title="${veilig(techNaam(t.id, s).naam)}">${techIcoon(t.id, s, techNaam(t.id, s).icoon, 'ico ob-ico')}</button>`).join('') : '<span class="dim">Nog niets. Dat komt nog!</span>'}</div>
+      ${bezig.length ? `<h3>Hier zijn ze nu mee bezig</h3><div class="ob-bezig">${bezig.map((t) => `<button class="knoop groot" data-id="${t.id}"><span class="ic">${techIcoon(t.id, s, techNaam(t.id, s).icoon, 'ico ob-ico')}</span><b>${veilig(techNaam(t.id, s).naam)}</b><i class="balk"><i style="width:${Math.round(Math.min(1, s.kennis / t.kosten) * 100)}%"></i></i></button>`).join('')}</div>` : ''}
+      <button class="opnieuw ob-heel">🌳 De hele boom bekijken</button>
+    </div>`;
   const el = document.createElement('section');
   el.id = 'ontdekkingsboom';
   el.innerHTML = `<div class="ob-doos">
     <div class="ob-kop"><img src="${veilig(beeldVan(wezen).open)}" alt=""><div><h2>Ontdekkingen van de ${veilig(meervoud(wezen.naam))}</h2><small>${s.tech.length} van de ${TECH.length} ontdekt${pad}. Tik op een ontdekking!</small></div><button class="rond ob-dicht" title="Dicht">✕</button></div>
-    <div class="ob-veld"><div class="ob-boom" style="width:${breedte}px;height:${hoogte}px"><svg width="${breedte}" height="${hoogte}">${lijnen}</svg>${knopen}</div></div>
+    ${heel ? `<div class="ob-veld"><div class="ob-boom" style="width:${breedte}px;height:${hoogte}px"><svg width="${breedte}" height="${hoogte}">${lijnen}</svg>${knopen}</div></div>` : kort}
     <div class="ob-uitleg">Tik op een ontdekking om te horen wat het is.</div>
   </div>`;
   document.body.appendChild(el);
@@ -171,6 +182,12 @@ export function openOntdekkingsboom({ wezen, leven }) {
       stem.aan = was;
     })
   );
+  el.querySelector('.ob-heel')?.addEventListener('click', () => {
+    geluid.klik();
+    stem.stil();
+    openOntdekkingsboom({ wezen, leven, heel: true });
+  });
+  if (!heel) return;
   // Meteen naar de plek waar ze nu zijn (de eerste "volgende" ontdekking).
   const nu = el.querySelector('.knoop.volgende') || [...el.querySelectorAll('.knoop.ontdekt')].pop();
   if (nu) el.querySelector('.ob-veld').scrollLeft = Math.max(0, parseFloat(nu.style.left) - 120);

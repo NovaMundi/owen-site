@@ -1055,7 +1055,7 @@ function geloof(w, dt, nu) {
     const naamGod = overgenomen ? godNaam(ander.geloof) : makerNaam;
     s.geloof = { god, godNaam: naamGod, sinds: Math.floor(w.jaar), naam: maakGeloofNaam(naamGod, rnd(w)) };
     const m = meervoud(s.naam);
-    verhaal(w, s, 3, '🙏', `De ${m} keken naar de sterren en vroegen zich af wie hun wereld gemaakt had. Nu hebben ze zich bekeerd tot het ${s.geloof.naam}! Ze geloven dat de Grote ${naamGod} de hemel en de aarde heeft geschapen. Ze bouwen een tempel voor de Grote ${naamGod}.`, nu);
+    verhaal(w, s, 3, '🙏', `De ${m} keken naar de sterren en vroegen zich af wie hun wereld gemaakt had. Ze denken dat het de Grote ${naamGod} was. En dat klopt! Hun geloof heet het ${s.geloof.naam}. Ze bouwen een tempel voor de Grote ${naamGod}.`, nu);
     if (ander && ander.geloof.god !== god) verhaal(w, s, 2, '📖', `De ${m} (${s.geloof.naam}) en de ${meervoud(ander.naam)} (${geloofNaam(ander.geloof)}) vertellen elkaar verhalen over de Grote ${naamGod} en de Grote ${godNaam(ander.geloof)}.`, nu);
   }
   for (const s of levend) {
@@ -1221,15 +1221,16 @@ function ruzies(w, regios, stapDt, nu) {
         const belang = sp.keer ? 1 : 2; // de eerste keer is groot nieuws, daarna minder
         if (!sp.ruzie && sp.waarde > 0.8) {
           sp.ruzie = true;
-          const reden = vol > 0.9 ? ', want het werd te vol en er was niet genoeg eten voor iedereen' : ` over ${kies(w, ['het water', 'de beste plek om te slapen', 'wie er de baas is'])}`;
-          verhaal(w, sa, belang, '😠', `${hoofd(namen)} kregen ruzie${reden}.`, nu);
+          // De reden onthouden: als het later uitloopt op vechten, weet het kind nog waarom.
+          sp.reden = vol > 0.9 ? 'het werd te vol en er was niet genoeg eten' : kies(w, ['ze wilden allebei hetzelfde water', 'ze wilden allebei de beste slaapplek', 'ze wilden allebei de baas zijn']);
+          verhaal(w, sa, belang, '😠', `${hoofd(namen)} kregen ruzie, want ${sp.reden}.`, nu);
         }
         if (!sp.oorlog && sp.waarde > 1.8) {
           sp.oorlog = true;
           sp.keer++;
           if (sa === sb) sa.vlaggen.stamOorlog = w.jaar;
           a.oorlog = b.oorlog = sleutel;
-          verhaal(w, sa, sp.keer === 1 ? 3 : 1, '⚔️', `${hoofd(namen)} gingen ${sp.keer === 1 ? '' : 'weer '}met elkaar vechten!`, nu);
+          verhaal(w, sa, sp.keer === 1 ? 3 : 1, '⚔️', `${hoofd(namen)} gingen ${sp.keer === 1 ? '' : 'weer '}duwen en stoeien om de grens, want ${sp.reden || 'het werd te vol'}.`, nu);
         }
         if (sp.oorlog) {
           const ka = a.pop * (BASIS.maat[sa.maat]?.kracht || 1) * sa.genen.grootte * (sa.tech.includes('metaal') ? 1.5 : 1);

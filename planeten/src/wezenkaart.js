@@ -52,7 +52,7 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
 
   // Bijzonderheden.
   const extra = [];
-  if (s?.geloof) extra.push(`🙏 ${geloofNaam(s.geloof)}: ze geloven dat de Grote ${godNaam(s.geloof)} de hemel en de aarde heeft geschapen`);
+  if (s?.geloof) extra.push(`🙏 ${geloofNaam(s.geloof)}: ze denken dat de Grote ${godNaam(s.geloof)} hun wereld gemaakt heeft`);
   if (s?.vlaggen.getemdDoor && w.soorten[s.vlaggen.getemdDoor]) extra.push(`🐕 Huisdier van de ${meervoud(w.soorten[s.vlaggen.getemdDoor].naam)}`);
   if (s?.vlaggen.heuvels) extra.push('⛰️ Ze bouwen grote heuvels');
   if (s?.vlaggen.brug) extra.push('🌉 Ze hebben bruggen gebouwd');
@@ -128,4 +128,6 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
     stem.aan = was;
   };
   geluid.plop();
+  // Meteen één korte zin (voor wie nog niet leest); de rest met "Lees voor".
+  stem.zeg(!s ? `Dit is ${wezen.naam}.` : dood ? `Dit waren de ${m}.` : `Dit zijn de ${m}! Er zijn er nu ${telTekst(info.totaal)}.`);
 }

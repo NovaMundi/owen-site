@@ -526,3 +526,42 @@ img.tikbaar { cursor: pointer; }
 .gr-moment circle { fill: #fff; stroke: rgba(0,0,0,0.2); }
 .gr-moment text { font-size: 10px; text-anchor: middle; }
 .grafiek-uitleg { font-size: 13px; color: #555; margin-top: 4px; min-height: 18px; }
+
+/* Verlies van een eigen wezen: rustig, met de tekening (panelgesprek 2) */
+#verlies { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(10, 14, 30, 0.72); padding: 16px; animation: verliesIn 0.8s ease; }
+@keyframes verliesIn { from { opacity: 0; } to { opacity: 1; } }
+.verlies-doos { background: #f6f1e7; color: #3b3a46; border-radius: 22px; padding: 22px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+.verlies-doos img { width: 180px; height: 180px; object-fit: contain; filter: saturate(0.6); background: #fff; border-radius: 16px; padding: 8px; }
+.verlies-doos h2 { margin: 12px 0 6px; font-size: 26px; }
+.verlies-tekst { font-size: 18px; line-height: 1.45; margin: 0 0 16px; }
+.verlies-knoppen { display: flex; flex-direction: column; gap: 10px; }
+.verlies-knoppen button { min-height: 52px; font-size: 18px; }
+
+/* Ontdekkingsboom, korte weergave */
+.ob-kort { padding: 6px 4px 10px; }
+.ob-kort h3 { font-size: 18px; margin: 10px 0 8px; }
+.ob-kunnen { display: flex; flex-wrap: wrap; gap: 8px; }
+.ob-kort .knoop { position: static; }
+.ob-kort .knoop.klein { width: 60px; height: 60px; min-width: 48px; padding: 4px; border-radius: 14px; display: grid; place-items: center; }
+.ob-kort .knoop.klein .ob-ico { width: 46px; height: 46px; }
+.ob-bezig { display: flex; flex-wrap: wrap; gap: 10px; }
+.ob-kort .knoop.groot { width: 170px; min-height: 120px; padding: 10px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 16px; }
+.ob-kort .knoop.groot .ob-ico { width: 64px; height: 64px; }
+.ob-kort .knoop.groot .balk { width: 100%; }
+.ob-heel { margin-top: 14px; min-height: 48px; font-size: 16px; }
+/* Leesbaarheid op de tablet (panelgesprek 2) */
+.verhaal-meer { margin-top: 6px; }
+.meer-knop { margin-top: 10px; min-height: 48px; font-size: 16px; width: 100%; }
+.gr-getal { font-size: 11px; }
+.gr-moment text { font-size: 13px; }
+.grafiek-uitleg { font-size: 15px; }
+.ob-kort .knoop { opacity: 1; filter: none; }
+.ob-kort .knoop.klein { background: linear-gradient(160deg, rgba(255, 211, 77, 0.28), rgba(255, 154, 58, 0.18)); border-color: rgba(255, 211, 77, 0.6); }
+.ob-kort .knoop.groot { border: 2px dashed #9cff8a; background: rgba(156, 255, 138, 0.1); }
+.ob-kort .knoop.groot b { font-size: 16px; }
+.wezenknop small { font-size: 12px; }
+.wk-cijfer span { font-size: 15px; }
+.wk-ontdekt span { font-size: 16px; }
+#verlies { overflow-y: auto; display: block; }
+.verlies-doos { margin: 24px auto; }
+.verlies-doos img { width: min(180px, 28vh); height: min(180px, 28vh); }

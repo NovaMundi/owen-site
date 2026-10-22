@@ -712,6 +712,7 @@ draaiKnop.addEventListener('click', () => {
 });
 document.getElementById('maker').appendChild(draaiKnop);
 
+let verhaalMeer = false;
 function toonPaneel(id, opnieuw) {
   const g = K.GEREEDSCHAP.find((x) => x.id === id);
   gereedschap = id;
@@ -1159,7 +1160,7 @@ const PANELEN = {
     const k = leven.klimaat();
     const fase = FASEN[k.fase] || FASEN.gewoon;
     const warmte = k.temp > 0.08 ? ' · 🌡️ warmer dan normaal' : k.temp < -0.08 ? ' · ❄️ kouder dan normaal' : '';
-    el.insertAdjacentHTML('beforeend', `<div class="soort-stand klimaatregel">Klimaat: ${fase.icoon} ${fase.naam}${warmte}${k.vervuiling > 0.1 ? ' · 🏭 rokerige lucht' : ''}</div>`);
+    const klimaat = `<div class="soort-stand klimaatregel">Klimaat: ${fase.icoon} ${fase.naam}${warmte}${k.vervuiling > 0.1 ? ' · 🏭 rokerige lucht' : ''}</div>`;
     for (const wz of lijst) {
       const info = leven.info(wz.id);
       if (!info) continue;
@@ -1167,6 +1168,7 @@ const PANELEN = {
       const kaart = document.createElement('div');
       kaart.className = 'soortkaart';
       const dood = s.uitgestorven !== null;
+      const m = !dood && leven.meters(wz.id);
       const welvaart = info.groepen.reduce((a, g) => a + (g.cap ? Math.min(1, g.cap / Math.max(g.pop, 1e-6)) * g.pop : 0), 0) / Math.max(1, info.totaal);
       const gevoel = dood ? '🪦' : welvaart > 0.8 ? '😊' : welvaart > 0.5 ? '🙂' : '😟';
       const tech = TECH.map((t) => { if (!s.tech.includes(t.id)) return ""; const tn = techNaam(t.id, s); return `<span title="${tn.naam}">${techIcoon(t.id, s, tn.icoon)}</span>`; }).join("")
@@ -1176,7 +1178,7 @@ const PANELEN = {
         <img src="${veilig(beeldVan(wz).open)}" alt="" class="${dood ? 'dood' : ''}">
         <div class="soort-info">
           <b></b>
-          <div class="soort-stand">${dood ? `Uitgestorven in jaar ${telTekst(s.uitgestorven)}${s.oorzaak && OMDAT[s.oorzaak] ? `, omdat ${OMDAT[s.oorzaak]}` : ''}` : `${rolTekst(info)} · ${info.tijdperk.icoon} ${info.tijdperk.naam} · 👪 ${telTekst(info.totaal)} · ${gevoel}`}</div>
+          <div class="soort-stand">${dood ? `Uitgestorven in jaar ${telTekst(s.uitgestorven)}${s.oorzaak && OMDAT[s.oorzaak] ? `, omdat ${OMDAT[s.oorzaak]}` : ''}` : `${rolTekst(info)} · ${info.tijdperk.icoon} ${info.tijdperk.naam} · 👪 ${telTekst(info.totaal)}${m ? '' : ' · ' + gevoel}`}</div>
           ${!dood && info.stammen > 1 ? `<div class="soort-stand">🏕️ ${info.stammen} stammen</div>` : ''}
           <div class="meters"></div>
           <div class="soort-tech">${tech + slaapt || '<span class="dim">Nog niets ontdekt</span>'}</div>
@@ -1186,7 +1188,6 @@ const PANELEN = {
       kaart.querySelector('img').addEventListener('click', () => openKaart(wz));
       kaart.querySelector('.soort-tech').addEventListener('click', () => openOntdekkingsboom({ wezen: wz, leven }));
       // Drie gezichtjes: eten, water, warmte. Tikken leest voor hoe het gaat en waarom.
-      const m = !dood && leven.meters(wz.id);
       if (m) {
         const vak = kaart.querySelector('.meters');
         for (const [sleutel, icoon, woord] of [['eten', '🍎', 'Eten'], ['water', '💧', 'Water'], ['warmte', '🌡️', 'Warmte']]) {
@@ -1213,7 +1214,22 @@ const PANELEN = {
       stem.zeg(e.tekst);
       stem.aan = was;
     });
-    if (grafiek) el.appendChild(grafiek);
+    // Voor grote planeetmakers (Owen, papa): klimaat en grafiek achter een knop.
+    const meer = document.createElement('div');
+    meer.className = 'verhaal-meer';
+    meer.hidden = !verhaalMeer;
+    meer.insertAdjacentHTML('beforeend', klimaat);
+    if (grafiek) meer.appendChild(grafiek);
+    const meerKnop = document.createElement('button');
+    meerKnop.className = 'opnieuw meer-knop';
+    meerKnop.textContent = verhaalMeer ? '🔭 Minder' : '🔭 Meer voor grote planeetmakers';
+    meerKnop.onclick = () => {
+      geluid.klik();
+      verhaalMeer = !verhaalMeer;
+      meer.hidden = !verhaalMeer;
+      meerKnop.textContent = verhaalMeer ? '🔭 Minder' : '🔭 Meer voor grote planeetmakers';
+    };
+    el.append(meerKnop, meer);
     const tijdlijn = document.createElement('div');
     tijdlijn.className = 'tijdlijn';
     for (const e of w.kroniek.slice(-60).reverse()) {
@@ -1864,22 +1880,83 @@ function werkJaarBij() {
 }
 setInterval(werkJaarBij, 2000);
 
+// Is dit het uitsterven van een wezen dat het kind zelf tekende? Dat krijgt een eigen, rustig
+// moment (panelgesprek 2): nooit tussen vrolijke berichten, nooit met een pling.
+function isVerlies(e) {
+  if (e.icoon !== '🪦' || !e.soort) return false;
+  const s = leven.w && leven.w.soorten[e.soort];
+  return !!s && !s.afkomst && (recept.wezens || []).some((x) => x.id === e.soort);
+}
+const verliesRij = [];
+function toonVerlies(e) {
+  if (e) verliesRij.push(e);
+  if (document.getElementById('verlies') || !verliesRij.length) return;
+  const v = verliesRij.shift();
+  const wz = (recept.wezens || []).find((x) => x.id === v.soort);
+  const s = leven.w && leven.w.soorten[v.soort];
+  if (!wz || !s) return toonVerlies();
+  const m = meervoud(wz.naam);
+  const zinnen = [
+    `De ${m} zijn er niet meer.`,
+    s.oorzaak && OMDAT[s.oorzaak] ? `Dat kwam omdat ${OMDAT[s.oorzaak]}.` : '',
+    'Ook een maker kan niet alles tegenhouden.',
+    'Hun tekening blijft altijd bewaard.',
+  ].filter(Boolean);
+  const el = document.createElement('section');
+  el.id = 'verlies';
+  el.innerHTML = `<div class="verlies-doos">
+    <img src="${veilig(wz.tekening || beeldVan(wz).open)}" alt="">
+    <h2></h2>
+    <p class="verlies-tekst"></p>
+    <div class="verlies-knoppen">
+      <button class="tt-klaar verlies-teken">🖍️ Teken een nieuw wezen</button>
+      <button class="opnieuw verlies-verder">Verder</button>
+    </div>
+  </div>`;
+  el.querySelector('h2').textContent = `Dag, ${m}`;
+  el.querySelector('.verlies-tekst').textContent = zinnen.join(' ');
+  document.body.appendChild(el);
+  const sluit = () => {
+    stem.stil();
+    el.remove();
+    setTimeout(() => toonVerlies(), 400);
+  };
+  el.querySelector('.verlies-verder').onclick = () => {
+    geluid.klik();
+    sluit();
+  };
+  el.querySelector('.verlies-teken').onclick = () => {
+    geluid.klik();
+    verliesRij.length = 0;
+    sluit();
+    toonPaneel('wezens', true);
+    setTimeout(() => document.querySelector('.nieuw-wezen')?.click(), 200);
+  };
+  const was = stem.aan;
+  stem.aan = true;
+  stem.rij(zinnen);
+  stem.aan = was;
+}
+
 // Live nieuws terwijl je speelt: een kaartje bovenin, het grote nieuws wordt voorgelezen.
 function toonNieuws(lijst) {
   if (leven.bezig || !wie) return;
+  for (const e of lijst) if (isVerlies(e)) toonVerlies(e);
+  lijst = lijst.filter((e) => !isVerlies(e));
   const belangrijk = lijst.filter((e) => e.belang >= 2);
   if (!belangrijk.length) return;
   const vak = $('#nieuws');
   for (const e of belangrijk.slice(-3)) {
     const k = document.createElement('div');
     k.className = 'nieuwtje';
-    k.innerHTML = `<span>${e.icoon}</span><div></div>`;
+    k.innerHTML = `<span>${veilig(e.icoon)}</span><div></div>`;
     k.querySelector('div').textContent = e.tekst;
     vak.appendChild(k);
     setTimeout(() => k.classList.add('weg'), 7000);
     setTimeout(() => k.remove(), 7600);
   }
-  geluid.pling(4);
+  // Slecht nieuws (uitsterven) krijgt geen vrolijk geluidje.
+  if (belangrijk.some((e) => e.icoon !== '🪦')) geluid.pling(4);
   const groot = belangrijk.filter((e) => e.belang >= 3);
   if (groot.length && !opname) stem.zeg(groot[groot.length - 1].tekst);
   if (gereedschap !== 'verhaal') {
@@ -1900,6 +1977,12 @@ function duurTekst(minuten) {
 
 // Scherm bij binnenkomst: wat er allemaal gebeurd is sinds de vorige keer.
 function toonWeg(weg) {
+  // Eigen verlies eerst, rustig en apart; daarna pas de rest.
+  const verloren = weg.nieuws.filter(isVerlies);
+  if (verloren.length) {
+    weg = { ...weg, nieuws: weg.nieuws.filter((e) => !isVerlies(e)) };
+    verloren.forEach((e) => verliesRij.push(e));
+  }
   const el = $('#weg');
   const naam = recept.naam || 'je planeet';
   // Niet te veel tegelijk voor een kind van 6: de vijf belangrijkste laten zien, er drie voorlezen.
@@ -1920,12 +2003,24 @@ function toonWeg(weg) {
     const k = document.createElement('div');
     k.className = 'gebeurtenis belang' + e.belang;
     k.style.animationDelay = `${0.6 + i * 1.2}s`;
-    k.innerHTML = `<span class="g-icoon">${e.icoon}</span><div class="g-tekst"><small>Jaar ${telTekst(e.jaar)}</small><span></span></div>${e.soort && plaatjes[e.soort] ? `<img src="${plaatjes[e.soort]}" alt="">` : ''}`;
+    k.innerHTML = `<span class="g-icoon">${veilig(e.icoon)}</span><div class="g-tekst"><small>Jaar ${telTekst(e.jaar)}</small><span></span></div>${e.soort && plaatjes[e.soort] ? `<img src="${veilig(plaatjes[e.soort])}" alt="">` : ''}`;
     k.querySelector('.g-tekst span').textContent = e.tekst;
     vak.appendChild(k);
-    setTimeout(() => geluid.pling(i), 600 + i * 1200);
+    if (e.icoon !== '🪦') setTimeout(() => geluid.pling(i), 600 + i * 1200);
   });
-  stem.rij(['Terwijl je weg was, is er van alles gebeurd op je planeet!', ...voorlezen.map((e) => e.tekst), ...(meer ? ['Er gebeurde nog veel meer. Kijk maar in je verhaalboek!'] : [])]);
+  if (verloren.length) {
+    // Het verlies komt eerst; dit scherm wacht eronder.
+    toonVerlies();
+    const wacht = setInterval(() => {
+      if (document.getElementById('verlies') || verliesRij.length) return;
+      clearInterval(wacht);
+      leesWegVoor();
+    }, 500);
+  } else leesWegVoor();
+  function leesWegVoor() {
+    if (el.hidden) return;
+    stem.rij(['Terwijl je weg was, is er van alles gebeurd op je planeet!', ...voorlezen.map((e) => e.tekst), ...(meer ? ['Er gebeurde nog veel meer. Kijk maar in je verhaalboek!'] : [])]);
+  }
   el.querySelector('.weg-verder').onclick = () => {
     geluid.zwiep();
     stem.stil();
