@@ -463,10 +463,17 @@ function toonWolk() {
       <h2>☁️ De planeten gaan mee</h2>
       <p class="weg-uitleg">Nog een tablet of computer koppelen? Maak een koppel-link en open die daar één keer. Daarna gaat het vanzelf.</p>
       <div class="wolk-links"><button class="tt-klaar wolk-maak">🔗 Koppel-link maken</button></div>
+      <button class="opnieuw wolk-los">🧹 Alle andere apparaten loskoppelen</button>
       ${wolk.geweigerd ? '<p class="weg-uitleg">⚠️ Deze koppel-link werkt niet meer. Maak op een gekoppeld apparaat een nieuwe.</p>' : ''}
       <button class="tt-klaar wolk-bak">🗑️ Prullenbak</button>
       <button class="opnieuw wolk-dicht">Sluiten</button></div>`;
     el.querySelector('.wolk-bak').onclick = () => toonPrullenbak();
+    el.querySelector('.wolk-los').onclick = async (e) => {
+      if (!confirm('Alle andere tablets en computers loskoppelen? Ze kunnen dan alleen weer meedoen met een nieuwe koppel-link. Dit apparaat blijft gekoppeld.')) return;
+      e.target.disabled = true;
+      const ok = await wolk.alleenDit();
+      e.target.textContent = ok ? '✅ Alleen dit apparaat is nog gekoppeld' : 'Dat lukte niet. Is er internet?';
+    };
     el.querySelector('.wolk-maak').onclick = async (e) => {
       e.target.disabled = true;
       e.target.textContent = 'Bezig...';
@@ -1895,6 +1902,8 @@ const verliesRij = [];
 function toonVerlies(e) {
   if (e) verliesRij.push(e);
   if (document.getElementById('verlies') || !verliesRij.length) return;
+  // Niet midden in het tekenen: even wachten tot de tekentafel dicht is.
+  if (tekentafelOpen()) return void setTimeout(() => toonVerlies(), 3000);
   const v = verliesRij.shift();
   const wz = (recept.wezens || []).find((x) => x.id === v.soort);
   const s = leven.w && leven.w.soorten[v.soort];
@@ -1933,13 +1942,13 @@ function toonVerlies(e) {
     geluid.klik();
     verliesRij.length = 0;
     sluit();
+    const weg = $('#weg');
+    weg.hidden = true;
+    weg.innerHTML = '';
     toonPaneel('wezens', true);
     setTimeout(() => document.querySelector('.nieuw-wezen')?.click(), 200);
   };
-  const was = stem.aan;
-  stem.aan = true;
   stem.rij(zinnen);
-  stem.aan = was;
 }
 
 // ================= Gebed =================
@@ -1947,7 +1956,8 @@ function toonVerlies(e) {
 // helpen (en ziet dan meteen wat het deed), of "Nu niet" zeggen. Niet antwoorden heeft nooit
 // gevolgen, het verloopt niet, er komt geen teller of rood bolletje (panelgesprek 2).
 let gebedTimer = null;
-let gebedGedaan = null; // voor welke planeet er dit bezoek al gebeden is
+const gebedGedaan = new Set(); // voor welke planeten er dit bezoek (sinds het openen van de app) al gebeden is
+const tekentafelOpen = () => { const t = document.getElementById('tekentafel'); return !!t && !t.hidden; };
 const GAVEN = {
   water: { icoon: '🌧️', knop: 'Regen sturen', vraag: 'het is zo droog. Wil je regen sturen?' },
   eten: { icoon: '🍎', knop: 'Fruit laten groeien', vraag: 'we hebben honger. Wil je fruit laten groeien?' },
@@ -1957,7 +1967,7 @@ const GAVEN = {
 };
 function planGebed(mijn) {
   clearTimeout(gebedTimer);
-  if (gebedGedaan === wie) return;
+  if (gebedGedaan.has(wie)) return;
   gebedTimer = setTimeout(() => probeerGebed(mijn), 50000 + Math.random() * 50000);
 }
 function kiesGebed() {
@@ -1977,11 +1987,11 @@ function kiesGebed() {
 }
 function probeerGebed(mijn, nu = false) {
   if (mijn !== undefined && mijn !== sessie) return;
-  const druk = !wie || geboorte || !$('#weg').hidden || document.getElementById('verlies') || document.getElementById('tekentafel')?.offsetParent || document.getElementById('wezenkaart-groot') || document.getElementById('ontdekkingsboom') || document.getElementById('gebed') || stem.bezig;
+  const druk = !wie || geboorte || !$('#weg').hidden || document.getElementById('verlies') || tekentafelOpen() || opname || gereedschap || !$('#wolkpaneel').hidden || document.getElementById('wezenkaart-groot') || document.getElementById('ontdekkingsboom') || document.getElementById('gebed') || stem.bezig;
   if (druk && !nu) return void (gebedTimer = setTimeout(() => probeerGebed(mijn), 20000));
   const g = kiesGebed();
   if (!g) return;
-  gebedGedaan = wie;
+  gebedGedaan.add(wie);
   toonGebed(g);
 }
 function toonGebed({ wz, nood }) {
@@ -2031,15 +2041,17 @@ function beantwoordGebed(wz, nood, s) {
   }
   const kleuren = { water: ['#5ac8fa', '#9fe3ff'], eten: ['#ff5050', '#9cff8a', '#ffd34d'], warmte: nood === 'koud' ? ['#ffd34d', '#ffb13a'] : ['#9cff8a', '#c9f7ff'], feest: ['#ffd34d', '#ff5fb0', '#5ac8fa', '#9cff8a', '#c9a8ff'] }[soort];
   const keer = soort === 'feest' ? 8 : 4;
+  const mijn = sessie;
   for (let i = 0; i < keer; i++) {
     setTimeout(() => {
+      if (mijn !== sessie) return;
       const p = plek.clone().add(omhoog).add(new THREE.Vector3().randomDirection().multiplyScalar(0.05 * recept.grootte));
       vuurwerk.knal(p, kleuren[i % kleuren.length]);
       if (soort === 'feest') geluid.knal();
       else geluid.pling(i + 2);
     }, 200 + i * 350);
   }
-  setTimeout(() => leven.zegen(wz.id, soort), 1600);
+  setTimeout(() => mijn === sessie && leven.zegen(wz.id, soort), 1600);
 }
 
 // Live nieuws terwijl je speelt: een kaartje bovenin, het grote nieuws wordt voorgelezen.
@@ -2145,7 +2157,9 @@ function kijkMee(e) {
   bezoek(d, wz);
   // Alleen de eerste zin: kort en duidelijk.
   const zin = (e.tekst.match(/^[^.!?]*[.!?]/) || [e.tekst])[0];
+  const mijn = sessie;
   setTimeout(() => {
+    if (mijn !== sessie) return;
     toonMelding(`👀 ${zin}`, 5000);
     stem.zeg(`Kijk mee! ${zin}`);
   }, 900);
@@ -2585,7 +2599,7 @@ renderer.setAnimationLoop((nu) => {
   zuinig.meet(dt);
 });
 
-window.__maker = { gebed: () => probeerGebed(undefined, true), camera, controls, wezens, leven, beschaving, weer, maakStorm, get planeet() { return planeet; }, get recept() { return recept; }, get volg() { return volg; } }; // alleen voor testen
+window.__maker = { gebed: (nu = true) => probeerGebed(undefined, nu), get gereedschap() { return gereedschap; }, camera, controls, wezens, leven, beschaving, weer, maakStorm, get planeet() { return planeet; }, get recept() { return recept; }, get volg() { return volg; } }; // alleen voor testen
 // Geopend via een koppel-link (?familie=...)? Dan hoort dit apparaat voortaan bij de familie.
 if (wolk.koppelUitLink()) setTimeout(() => toonMelding('☁️ Gekoppeld! De planeten komen eraan...', 3500), 300);
 $('#kiesknop').addEventListener('click', () => {

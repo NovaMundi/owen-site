@@ -61,6 +61,14 @@ let stand = lees(STAND, { code: null, versies: {}, afdrukken: {}, botsingen: {} 
 // De eigen sleutel van dit apparaat meesturen (zie netlify/lib/planeet-toegang.mjs).
 const kop = (extra = {}) => (stand.sleutel ? { ...extra, 'x-planeet-sleutel': stand.sleutel } : extra);
 let sleutelBezig = null;
+// De server kent onze sleutel niet (meer): vergeten, dan vraagt zorgSleutel een nieuwe (dat lukt
+// tijdens de overgang; daarna zegt het wolkpaneel dat er een nieuwe koppel-link nodig is).
+function sleutelAfgewezen(r) {
+  if (r.status !== 401 || !stand.sleutel) return false;
+  stand.sleutel = null;
+  bewaarStand();
+  return true;
+}
 async function zorgSleutel() {
   if (!stand.code || stand.sleutel) return !!stand.sleutel;
   // Eén aanvraag tegelijk, ook als alle planeten tegelijk willen ophalen.
@@ -109,6 +117,16 @@ export const wolk = {
   kop,
   get geweigerd() {
     return !!stand.geweigerd && !stand.sleutel;
+  },
+  // Alle andere apparaten loskoppelen (als er ooit een link rondgaat). Daarna alleen nog via een nieuwe koppel-link.
+  async alleenDit() {
+    if (!(await zorgSleutel())) return false;
+    try {
+      const r = await fetch(`${WOLK}?code=${stand.code}&actie=alleen-dit`, { method: 'POST', headers: kop(), signal: wachtHooguit(20000) });
+      return r.ok;
+    } catch {
+      return false;
+    }
   },
   // Een koppel-link voor een ander apparaat: met een verse uitnodiging (7 dagen, hooguit 5 keer).
   async maakLink(sites) {
@@ -183,6 +201,7 @@ export const wolk = {
     let doc;
     try {
       const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}`, { headers: kop(), signal: wachtHooguit(20000) });
+      if (sleutelAfgewezen(r)) await zorgSleutel();
       if (!r.ok) return;
       doc = await r.json();
     } catch {
@@ -264,6 +283,7 @@ export const wolk = {
         bewaarStand();
         return false;
       }
+      if (sleutelAfgewezen(r)) zorgSleutel();
       if (!r.ok) return false;
       const d = await r.json();
       stand.versies[wie] = d.versie;
