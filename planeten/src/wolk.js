@@ -38,6 +38,30 @@ function afdruk(obj) {
   return t.length + '-' + h.toString(36);
 }
 
+// Wat uit de wolk komt, gaat de pagina in. Alleen echte plaatjes en geluiden doorlaten, en
+// namen zonder HTML-tekens, zodat niemand met de familiecode er code in kan smokkelen.
+const BEELD = /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+/=]+$/;
+const GELUID = /^data:audio\/[a-z0-9.+-]+(;codecs=[a-z0-9.,-]+)?;base64,[A-Za-z0-9+/=]+$/i;
+const tekst = (t) => (typeof t === 'string' ? t.replace(/[<>"'&`]/g, '').slice(0, 40) : t);
+function veilig(data) {
+  if (!data || typeof data !== 'object') return data;
+  if (data.lijst) data.lijst = data.lijst.filter((w) => !w.audio || GELUID.test(w.audio)).map((w) => ({ ...w, tekst: tekst(w.tekst) }));
+  if (data.foto && !BEELD.test(data.foto)) data.foto = null;
+  const r = data.recept;
+  if (r) {
+    r.naam = tekst(r.naam);
+    r.wezens = (r.wezens || [])
+      .filter((w) => BEELD.test(w.plaatje || '') && (!w.dicht || BEELD.test(w.dicht)) && (!w.tekening || BEELD.test(w.tekening)))
+      .map((w) => ({
+        ...w,
+        naam: tekst(w.naam) || 'Wezen',
+        echt: w.echt && BEELD.test(w.echt.plaatje || '') ? w.echt : null,
+        geluid: w.geluid && GELUID.test(w.geluid) ? w.geluid : null,
+      }));
+  }
+  return data;
+}
+
 const TEKENS = 'abcdefghjkmnpqrstuvwxyz23456789';
 const WOORDEN = ['zorbix', 'blibo', 'lumi', 'kwasar', 'nebula', 'komeet', 'pluto', 'stardust', 'orbit', 'galaxo'];
 
@@ -79,7 +103,7 @@ export const wolk = {
     for (let i = 0; i < 6; i++) staart += TEKENS[Math.floor(Math.random() * TEKENS.length)];
     stand.code = WOORDEN[Math.floor(Math.random() * WOORDEN.length)] + '-' + staart;
     bewaarStand();
-    for (const wie of [...PLANETEN, 'wensen']) await this.stuur(wie);
+    for (const wie of [...PLANETEN, 'wensen']) await this.stuur(wie, false, true);
     return stand.code;
   },
 
@@ -92,6 +116,7 @@ export const wolk = {
   },
 
   zetPakket(wie, data) {
+    data = veilig(data);
     if (wie === 'wensen') return schrijf(OPSLAG.wensen, data?.lijst || []);
     for (const [deel, sleutel] of Object.entries({ recept: OPSLAG.recept, wereld: OPSLAG.wereld, foto: OPSLAG.foto })) {
       const alles = lees(sleutel, {});
@@ -163,7 +188,9 @@ export const wolk = {
     }, wacht);
   },
 
-  async stuur(wie, forceer = false) {
+  // aanzetten = de eerste keer, vanuit "Wolk aanzetten": dan registreert de server de familie
+  // (die mag toveren). Een verzonnen code via een gewone opslag mag dat niet.
+  async stuur(wie, forceer = false, aanzetten = false) {
     if (!stand.code || bezig[wie]) return false;
     if (stand.botsingen[wie] && !forceer) return false;
     const data = this.pakket(wie) || { recept: null };
@@ -171,7 +198,7 @@ export const wolk = {
     if (!forceer && vingerafdruk === stand.afdrukken[wie]) return true; // niets veranderd
     bezig[wie] = true;
     try {
-      const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}${forceer ? '&forceer=1' : ''}`, {
+      const r = await fetch(`${WOLK}?code=${stand.code}&wie=${wie}${forceer ? '&forceer=1' : ''}${aanzetten ? '&aanzetten=1' : ''}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ versie: stand.versies[wie] || 0, data }),

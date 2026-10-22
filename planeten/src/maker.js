@@ -273,7 +273,13 @@ async function maakOntbrekendeFotos() {
     schrijf(FOTOS, fotos);
     if (!wie) {
       const img = document.querySelector(`.maker-knop[data-id="${m.id}"] .mini`);
-      if (img) img.outerHTML = `<img class="mini foto" src="${fotos[m.id]}" alt="">`;
+      if (img) {
+        const nieuw = document.createElement('img');
+        nieuw.className = 'mini foto';
+        nieuw.alt = '';
+        nieuw.src = fotos[m.id];
+        img.replaceWith(nieuw);
+      }
     }
   }
 }
@@ -329,7 +335,8 @@ function tekenStartKaarten() {
       : r
         ? `<span class="mini laden"></span>`
         : `<span class="mini leeg">?</span>`;
-    k.innerHTML += `<span class="maker-naam">${m.naam}</span><span class="maker-sub">${r ? (r.naam || 'Planeet zonder naam') : 'Nieuwe planeet'}</span>`;
+    k.innerHTML += `<span class="maker-naam">${m.naam}</span><span class="maker-sub"></span>`;
+    k.querySelector('.maker-sub').textContent = r ? r.naam || 'Planeet zonder naam' : 'Nieuwe planeet';
     if (wolk.botsing(m.id)) k.insertAdjacentHTML('beforeend', '<span class="botsing-teken">⚠️</span>');
     k.addEventListener('click', () => {
       geluid.plop();
