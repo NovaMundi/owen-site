@@ -8,7 +8,7 @@ import { maakRandom } from '../ruis.js';
 import { MATEN } from '../keuzes.js';
 import { niveau } from './sim.js';
 
-const MAX = { hol: 3000, wand: 4000, dak: 4000, akker: 2500, gebouw: 8000, boot: 400, raket: 12, heuvel: 1500 };
+const MAX = { hol: 3000, wand: 4000, dak: 4000, akker: 2500, gebouw: 8000, boot: 400, raket: 12, heuvel: 1500, fabriek: 600, molen: 600, koraal: 1500 };
 
 let puntTex = null;
 function punt() {
@@ -33,15 +33,97 @@ function instanties(geo, mat, max) {
   return m;
 }
 
+// ---- Bouwwerken in kleistijl (zie kunst/iconen/bouw-*.webp voor de voorbeelden) ----
+// Elke vorm is één samengevoegd stuk met licht en donker in de hoekpunten (deur, raam, schaduw).
+// De kleur per huisje komt er via de instance-kleur bovenop. Zo blijven het weinig tekenopdrachten.
+function grijs(geo, l) {
+  geo = geo.index ? geo.toNonIndexed() : geo;
+  for (const n of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv'].includes(n)) geo.deleteAttribute(n);
+  if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+  const k = new Float32Array(geo.attributes.position.count * 3);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const v = typeof l === 'function' ? l(p.getX(i), p.getY(i), p.getZ(i)) : l;
+    k[i * 3] = k[i * 3 + 1] = k[i * 3 + 2] = v;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(k, 3));
+  return geo;
+}
+const samenVoeg = (lijst) => mergeGeometries(lijst);
+function vormen() {
+  // Hol (ook iglo): koepel met een donkere ingang aan de voorkant.
+  const hol = grijs(new THREE.SphereGeometry(0.5, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), (x, y, z) => (z > 0.28 && y < 0.27 && Math.abs(x) < 0.2 ? 0.12 : 0.8 + y * 0.5));
+  // Hut: ronde muur met deur en raampje.
+  const wand = samenVoeg([
+    grijs(new THREE.CylinderGeometry(0.42, 0.48, 0.55, 12).translate(0, 0.275, 0), (x, y) => 0.82 + y * 0.35),
+    grijs(new THREE.BoxGeometry(0.18, 0.3, 0.06).translate(0, 0.15, 0.46), 0.3),
+    grijs(new THREE.BoxGeometry(0.12, 0.12, 0.06).rotateY(1.4).translate(0.43, 0.33, 0.09), 0.22),
+  ]);
+  // Dak: puntdak met een knopje bovenop; onderrand iets donkerder.
+  const dak = samenVoeg([
+    grijs(new THREE.ConeGeometry(0.64, 0.55, 12, 2).translate(0, 0.8, 0), (x, y) => 0.75 + (y - 0.52) * 0.8),
+    grijs(new THREE.SphereGeometry(0.08, 6, 4).translate(0, 1.1, 0), 0.7),
+  ]);
+  // Akker: voren (strepen licht en donker).
+  const akker = grijs(new THREE.BoxGeometry(1, 0.06, 0.7, 8, 1, 1).translate(0, 0.03, 0), (x) => (Math.round((x + 0.5) * 8) % 2 ? 0.75 : 1.05));
+  // Stadshuis: blok met een plat dak dat net iets uitsteekt.
+  const gebouw = samenVoeg([
+    grijs(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), (x, y) => 0.8 + y * 0.25),
+    grijs(new THREE.BoxGeometry(1.08, 0.06, 1.08).translate(0, 1.0, 0), 0.6),
+  ]);
+  // Fabriek: hal met zaagtanddak en een hoge schoorsteen.
+  const fabriek = samenVoeg([
+    grijs(new THREE.BoxGeometry(1, 0.55, 0.7).translate(0, 0.275, 0), 0.9),
+    grijs(new THREE.CylinderGeometry(0.0001, 0.36, 0.25, 4, 1).rotateY(Math.PI / 4).scale(1.35, 1, 0.9).translate(-0.2, 0.67, 0), 0.65),
+    grijs(new THREE.CylinderGeometry(0.0001, 0.36, 0.25, 4, 1).rotateY(Math.PI / 4).scale(1.35, 1, 0.9).translate(0.25, 0.67, 0), 0.65),
+    grijs(new THREE.CylinderGeometry(0.08, 0.11, 1.1, 8).translate(0.38, 0.55, -0.2), (x, y) => (Math.floor(y * 6) % 2 ? 1.1 : 0.55)),
+    grijs(new THREE.BoxGeometry(0.22, 0.28, 0.04).translate(-0.15, 0.14, 0.36), 0.35),
+  ]);
+  // Windmolen: mast met een kopje (de wieken draaien apart).
+  const mast = grijs(samenVoeg([
+    new THREE.CylinderGeometry(0.035, 0.07, 1.4, 6).translate(0, 0.7, 0),
+    new THREE.BoxGeometry(0.12, 0.1, 0.2).translate(0, 1.42, 0.03),
+  ].map((g) => (g.index ? g.toNonIndexed() : g)).map((g) => {
+    g.deleteAttribute('uv');
+    return g;
+  })), 1);
+  const wiek = new THREE.BoxGeometry(0.06, 0.62, 0.015).translate(0, 0.31, 0);
+  const rotor = grijs(mergeGeometries([0, 1, 2].map((k) => wiek.clone().rotateZ((k * Math.PI * 2) / 3).toNonIndexed()).map((g) => {
+    g.deleteAttribute('uv');
+    return g;
+  })), 1);
+  // Koraal: vertakte armpjes met bolletjes, voor wezens die onder water wonen.
+  const takken = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2, h = 0.45 + (i % 3) * 0.18, schuin = 0.35 + (i % 2) * 0.25;
+    const tak = new THREE.CylinderGeometry(0.05, 0.08, h, 6).translate(0, h / 2, 0).rotateZ(schuin).rotateY(a);
+    const top = new THREE.Vector3(0, h, 0).applyAxisAngle(new THREE.Vector3(0, 0, 1), schuin).applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
+    takken.push(tak, new THREE.SphereGeometry(0.09, 6, 4).translate(top.x, top.y, top.z));
+  }
+  takken.push(new THREE.CylinderGeometry(0.12, 0.16, 0.3, 7).translate(0, 0.15, 0));
+  const koraal = grijs(mergeGeometries(takken.map((g) => g.toNonIndexed())), (x, y) => 0.7 + y * 0.5);
+  return { hol, wand, dak, akker, gebouw, fabriek, mast, rotor, koraal };
+}
+
 export class BeschavingLaag {
   constructor() {
     this.groep = new THREE.Group();
     const std = (kleur, extra = {}) => new THREE.MeshStandardMaterial({ color: kleur, roughness: 0.9, ...extra });
-    this.hol = instanties(new THREE.SphereGeometry(0.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), std('#ffffff'), MAX.hol);
-    this.wand = instanties(new THREE.CylinderGeometry(0.42, 0.48, 0.55, 8).translate(0, 0.275, 0), std('#ffffff'), MAX.wand);
-    this.dak = instanties(new THREE.ConeGeometry(0.62, 0.55, 8).translate(0, 0.8, 0), std('#ffffff'), MAX.dak);
-    this.akker = instanties(new THREE.BoxGeometry(1, 0.06, 0.7).translate(0, 0.03, 0), std('#ffffff'), MAX.akker);
-    this.gebouw = instanties(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), std('#ffffff', { roughness: 0.6 }), MAX.gebouw);
+    // Klei: mat licht, kleur per hoekpunt (Lambert is ook nog eens zuinig voor de tablet).
+    const klei = () => new THREE.MeshLambertMaterial({ color: '#ffffff', vertexColors: true });
+    const v = vormen();
+    this.hol = instanties(v.hol, klei(), MAX.hol);
+    this.wand = instanties(v.wand, klei(), MAX.wand);
+    this.dak = instanties(v.dak, klei(), MAX.dak);
+    this.akker = instanties(v.akker, klei(), MAX.akker);
+    this.gebouw = instanties(v.gebouw, klei(), MAX.gebouw);
+    this.fabriek = instanties(v.fabriek, klei(), MAX.fabriek);
+    this.mast = instanties(v.mast, klei(), MAX.molen);
+    this.rotor = instanties(v.rotor, klei(), MAX.molen);
+    this.koraal = instanties(v.koraal, klei(), MAX.koraal);
+    this.groep.add(this.fabriek, this.mast, this.rotor, this.koraal);
+    this.molens = [];
+    this.rookBronnen = [];
     const romp = new THREE.BoxGeometry(1, 0.3, 0.4).translate(0, 0.15, 0);
     const zeil = new THREE.ConeGeometry(0.3, 0.9, 3).translate(0, 0.75, 0);
     this.boot = instanties(mergeGeometries([romp.toNonIndexed(), zeil.toNonIndexed()]), std('#f2ead8'), MAX.boot);
@@ -65,6 +147,7 @@ export class BeschavingLaag {
     this.vuur = this.punten(600, '#ffae42', 1);
     this.licht = this.punten(9000, '#ffe9a8', 1);
     this.vlam = this.punten(MAX.raket * 12, '#ffb347', 1);
+    this.rook = this.punten(MAX.fabriek * 5, '#8a8f99', 1, true);
     this.wegen = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: '#c9a77a', transparent: true, opacity: 0.8 }));
     this.groep.add(this.wegen);
 
@@ -74,7 +157,7 @@ export class BeschavingLaag {
     this.tijd = 0;
   }
 
-  punten(max, kleur) {
+  punten(max, kleur, _ = 1, rook = false) {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(max * 3), 3));
     g.setAttribute('size', new THREE.BufferAttribute(new Float32Array(max), 1));
@@ -94,11 +177,11 @@ export class BeschavingLaag {
         uniform vec3 kleur;
         void main() {
           vec4 t = texture2D(kaart, gl_PointCoord);
-          gl_FragColor = vec4(kleur * 2.2, t.a);
+          gl_FragColor = ${rook ? "vec4(kleur, t.a * 0.55)" : "vec4(kleur * 2.2, t.a)"};
         }`,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: rook ? THREE.NormalBlending : THREE.AdditiveBlending,
     });
     const p = new THREE.Points(g, m);
     p.frustumCulled = false;
@@ -114,7 +197,7 @@ export class BeschavingLaag {
       .filter((x) => x.s && x.n > 0 && regios[x.g.regio]);
     const boten = groepen.filter((x) => x.s.tech.includes('boten') && regios[x.g.regio].kust).length;
     const raketten = Object.values(wereld.soorten).filter((s) => s.tech.includes('raket')).length;
-    const sleutel = groepen.map((x) => `${x.g.regio}${x.s.id}${x.n}${x.s.vlaggen.heuvels ? 'h' : ''}`).join(',') + `|${boten}|${raketten}|${planeet.zeeR}|${planeet.maxR}|${recept.grootte}`;
+    const sleutel = groepen.map((x) => `${x.g.regio}${x.s.id}${x.n}${x.s.vlaggen.heuvels ? 'h' : ''}${x.s.tech.length}`).join(',') + `|${boten}|${raketten}|${planeet.zeeR}|${planeet.maxR}|${recept.grootte}`;
     if (sleutel === this.sleutel) return;
     this.sleutel = sleutel;
     this.leeg(false);
@@ -175,7 +258,8 @@ export class BeschavingLaag {
       for (let i = 0; i < hutten; i++) {
         const dir = verspreid(rnd, midden, straal);
         const s3 = new THREE.Vector3(maat * 1.3, maat * 1.3, maat * 1.3);
-        if (land === 'ijs' && !onder) plaats(this.hol, dir, new THREE.Vector3(maat * 1.6, maat * 1.1, maat * 1.6), '#f4f8ff', 0); // iglo
+        if (onder) plaats(this.koraal, dir, s3.clone().multiplyScalar(0.6), ['#ff7eb6', '#ff9a5a', '#b48cff', '#5ad1c4'][i % 4], rnd() * 6, true); // koraalhuizen
+        else if (land === 'ijs') plaats(this.hol, dir, new THREE.Vector3(maat * 1.6, maat * 1.1, maat * 1.6), '#f4f8ff', 0); // iglo
         else if (plaats(this.wand, dir, s3, wandKleur, rnd() * 6, onder)) plaats(this.dak, dir, s3, dakKleur, rnd() * 6, onder);
       }
       if (n >= 4 && !onder) {
@@ -199,6 +283,26 @@ export class BeschavingLaag {
               lichtPos.push(p.clone().addScaledVector(dir, hoog * (0.25 + (0.6 * k) / lagen)).addScaledVector(new THREE.Vector3().randomDirection(), breed * 0.4));
               lichtSize.push(maat * 0.35);
             }
+          }
+        }
+      }
+      // Fabrieken (met rook) zodra ze machines hebben; met schone energie komen er windmolens bij
+      // en gaat de rook uit. Zo zie je op de planeet zelf wat schone energie betekent.
+      if (n >= 5 && !onder && s.tech.includes('machines')) {
+        const schoon = s.tech.includes('schoon');
+        for (let i = 0; i < (schoon ? 1 : 3); i++) {
+          const dir = verspreid(rnd, midden, straal * 1.35);
+          const sch = new THREE.Vector3(maat * 2.2, maat * 2.2, maat * 2.2);
+          const p = plaats(this.fabriek, dir, sch, ['#c9b8a0', '#b9c2cc', '#d8c7a6'][i % 3], rnd() * 6);
+          if (p && !schoon) this.rookBronnen.push({ pos: p.clone().addScaledVector(dir, maat * 2.4), dir: dir.clone(), maat, fase: rnd() });
+        }
+        if (schoon) {
+          for (let i = 0; i < 4; i++) {
+            const dir = verspreid(rnd, midden, straal * 1.7);
+            const sch = maat * 2.6;
+            const hoek = rnd() * 6;
+            const p = plaats(this.mast, dir, new THREE.Vector3(sch, sch, sch), '#f2f2f2', hoek);
+            if (p) this.molens.push({ voet: p.clone(), dir: dir.clone(), schaal: sch, hoek, draai: rnd() * 6, snel: 1.2 + rnd() });
           }
         }
       }
@@ -262,7 +366,8 @@ export class BeschavingLaag {
 
     this.vulPunten(this.vuur, vuurPos, vuurSize);
     this.vulPunten(this.licht, lichtPos, lichtSize);
-    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.heuvel]) {
+    this.rotor.count = this.molens.length;
+    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.heuvel, this.fabriek, this.mast, this.koraal]) {
       m.instanceMatrix.needsUpdate = true;
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     }
@@ -281,8 +386,10 @@ export class BeschavingLaag {
 
   leeg(ookSleutel = true) {
     if (ookSleutel) this.sleutel = '';
-    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.boot, this.raket, this.heuvel]) m.count = 0;
-    for (const p of [this.vuur, this.licht, this.vlam]) p.geometry.setDrawRange(0, 0);
+    for (const m of [this.hol, this.wand, this.dak, this.akker, this.gebouw, this.boot, this.raket, this.heuvel, this.fabriek, this.mast, this.rotor, this.koraal]) m.count = 0;
+    for (const p of [this.vuur, this.licht, this.vlam, this.rook]) p.geometry.setDrawRange(0, 0);
+    this.molens = [];
+    this.rookBronnen = [];
     this.wegen.geometry.setDrawRange(0, 0);
     this.boten = [];
     this.raketten = [];
@@ -335,5 +442,25 @@ export class BeschavingLaag {
     });
     if (this.raketten.length) this.raket.instanceMatrix.needsUpdate = true;
     this.vulPunten(this.vlam, vlamPos, vlamSize);
+
+    // Windmolens draaien, fabrieken roken.
+    const zAs = new THREE.Vector3(0, 0, 1);
+    this.molens.forEach((m, i) => {
+      m.draai += dt * m.snel;
+      q.setFromUnitVectors(omhoog, m.dir).multiply(new THREE.Quaternion().setFromAxisAngle(omhoog, m.hoek)).multiply(new THREE.Quaternion().setFromAxisAngle(zAs, m.draai));
+      v.copy(m.voet).addScaledVector(m.dir, m.schaal * 1.42).add(new THREE.Vector3(0, 0, m.schaal * 0.13).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(omhoog, m.dir).multiply(new THREE.Quaternion().setFromAxisAngle(omhoog, m.hoek))));
+      m4.compose(v, q, sc.setScalar(m.schaal));
+      this.rotor.setMatrixAt(i, m4);
+    });
+    if (this.molens.length) this.rotor.instanceMatrix.needsUpdate = true;
+    const rookPos = [], rookSize = [];
+    for (const b of this.rookBronnen) {
+      for (let k = 0; k < 5; k++) {
+        const t = (this.tijd * 0.25 + b.fase + k / 5) % 1;
+        rookPos.push(b.pos.clone().addScaledVector(b.dir, t * b.maat * 5).add(new THREE.Vector3(Math.sin(t * 6 + b.fase * 9), 0, Math.cos(t * 5)).multiplyScalar(t * b.maat)));
+        rookSize.push(b.maat * (0.6 + t * 1.6) * (1 - t * 0.6));
+      }
+    }
+    this.vulPunten(this.rook, rookPos, rookSize);
   }
 }

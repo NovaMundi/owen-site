@@ -921,7 +921,7 @@ export class Planeet {
     }
     this.manen = [];
     const rnd = maakRandom(this.r.zaad + '-manen');
-    const fijn = this.kwaliteit === 'hoog' ? 24 : 12;
+    const fijn = this.kwaliteit === 'hoog' ? 32 : 20;
     this.r.manen.forEach((maan, i) => {
       const draaier = new THREE.Group();
       draaier.rotation.z = (rnd() - 0.5) * 0.6;
@@ -933,13 +933,33 @@ export class Planeet {
       mg = mergeVertices(mg);
       const mr = maakRuis(this.r.zaad + '-maan' + i);
       const mp = mg.attributes.position;
+      // Een echte maan: donkere vlakten ("zeeën"), kraters met een lichte rand en een donkere
+      // bodem. De kleur die het kind kiest blijft de hoofdkleur; dit geeft alleen licht en donker.
+      const kraters = Array.from({ length: 14 }, () => {
+        const v = new THREE.Vector3(rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1).normalize();
+        const straal = 0.12 + rnd() ** 2 * 0.35;
+        return { v, straal, cos: Math.cos(straal * 1.35) };
+      });
+      const licht = new Float32Array(mp.count * 3);
       for (let k = 0; k < mp.count; k++) {
         const x = mp.getX(k), y = mp.getY(k), z = mp.getZ(k);
-        const s = ms * (1 + mr.lagen(x, y, z, 5, 1.8) * 0.12 - Math.max(0, mr.kammen(x, y, z, 2, 3) - 0.75) * 0.1);
+        let deuk = 0, rand = 0;
+        for (const kr of kraters) {
+          const dot = x * kr.v.x + y * kr.v.y + z * kr.v.z;
+          if (dot <= kr.cos) continue;
+          const q = Math.acos(Math.min(1, dot)) / kr.straal;
+          if (q < 1) deuk += (1 - q * q) * 0.6;
+          else rand += Math.sin(((q - 1) / 0.35) * Math.PI) * 0.5;
+        }
+        const s = ms * (1 + mr.lagen(x, y, z, 5, 1.8) * 0.035 - deuk * 0.11 + rand * 0.04);
         mp.setXYZ(k, x * s, y * s, z * s);
+        const zee = glad(0.05, 0.25, mr.lagen(x + 3.1, y, z, 3, 1.1));
+        const l = (1.0 - zee * 0.38 - deuk * 0.55 + rand * 0.5) * (0.92 + mr.lagen(x * 4, y * 4, z * 4, 2, 2) * 0.16);
+        licht[k * 3] = licht[k * 3 + 1] = licht[k * 3 + 2] = Math.max(0.35, Math.min(1.2, l));
       }
+      mg.setAttribute('color', new THREE.BufferAttribute(licht, 3));
       mg.computeVertexNormals();
-      const bol = new THREE.Mesh(mg, new THREE.MeshStandardMaterial({ color: maan.kleur || '#bbbbbb', roughness: 1 }));
+      const bol = new THREE.Mesh(mg, new THREE.MeshStandardMaterial({ color: maan.kleur || '#bbbbbb', roughness: 1, vertexColors: true }));
       bol.position.x = 2.2 + i * 0.7;
       draaier.add(bol);
       this.groep.add(draaier);
