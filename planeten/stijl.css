@@ -579,3 +579,7 @@ img.tikbaar { cursor: pointer; }
 .gebed-ja { background: linear-gradient(160deg, #ffe58a, #ffb86b); color: #3b2a10; }
 .gebed-nee { background: rgba(0, 0, 0, 0.07); color: #555; }
 @media (max-width: 560px) { #gebed { flex-wrap: wrap; justify-content: center; } }
+/* Gebed: niet half zo breed door left:50% (dan krimpt het kaartje), maar gewoon in het midden. */
+#gebed { left: 16px; right: 16px; margin: 0 auto; width: fit-content; transform: none; animation-name: gebedIn2; }
+@keyframes gebedIn2 { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+.gebed-tekst { min-width: 180px; }
