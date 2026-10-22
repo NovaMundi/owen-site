@@ -325,3 +325,21 @@ footer { text-align: center; padding: 1.5rem; font-size: 0.85rem; color: #999; }
   transition: transform .15s, box-shadow .15s;
 }
 .super-knop:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(229,160,28,.5); }
+
+/* Planeetmakers */
+.planeet-kaart { text-align: center; }
+.planeet-tekst { margin: 0 auto 0.9rem; max-width: 640px; }
+.planeet-knop {
+  display: inline-block;
+  padding: 0.85rem 1.8rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #3a1c71, #5b5bd6 55%, #2bb3c0);
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 6px 18px rgba(91, 91, 214, 0.4);
+  transition: transform .15s, box-shadow .15s;
+}
+.planeet-knop:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(91, 91, 214, 0.5); }
+.planeet-knop:active { transform: scale(0.97); }

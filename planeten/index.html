@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#03040a">
+  <title>Planeetmakers</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪐</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./stijl.css">
+  <script type="importmap">
+    { "imports": {
+      "three": "./vendor/three.module.min.js",
+      "three/addons/": "./vendor/addons/"
+    } }
+  </script>
+</head>
+<body>
+  <canvas id="doek"></canvas>
+
+  <section id="start">
+    <h1>Planeetmakers</h1>
+    <p class="ondertitel">Wie gaat er bouwen?</p>
+    <div id="makers"></div>
+    <button id="wolkknop" class="rond" title="Meenemen naar andere apparaten">☁️</button>
+  </section>
+  <section id="wolkpaneel" hidden></section>
+
+  <section id="maker" hidden>
+    <header class="balk">
+      <button id="huis" class="rond" title="Terug">🏠</button>
+      <button id="verhaalknop" class="rond" title="Het verhaal van je planeet" hidden>📜<span class="bolletje" hidden></span></button>
+      <div class="titelblok"><div id="titel"></div><div id="jaar"></div></div>
+      <button id="wensknop" class="rond" title="Een wens inspreken">🎤</button>
+      <button id="stemknop" class="rond" title="Voorlezen aan of uit">🗣️</button>
+      <button id="terug" class="rond uit" title="Oeps, terug">↩️</button>
+    </header>
+    <div id="paneel" hidden></div>
+    <nav id="dock"></nav>
+  </section>
+
+  <section id="tekentafel" hidden></section>
+  <div id="nieuws"></div>
+  <section id="weg" hidden></section>
+  <div id="melding" hidden></div>
+  <div id="flits"></div>
+  <div id="vraag" hidden>
+    <div class="vraag-doos">
+      <div class="vraag-tekst"></div>
+      <div class="vraag-knoppen"><button class="ja">Ja</button><button class="nee">Nee</button></div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/maker.js"></script>
+</body>
+</html>
