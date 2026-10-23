@@ -23,6 +23,7 @@ import { geschiedenisGrafiek } from './grafiek.js';
 import { openKiezen } from './kiezen.js';
 import { toonWezenKaart } from './wezenkaart.js';
 import { openOntdekkingsboom } from './ontdekkingsboom.js';
+import qrcode from '../vendor/qrcode.js';
 // Tekst uit de wolk (namen, plaatjes) veilig in de pagina zetten.
 const veilig = (t) => String(t ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
 
@@ -461,8 +462,8 @@ function toonWolk() {
   } else {
     el.innerHTML = `<div class="weg-doos">
       <h2>☁️ De planeten gaan mee</h2>
-      <p class="weg-uitleg">Nog een tablet of computer koppelen? Maak een koppel-link en open die daar één keer. Daarna gaat het vanzelf.</p>
-      <div class="wolk-links"><button class="tt-klaar wolk-maak">🔗 Koppel-link maken</button></div>
+      <p class="weg-uitleg">Nog een tablet koppelen? Maak een QR-code en scan die met de camera van de tablet. Daarna gaat het vanzelf.</p>
+      <div class="wolk-links"><button class="tt-klaar wolk-maak">📷 QR-code maken</button></div>
       <button class="opnieuw wolk-los">🧹 Alle andere apparaten loskoppelen</button>
       ${wolk.geweigerd ? '<p class="weg-uitleg">⚠️ Deze koppel-link werkt niet meer. Maak op een gekoppeld apparaat een nieuwe.</p>' : ''}
       <button class="tt-klaar wolk-bak">🗑️ Prullenbak</button>
@@ -483,9 +484,18 @@ function toonWolk() {
         vak.innerHTML = '<p class="weg-uitleg">Dat lukte niet. Is er internet?</p>';
         return;
       }
+      // Net als bij KIZZO: een QR-code per site, te scannen met de camera van de tablet van het kind.
+      // De link eronder is reserve (kopiëren), voor een computer zonder camera.
+      const naamVanSite = (l) => (l.includes('owenvanpelt') ? 'Tablet van Owen' : l.includes('jakevanpelt') ? 'Tablet van Jake' : 'Tablet');
+      const qrSvg = (l) => {
+        const q = qrcode(0, 'M');
+        q.addData(l);
+        q.make();
+        return q.createSvgTag({ cellSize: 6, margin: 3, scalable: true });
+      };
       vak.innerHTML =
-        u.links.map((l) => `<div class="wolk-link"><code>${l}</code><button class="kleurbol plus wolk-kopie" data-link="${l}" title="Kopiëren">📋</button></div>`).join('') +
-        `<p class="weg-uitleg">Deze links werken ${u.dagen} dagen, op hooguit ${u.keer} apparaten. Deel ze alleen met je eigen gezin.</p>`;
+        `<div class="wolk-qrs">${u.links.map((l) => `<figure class="wolk-qr">${qrSvg(l)}<figcaption>${naamVanSite(l)}</figcaption><button class="opnieuw wolk-kopie" data-link="${veilig(l)}">📋 Link kopiëren</button></figure>`).join('')}</div>` +
+        `<p class="weg-uitleg">Open de camera op de tablet en richt hem op de QR-code. Tik op de link die verschijnt. Deze codes werken ${u.dagen} dagen, op hooguit ${u.keer} apparaten. Laat ze alleen aan je eigen gezin zien.</p>`;
       vak.querySelectorAll('.wolk-kopie').forEach((b) =>
         (b.onclick = async () => {
           try {

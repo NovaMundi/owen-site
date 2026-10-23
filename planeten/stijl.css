@@ -583,3 +583,10 @@ img.tikbaar { cursor: pointer; }
 #gebed { left: 16px; right: 16px; margin: 0 auto; width: fit-content; transform: none; animation-name: gebedIn2; }
 @keyframes gebedIn2 { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
 .gebed-tekst { min-width: 180px; }
+
+/* QR-codes om een tablet te koppelen (zoals bij KIZZO) */
+.wolk-qrs { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin: 10px 0; }
+.wolk-qr { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.wolk-qr svg { width: min(220px, 70vw); height: auto; background: #fff; border-radius: 14px; padding: 6px; }
+.wolk-qr figcaption { font-weight: 700; font-size: 16px; }
+.wolk-qr .wolk-kopie { min-height: 40px; font-size: 14px; }
