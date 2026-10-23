@@ -69,7 +69,9 @@ function laadOpnames() {
       .catch(() => {});
   }
 }
-function speel(naam, { vol = 1, snelheid = 1 } = {}) {
+// laag = alleen de lage tonen doorlaten (Hz): de opgenomen donder bevat veel gesis, dat klonk als
+// storing. Met een laagdoorlaatfilter blijft alleen het gerommel over.
+function speel(naam, { vol = 1, snelheid = 1, laag = 0 } = {}) {
   const buf = buffers[naam];
   if (!buf) return false;
   const a = audio();
@@ -78,7 +80,13 @@ function speel(naam, { vol = 1, snelheid = 1 } = {}) {
   bron.playbackRate.value = snelheid;
   const g = a.createGain();
   g.gain.value = vol;
-  bron.connect(g).connect(hoofd);
+  if (laag) {
+    const f = a.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = laag;
+    f.Q.value = 0.7;
+    bron.connect(f).connect(g).connect(hoofd);
+  } else bron.connect(g).connect(hoofd);
   bron.start();
   return true;
 }
@@ -150,8 +158,8 @@ export const geluid = {
   },
   donder(sterkte = 1) {
     if (!this.aan || sterkte <= 0.02) return;
-    if (speel('donder', { vol: sterkte, snelheid: 0.85 + Math.random() * 0.3 })) return;
-    ruis(2.2, { freq: 400, glijNaar: 60, vol: 0.7 * sterkte });
+    if (speel('donder', { vol: sterkte * 1.3, snelheid: 0.8 + Math.random() * 0.2, laag: 350 })) return;
+    ruis(2.2, { freq: 250, glijNaar: 50, vol: 0.6 * sterkte });
   },
   poef() {
     if (!this.aan) return;

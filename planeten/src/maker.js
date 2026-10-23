@@ -2226,7 +2226,8 @@ function flitsIn(s) {
   flitsKracht = 1;
   // Donder: luider als de storm aan jouw kant van de planeet is.
   const dichtbij = plek.dot(camera.position.clone().normalize());
-  if (dichtbij > 0.4 && Math.random() < 0.5) setTimeout(() => geluid.donder(Math.min(1, (dichtbij - 0.4) * 1.8)), 200 + Math.random() * 900);
+  // Alleen een storm echt dichtbij laat je rommelen (verre donder klonk als gekraak tussendoor).
+  if (dichtbij > 0.65 && Math.random() < 0.5) setTimeout(() => geluid.donder(Math.min(1, (dichtbij - 0.65) * 2.5)), 200 + Math.random() * 900);
 }
 
 // Wat er op de planeet te zien is: de keuzes van het kind plus het klimaat van nu.
