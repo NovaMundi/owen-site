@@ -308,19 +308,19 @@ function planFoto() {
 }
 // Oude planeten zonder foto krijgen er alsnog een, één voor één.
 async function maakOntbrekendeFotos() {
-  for (const m of K.MAKERS) {
-    if (!planeten[m.id] || fotos[m.id]) continue;
-    const p = await Planeet.maak(planeten[m.id], 'snel');
-    fotos[m.id] = fotoVan(p, { ...KAAL, ...planeten[m.id] });
+  for (const id of K.plekkenVan(speler)) {
+    if (!planeten[id] || fotos[id]) continue;
+    const p = await Planeet.maak(planeten[id], 'snel');
+    fotos[id] = fotoVan(p, { ...KAAL, ...planeten[id] });
     p.opruimen();
     schrijf(FOTOS, fotos);
     if (!wie) {
-      const img = document.querySelector(`.maker-knop[data-id="${m.id}"] .mini`);
+      const img = document.querySelector(`.maker-knop[data-id="${id}"] .mini`);
       if (img) {
         const nieuw = document.createElement('img');
         nieuw.className = 'mini foto';
         nieuw.alt = '';
-        nieuw.src = fotos[m.id];
+        nieuw.src = fotos[id];
         img.replaceWith(nieuw);
       }
     }
@@ -344,7 +344,7 @@ async function toonStart() {
   startScherm.hidden = false;
   ruimOp();
   tekenStartKaarten();
-  stem.zeg('Welkom, planeetmakers! Wie gaat er bouwen?');
+  stem.zeg(`Hoi ${naamVan(speler)}! Welke planeet wil je?`);
   // Wat er op andere apparaten is gebeurd ophalen (stil op de achtergrond).
   if (wolk.aan) {
     $('#wolkknop').classList.add('bezig');
@@ -368,29 +368,58 @@ function herlaadUitOpslag() {
 // Op jakevanpelt.com is Jake de baas, op owenvanpelt.com Owen. Daar staat je eigen planeet
 // voorop, en alleen je eigen planeet kun je helemaal weggooien. Op papa's laptop mag alles.
 const EIGENAAR = location.hostname.includes('jakevanpelt') ? 'jake' : location.hostname.includes('owenvanpelt') ? 'owen' : null;
-const magWissen = (id) => !EIGENAAR || EIGENAAR === id;
+const magWissen = (id) => !EIGENAAR || EIGENAAR === K.spelerVan(id);
+// Elke speler zijn eigen planeten: op de site van een kind alleen die van hem. Op papa's laptop
+// kies je eerst de speler (onthouden op dit apparaat).
+wolk.zetSpeler(EIGENAAR);
+let speler = EIGENAAR || (() => {
+  try {
+    return localStorage.getItem('planeetmakers-speler') || 'papa';
+  } catch {
+    return 'papa';
+  }
+})();
 
 function tekenStartKaarten() {
   const lijst = $('#makers');
   lijst.innerHTML = '';
-  const volgorde = EIGENAAR ? [...K.MAKERS].sort((a, b) => (b.id === EIGENAAR) - (a.id === EIGENAAR)) : K.MAKERS;
-  for (const m of volgorde) {
-    const r = planeten[m.id];
+  // Op papa's laptop: eerst kiezen wie er speelt. Op de tablet van een kind niet.
+  const keuze = $('#spelerkeuze');
+  keuze.hidden = !!EIGENAAR;
+  keuze.innerHTML = '';
+  if (!EIGENAAR)
+    for (const m of K.MAKERS) {
+      const b = document.createElement('button');
+      b.className = 'speler-tab' + (m.id === speler ? ' aan' : '');
+      b.textContent = m.naam;
+      b.onclick = () => {
+        geluid.klik();
+        speler = m.id;
+        try {
+          localStorage.setItem('planeetmakers-speler', speler);
+        } catch {}
+        tekenStartKaarten();
+      };
+      keuze.appendChild(b);
+    }
+  $('#start .ondertitel').textContent = `Hoi ${naamVan(speler)}! Welke planeet?`;
+  for (const id of K.plekkenVan(speler)) {
+    const r = planeten[id];
     const k = document.createElement('button');
-    k.className = 'maker-knop' + (m.id === EIGENAAR ? ' eigen' : '');
-    k.dataset.id = m.id;
-    k.innerHTML = fotos[m.id]
-      ? `<img class="mini foto" src="${fotos[m.id]}" alt="">`
+    k.className = 'maker-knop eigen';
+    k.dataset.id = id;
+    k.innerHTML = fotos[id]
+      ? `<img class="mini foto" src="${fotos[id]}" alt="">`
       : r
         ? `<span class="mini laden"></span>`
-        : `<span class="mini leeg">?</span>`;
-    k.innerHTML += `<span class="maker-naam">${m.naam}</span><span class="maker-sub"></span>`;
-    k.querySelector('.maker-sub').textContent = r ? r.naam || 'Planeet zonder naam' : 'Nieuwe planeet';
-    if (wolk.botsing(m.id)) k.insertAdjacentHTML('beforeend', '<span class="botsing-teken">⚠️</span>');
+        : `<span class="mini leeg">+</span>`;
+    k.innerHTML += `<span class="maker-naam"></span><span class="maker-sub">Planeet ${K.plekNummer(id)}</span>`;
+    k.querySelector('.maker-naam').textContent = r ? r.naam || 'Zonder naam' : 'Nieuwe planeet';
+    if (wolk.botsing(id)) k.insertAdjacentHTML('beforeend', '<span class="botsing-teken">⚠️</span>');
     k.addEventListener('click', () => {
       geluid.plop();
-      if (wolk.botsing(m.id)) return kiesVersie(m.id);
-      begin(m.id);
+      if (wolk.botsing(id)) return kiesVersie(id);
+      begin(id);
     });
     lijst.appendChild(k);
   }
@@ -599,14 +628,14 @@ function metId(r, eigenaar) {
   if (!r.id) {
     r.id = crypto.randomUUID ? crypto.randomUUID() : 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
     r.schema = 2;
-    r.eigenaar = eigenaar;
+    r.eigenaar = K.spelerVan(eigenaar);
     r.zichtbaar = 'familie';
     r.gemaakt = Date.now();
   }
   return r;
 }
 
-const naamVan = (id) => K.MAKERS.find((m) => m.id === id).naam;
+const naamVan = (id) => (K.MAKERS.find((m) => m.id === K.spelerVan(id)) || { naam: 'Maker' }).naam;
 
 function toonNaam() {
   $('#titel').textContent = recept.naam || `Planeet van ${naamVan(wie)}`;
@@ -1674,7 +1703,7 @@ async function maakEchtKnop(w) {
     stem.zeg(w.weergave === 'echt' ? `${w.naam} is weer een tekening.` : `Daar is de echte ${w.naam}!`);
     return;
   }
-  const status = await echtStatus(wie, wolk.code);
+  const status = await echtStatus(K.spelerVan(wie), wolk.code);
   if (!status.kan) return toonMelding(wolk.aan ? 'De toverknop werkt nu even niet. Probeer het later nog eens.' : 'Papa moet eerst de wolk aanzetten (☁️ op het startscherm).', 4000);
   if (status.over <= 0) {
     stem.zeg('Je toverkracht is op voor vandaag. Morgen kan het weer!');
@@ -1689,7 +1718,7 @@ async function maakEchtKnop(w) {
     stem.zeg(`Ik ga ${w.naam} echt maken. Even geduld, dit duurt een halve minuut.`);
     const twinkel = setInterval(() => geluid.pling(Math.floor(Math.random() * 5)), 1400);
     try {
-      const { echt, over } = await vraagEcht(wie, { ...w, huid }, wolk.code);
+      const { echt, over } = await vraagEcht(K.spelerVan(wie), { ...w, huid }, wolk.code);
       zetWezen(w.id, { huid, echt, weergave: 'echt' });
       verbergMelding();
       geluid.geboorte();
@@ -1756,7 +1785,7 @@ function openKaart(w) {
   toonWezenKaart({
     wezen: w,
     leven,
-    maker: wie,
+    maker: K.spelerVan(wie),
     opBezoek: () => {
       sluitPaneel();
       const d = wezens.willekeurigDier(w.id);
@@ -2615,7 +2644,7 @@ window.__maker = { gebed: (nu = true) => probeerGebed(undefined, nu), get gereed
 if (wolk.koppelUitLink()) setTimeout(() => toonMelding('☁️ Gekoppeld! De planeten komen eraan...', 3500), 300);
 $('#kiesknop').addEventListener('click', () => {
   geluid.klik();
-  openKiezen({ makers: K.MAKERS, opBewaard: () => wolk.planStuur('wensen', 2000) });
+  openKiezen({ makers: EIGENAAR ? K.MAKERS.filter((m) => m.id === EIGENAAR) : K.MAKERS, opBewaard: () => wolk.planStuur('wensen', 2000) });
 });
 $('#wolkknop').addEventListener('click', () => {
   geluid.klik();

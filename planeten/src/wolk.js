@@ -13,7 +13,9 @@
 const WOLK = location.hostname.endsWith('jakevanpelt.com') || location.port === '8888' ? '/.netlify/functions/planeten' : 'https://jakevanpelt.com/.netlify/functions/planeten';
 const STAND = 'planeetmakers-wolk-v1';
 const OPSLAG = { recept: 'planeetmakers-v1', wereld: 'planeetmakers-leven-v1', foto: 'planeetmakers-fotos-v1', wensen: 'planeetmakers-wensen-v1' };
-export const PLANETEN = ['owen', 'jake', 'papa'];
+import { ALLE_PLANEETIDS, spelerVan } from './keuzes.js';
+// Welke planeten gaan mee: op de tablet van een kind alleen de eigen plekken (zie zetSpeler).
+export let PLANETEN = [...ALLE_PLANEETIDS];
 
 import { lees, schrijf, heeftGaten, SANDBOX } from './opslag.js';
 
@@ -104,6 +106,10 @@ const timers = {};
 let bezig = {};
 
 export const wolk = {
+  // Dit apparaat hoort bij één speler (owenvanpelt.com = Owen): alleen diens planeten ophalen en versturen.
+  zetSpeler(speler) {
+    PLANETEN = speler ? ALLE_PLANEETIDS.filter((id) => spelerVan(id) === speler) : [...ALLE_PLANEETIDS];
+  },
   get code() {
     return stand.code;
   },
@@ -132,10 +138,17 @@ export const wolk = {
   async maakLink(sites) {
     if (!(await zorgSleutel())) return null;
     try {
-      const r = await fetch(`${WOLK}?code=${stand.code}&actie=uitnodig`, { method: 'POST', headers: kop(), signal: wachtHooguit(20000) });
-      if (!r.ok) return null;
-      const u = await r.json();
-      return { ...u, links: sites.map((s) => `${s}/planeten/?familie=${stand.code}&uitnodiging=${u.uitnodiging}`) };
+      // Per site een eigen uitnodiging: wie de QR van Owen scant, krijgt een sleutel voor Owen.
+      const links = [];
+      let u = null;
+      for (const s of sites) {
+        const speler = s.includes('owenvanpelt') ? 'owen' : s.includes('jakevanpelt') ? 'jake' : 'papa';
+        const r = await fetch(`${WOLK}?code=${stand.code}&actie=uitnodig&speler=${speler}`, { method: 'POST', headers: kop(), signal: wachtHooguit(20000) });
+        if (!r.ok) continue;
+        u = await r.json();
+        links.push(`${s}/planeten/?familie=${stand.code}&uitnodiging=${u.uitnodiging}`);
+      }
+      return u && links.length ? { ...u, links } : null;
     } catch {
       return null;
     }
@@ -261,6 +274,7 @@ export const wolk = {
   // (die mag toveren). Een verzonnen code via een gewone opslag mag dat niet.
   async stuur(wie, forceer = false, aanzetten = false) {
     if (!stand.code || bezig[wie]) return false;
+    if (wie !== 'wensen' && !PLANETEN.includes(wie)) return false; // niet van deze speler
     if (stand.botsingen[wie] && !forceer) return false;
     const data = this.pakket(wie) || { recept: null };
     if (heeftGaten(data)) return false; // een plaatje is hier kwijt: liever niets sturen dan iets kapots

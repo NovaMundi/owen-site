@@ -590,3 +590,10 @@ img.tikbaar { cursor: pointer; }
 .wolk-qr svg { width: min(220px, 70vw); height: auto; background: #fff; border-radius: 14px; padding: 6px; }
 .wolk-qr figcaption { font-weight: 700; font-size: 16px; }
 .wolk-qr .wolk-kopie { min-height: 40px; font-size: 14px; }
+
+/* Eigen planeten per speler (3 plekken); op papa's laptop eerst de speler kiezen */
+#spelerkeuze { display: flex; gap: 8px; justify-content: center; margin: 4px 0 2px; }
+#spelerkeuze[hidden] { display: none; }
+.speler-tab { font: inherit; font-weight: 700; font-size: 16px; padding: 8px 18px; border-radius: 999px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.06); color: #fff; cursor: pointer; min-height: 44px; }
+.speler-tab.aan { background: var(--goud, #ffd34d); color: #222; border-color: transparent; }
+.mini.leeg { font-size: 44px; }
