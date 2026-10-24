@@ -13,7 +13,9 @@ function laad(url) {
 
 // Tekening midden op een wit vel van 1024×1024, zoals een echt getekend blaadje.
 export async function tekeningVoorMotor(w) {
-  const img = await laad(w.tekening || w.plaatje);
+  // Het plaatje met de ogen erin (de ruwe tekening heeft ze los, om te knipperen; dan ziet de
+  // beeldmotor geen ogen).
+  const img = await laad(w.plaatje || w.tekening);
   const c = document.createElement('canvas');
   c.width = c.height = 1024;
   const ctx = c.getContext('2d', { willReadFrequently: true });
