@@ -24,7 +24,7 @@ function getekendOp(id) {
   return new Date(t);
 }
 
-export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
+export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid, opDna }) {
   document.getElementById('wezenkaart-groot')?.remove();
   const w = leven.w;
   const info = leven.info(wezen.id);
@@ -41,7 +41,7 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
     afkomst = s.afkomst.soort === 'kruising' ? `Ontstaan uit de ${ouders.join(' en de ')}` : `Afgesplitst van de ${ouders[0] || 'anderen'}`;
   } else {
     const op = getekendOp(wezen.id);
-    afkomst = `Getekend door ${makerNaam}${op ? ' op ' + op.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}`;
+    afkomst = wezen.gestuurdDoor ? `DNA gekregen van ${wezen.gestuurdDoor}` : `Getekend door ${makerNaam}${op ? ' op ' + op.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}`;
   }
 
   // Ontdekkingen, met naam.
@@ -90,6 +90,7 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
       ${s ? '<button class="tt-klaar wk-boom">🌳 Ontdekkingsboom</button>' : ''}
       <button class="tt-klaar wk-luister">🔊 Luister</button>
       <button class="tt-klaar wk-lees">📖 Lees voor</button>
+      ${opDna && !(s && s.afkomst) ? '<button class="tt-klaar wk-dna">🧬 DNA sturen</button>' : ''}
     </div>
   </div>`;
   document.body.appendChild(el);
@@ -110,6 +111,10 @@ export function toonWezenKaart({ wezen, leven, maker, opBezoek, opGeluid }) {
     opBezoek && opBezoek();
   });
   el.querySelector('.wk-luister').onclick = () => opGeluid && opGeluid();
+  el.querySelector('.wk-dna')?.addEventListener('click', () => {
+    sluit();
+    opDna();
+  });
   el.querySelector('.wk-boom')?.addEventListener('click', () => openOntdekkingsboom({ wezen, leven }));
   el.querySelector('.wk-ontdekt')?.addEventListener('click', () => openOntdekkingsboom({ wezen, leven }));
   el.querySelectorAll('.wk-momenten .gebeurtenis').forEach((b) => (b.onclick = () => stem.zeg(b.dataset.tekst)));

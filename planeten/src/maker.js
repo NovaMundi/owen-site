@@ -195,6 +195,7 @@ function ruimOp() {
   clearTimeout(hdTimer);
   clearTimeout(gebedTimer);
   document.getElementById('gebed')?.remove();
+  document.getElementById('dna')?.remove();
   wezens.bidt = null;
   clearTimeout(fotoTimer);
   for (const p of [snel, hd]) {
@@ -615,6 +616,7 @@ async function begin(id) {
     werkJaarBij();
     if (weg && weg.nieuws.length) toonWeg(weg);
     planGebed(mijn);
+    kijkInBrievenbus(mijn);
     if (recept.klaar) planHD(0);
   } else {
     startGeboorte();
@@ -1792,7 +1794,104 @@ function openKaart(w) {
       if (d) bezoek(d, w);
     },
     opGeluid: () => maakGeluid(w, 1),
+    // DNA sturen kan alleen met de wolk aan (en niet in de testomgeving).
+    opDna: wolk.aan && !SANDBOX ? () => openDnaSturen(w) : null,
   });
+}
+
+// ================= DNA sturen =================
+// Een getekend wezen naar een ander kind sturen. De ontvanger beslist altijd zelf of het op zijn
+// planeet mag komen wonen (en op welke: de planeet die hij dan open heeft).
+function openDnaSturen(w) {
+  const ik = K.spelerVan(wie);
+  const el = document.createElement('section');
+  el.id = 'dna';
+  el.innerHTML = `<div class="dna-doos">
+    <img src="${veilig(beeldVan(w).open)}" alt="">
+    <h2>🧬 DNA sturen</h2>
+    <p>Naar wie stuur je het DNA van ${veilig(w.naam)}? Die mag zelf kiezen of hij hem wil.</p>
+    <div class="dna-knoppen">${K.MAKERS.filter((m) => m.id !== ik).map((m) => `<button class="tt-klaar dna-naar" data-naar="${m.id}">${m.naam}</button>`).join('')}</div>
+    <button class="opnieuw dna-dicht">Toch niet</button>
+  </div>`;
+  document.body.appendChild(el);
+  stem.zeg(`Naar wie stuur je het DNA van ${w.naam}?`);
+  el.querySelector('.dna-dicht').onclick = () => {
+    geluid.klik();
+    el.remove();
+  };
+  el.querySelectorAll('.dna-naar').forEach((b) =>
+    (b.onclick = async () => {
+      el.querySelectorAll('button').forEach((x) => (x.disabled = true));
+      b.textContent = 'Versturen...';
+      // Alles wat bij het uiterlijk hoort, niet het nummer (dat krijgt hij nieuw bij de ontvanger).
+      const { id, gestuurdDoor, ...wezen } = w;
+      const ok = await wolk.stuurDna(ik, b.dataset.naar, wezen);
+      el.remove();
+      if (ok) {
+        geluid.zwiep();
+        toonMelding(`🧬 Het DNA van ${w.naam} is onderweg naar ${naamVan(b.dataset.naar)}!`, 3500);
+        stem.zeg(`Het DNA van ${w.naam} is onderweg naar ${naamVan(b.dataset.naar)}. ${naamVan(b.dataset.naar)} mag zelf kiezen of hij hem wil.`);
+      } else toonMelding('Dat lukte niet. Is er internet?', 3000);
+    })
+  );
+}
+
+// Bij het openen van een planeet: ligt er DNA in de brievenbus? Dan vragen of het hier mag wonen.
+async function kijkInBrievenbus(mijn) {
+  if (SANDBOX || !wolk.aan) return;
+  const post = await wolk.haalPost(K.spelerVan(wie));
+  if (mijn !== sessie || !post.length) return;
+  const toon = () => {
+    if (mijn !== sessie) return;
+    const druk = !$('#weg').hidden || document.getElementById('verlies') || document.getElementById('gebed') || document.getElementById('dna') || tekentafelOpen() || geboorte;
+    if (druk) return void setTimeout(toon, 3000);
+    vraagDna(post[0], mijn);
+  };
+  setTimeout(toon, 2500);
+}
+function vraagDna(p, mijn) {
+  const w = p.wezen;
+  const van = naamVan(p.van);
+  const el = document.createElement('section');
+  el.id = 'dna';
+  el.innerHTML = `<div class="dna-doos">
+    <img src="${veilig(beeldVan(w).open)}" alt="">
+    <h2>📦 Post van ${veilig(van)}!</h2>
+    <p></p>
+    <div class="dna-knoppen">
+      <button class="tt-klaar dna-ja">🧬 Ja, welkom!</button>
+      <button class="opnieuw dna-nee">Nee, dank je</button>
+    </div>
+  </div>`;
+  const zin = `${van} stuurt je het DNA van ${w.naam}! Mag ${w.naam} op deze planeet komen wonen?`;
+  el.querySelector('p').textContent = zin;
+  document.body.appendChild(el);
+  geluid.plop();
+  stem.zeg(zin);
+  const ruimOp = () => {
+    el.remove();
+    wolk.postWeg(K.spelerVan(wie), p.id);
+  };
+  el.querySelector('.dna-nee').onclick = () => {
+    geluid.klik();
+    ruimOp();
+    stem.zeg('Dat is goed. Dan blijft het bij ' + van + '.');
+  };
+  el.querySelector('.dna-ja').onclick = () => {
+    if (mijn !== sessie) return ruimOp();
+    ruimOp();
+    const nieuw = { ...w, id: 'w' + Date.now().toString(36) + Math.floor(Math.random() * 1e4), gestuurdDoor: van };
+    bewaarStap();
+    recept.wezens = [...(recept.wezens || []), nieuw];
+    wijzig();
+    opslaan();
+    geluid.geboorte();
+    stem.zeg(`Welkom, ${nieuw.naam}! Kijk, hij leeft nu ook op jouw planeet.`);
+    setTimeout(() => {
+      const d = wezens.willekeurigDier(nieuw.id);
+      if (d && mijn === sessie) bezoek(d, nieuw);
+    }, 600);
+  };
 }
 
 function maakGeluid(w, hoogte) {

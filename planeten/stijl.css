@@ -597,3 +597,12 @@ img.tikbaar { cursor: pointer; }
 .speler-tab { font: inherit; font-weight: 700; font-size: 16px; padding: 8px 18px; border-radius: 999px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.06); color: #fff; cursor: pointer; min-height: 44px; }
 .speler-tab.aan { background: var(--goud, #ffd34d); color: #222; border-color: transparent; }
 .mini.leeg { font-size: 44px; }
+
+/* DNA sturen en ontvangen */
+#dna { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: rgba(10, 14, 30, 0.7); padding: 16px; overflow-y: auto; }
+.dna-doos { background: #f6f1e7; color: #3b3a46; border-radius: 22px; padding: 20px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+.dna-doos img { width: min(160px, 26vh); height: min(160px, 26vh); object-fit: contain; }
+.dna-doos h2 { margin: 8px 0 6px; font-size: 24px; }
+.dna-doos p { font-size: 18px; line-height: 1.4; margin: 0 0 14px; }
+.dna-knoppen { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 10px; }
+.dna-knoppen button { min-height: 56px; min-width: 120px; font-size: 18px; }

@@ -125,6 +125,39 @@ export const wolk = {
   get geweigerd() {
     return !!stand.geweigerd && !stand.sleutel;
   },
+  // DNA van een wezen naar een ander kind in de familie sturen (die moet het eerst goedkeuren).
+  async stuurDna(van, naar, wezen) {
+    if (!(await zorgSleutel())) return false;
+    try {
+      const r = await fetch(`${WOLK}?code=${stand.code}&actie=dna&van=${van}&naar=${naar}`, {
+        method: 'POST',
+        headers: kop({ 'content-type': 'application/json' }),
+        body: JSON.stringify({ wezen }),
+        signal: wachtHooguit(30000),
+      });
+      return r.ok;
+    } catch {
+      return false;
+    }
+  },
+  // Wat er in de brievenbus van deze speler ligt. Alles wat binnenkomt, eerst ontsmetten.
+  async haalPost(speler) {
+    if (!stand.code || !(await zorgSleutel())) return [];
+    try {
+      const r = await fetch(`${WOLK}?code=${stand.code}&actie=post&speler=${speler}`, { headers: kop(), signal: wachtHooguit(20000) });
+      if (!r.ok) return [];
+      return (await r.json())
+        .map((p) => ({ ...p, wezen: veilig({ recept: { wezens: [p.wezen] } }).recept.wezens[0] }))
+        .filter((p) => p.wezen);
+    } catch {
+      return [];
+    }
+  },
+  async postWeg(speler, id) {
+    try {
+      await fetch(`${WOLK}?code=${stand.code}&actie=post-weg&speler=${speler}&id=${id}`, { method: 'POST', headers: kop(), signal: wachtHooguit(20000) });
+    } catch {}
+  },
   // Alle andere apparaten loskoppelen (als er ooit een link rondgaat). Daarna alleen nog via een nieuwe koppel-link.
   async alleenDit() {
     if (!(await zorgSleutel())) return false;
