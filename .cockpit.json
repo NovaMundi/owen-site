@@ -1,6 +1,6 @@
 {
   "health": "green",
   "stage": "live",
-  "next": "Jongens laten spelen met eigen 3 planeetplekken, DNA sturen en mond; daarna panel over testsessie-aantekeningen",
-  "note": "Na testsessie: toveren gerepareerd (OpenAI-model gpt-image-1 uitgezet, nu gpt-image-2), ogen mee bij toveren, 10x toveren voor de jongens, eigen 3 planeten per speler (server-afgeschermd), mond tekenen, DNA sturen binnen familie"
+  "next": "Tim: ouderaccount maken met de startcode en per tablet de nieuwe QR-code scannen",
+  "note": "Ouderportaal + kindaccounts zoals KIZZO (QR per kind, planeten/toveren/DNA/toegang per kind, familieplaneet), websites zijn nu een kijk-etalage"
 }
