@@ -18,6 +18,7 @@ import { ALLE_PLANEETIDS, spelerVan } from './keuzes.js';
 export let PLANETEN = [...ALLE_PLANEETIDS];
 
 import { lees, schrijf, heeftGaten, SANDBOX } from './opslag.js';
+import * as A from './account.js';
 
 // Vingerafdruk: is er sinds de laatste keer bijwerken iets veranderd? 'laatst' (wanneer er voor
 // het laatst gekeken is) telt niet mee: alleen kijken is geen verandering.
@@ -61,8 +62,10 @@ const WOORDEN = ['zorbix', 'blibo', 'lumi', 'kwasar', 'nebula', 'komeet', 'pluto
 
 let stand = lees(STAND, { code: null, versies: {}, afdrukken: {}, botsingen: {} });
 
-// De eigen sleutel van dit apparaat meesturen (zie netlify/lib/planeet-toegang.mjs).
-const kop = (extra = {}) => (stand.sleutel ? { ...extra, 'x-planeet-sleutel': stand.sleutel } : extra);
+// Wie is dit apparaat? Een kind met een QR-code (ouderportaal), of de oude eigen sleutel.
+const kop = (extra = {}) => (A.MODUS === 'spelen' ? { ...extra, ...A.kop() } : stand.sleutel ? { ...extra, 'x-planeet-sleutel': stand.sleutel } : extra);
+// Planeten die dit apparaat mag veranderen (de rest alleen ophalen om te bekijken).
+let SCHRIJF = null;
 let sleutelBezig = null;
 // De server kent onze sleutel niet (meer): vergeten, dan vraagt zorgSleutel een nieuwe (dat lukt
 // tijdens de overgang; daarna zegt het wolkpaneel dat er een nieuwe koppel-link nodig is).
@@ -73,6 +76,7 @@ function sleutelAfgewezen(r) {
   return true;
 }
 async function zorgSleutel() {
+  if (A.MODUS === 'spelen') return !!stand.code;
   if (!stand.code || stand.sleutel) return !!stand.sleutel;
   // Eén aanvraag tegelijk, ook als alle planeten tegelijk willen ophalen.
   sleutelBezig ||= (async () => {
@@ -110,6 +114,18 @@ export const wolk = {
   // Dit apparaat hoort bij één speler (owenvanpelt.com = Owen): alleen diens planeten ophalen en versturen.
   zetSpeler(speler) {
     PLANETEN = speler ? ALLE_PLANEETIDS.filter((id) => spelerVan(id) === speler) : [...ALLE_PLANEETIDS];
+  },
+  // Kindaccount: de familie en welke planeten dit kind mag zien en veranderen.
+  zetAccount(familie, lezen, schrijven) {
+    if (stand.code !== familie) {
+      stand = { code: familie, versies: {}, afdrukken: {}, botsingen: {} };
+      bewaarStand();
+    }
+    PLANETEN = [...lezen];
+    SCHRIJF = new Set(schrijven);
+  },
+  magSchrijven(wie) {
+    return wie === 'wensen' || (SCHRIJF ? SCHRIJF.has(wie) : PLANETEN.includes(wie));
   },
   get code() {
     return stand.code;
@@ -268,8 +284,8 @@ export const wolk = {
       if (veranderdHier) this.stuur(wie);
       return;
     }
-    // In de wolk staat een nieuwere versie.
-    if (!hier || !veranderdHier) {
+    // In de wolk staat een nieuwere versie. (Een planeet van een ander om alleen te bekijken: altijd die.)
+    if (!hier || !veranderdHier || !this.magSchrijven(wie)) {
       this.zetPakket(wie, doc.data);
       stand.versies[wie] = doc.versie;
       stand.afdrukken[wie] = afdruk(this.pakket(wie));
@@ -308,7 +324,7 @@ export const wolk = {
   // (die mag toveren). Een verzonnen code via een gewone opslag mag dat niet.
   async stuur(wie, forceer = false, aanzetten = false) {
     if (!stand.code || bezig[wie]) return false;
-    if (wie !== 'wensen' && !PLANETEN.includes(wie)) return false; // niet van deze speler
+    if (!this.magSchrijven(wie)) return false; // niet van deze speler (of alleen kijken)
     if (stand.botsingen[wie] && !forceer) return false;
     const data = this.pakket(wie) || { recept: null };
     if (heeftGaten(data)) return false; // een plaatje is hier kwijt: liever niets sturen dan iets kapots

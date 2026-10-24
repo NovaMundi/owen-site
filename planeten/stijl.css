@@ -606,3 +606,10 @@ img.tikbaar { cursor: pointer; }
 .dna-doos p { font-size: 18px; line-height: 1.4; margin: 0 0 14px; }
 .dna-knoppen { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 10px; }
 .dna-knoppen button { min-height: 56px; min-width: 120px; font-size: 18px; }
+
+/* Kijkstand (etalage op de website van een kind) en planeten van een ander om te bekijken */
+.etalage-spelen { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 22px; }
+.etalage-spelen button { min-height: 56px; font-size: 20px; padding: 0 28px; }
+.ouder-link { color: rgba(255,255,255,0.6); font-size: 14px; }
+body.alleen-kijken #wensknop, body.alleen-kijken #terug { display: none; }
+body.kijkstand #kiesknop, body.kijkstand #wolkknop { display: none; }

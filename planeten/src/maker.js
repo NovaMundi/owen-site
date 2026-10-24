@@ -24,6 +24,7 @@ import { openKiezen } from './kiezen.js';
 import { toonWezenKaart } from './wezenkaart.js';
 import { openOntdekkingsboom } from './ontdekkingsboom.js';
 import qrcode from '../vendor/qrcode.js';
+import * as A from './account.js';
 // Tekst uit de wolk (namen, plaatjes) veilig in de pagina zetten.
 const veilig = (t) => String(t ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
 
@@ -308,8 +309,8 @@ function planFoto() {
   fotoTimer = setTimeout(maakFoto, 1200);
 }
 // Oude planeten zonder foto krijgen er alsnog een, één voor één.
-async function maakOntbrekendeFotos() {
-  for (const id of K.plekkenVan(speler)) {
+async function maakOntbrekendeFotos(ids = Object.keys(planeten)) {
+  for (const id of ids) {
     if (!planeten[id] || fotos[id]) continue;
     const p = await Planeet.maak(planeten[id], 'snel');
     fotos[id] = fotoVan(p, { ...KAAL, ...planeten[id] });
@@ -344,6 +345,30 @@ async function toonStart() {
   makerScherm.hidden = true;
   startScherm.hidden = false;
   ruimOp();
+  document.body.classList.toggle('kijkstand', A.MODUS === 'kijken');
+  $('#wolkknop').hidden = A.MODUS !== 'oud';
+  if (A.MODUS === 'kijken') return toonEtalage();
+  if (A.MODUS === 'spelen') {
+    if (A.info) {
+      pasAccountToe(A.info);
+      tekenStartKaarten();
+    } else {
+      $('#makers').innerHTML = '';
+      $('#start .ondertitel').textContent = 'Even laden...';
+    }
+    const nieuw = await A.laadInfo();
+    if (nieuw?.verlopen) {
+      toonMelding('Deze QR-code werkt niet meer. Vraag papa of mama om een nieuwe.', 6000);
+      stem.zeg('Deze QR-code werkt niet meer. Vraag papa of mama om een nieuwe.');
+      return setTimeout(() => location.reload(), 6000);
+    }
+    if (!nieuw) {
+      $('#start .ondertitel').textContent = 'Geen internet. Probeer het zo nog eens.';
+      return;
+    }
+    pasAccountToe(nieuw);
+    if (A.NET_GESCAND && !beginschermGevraagd) vraagBeginscherm();
+  }
   tekenStartKaarten();
   stem.zeg(`Hoi ${naamVan(speler)}! Welke planeet wil je?`);
   // Wat er op andere apparaten is gebeurd ophalen (stil op de achtergrond).
@@ -355,7 +380,7 @@ async function toonStart() {
     herlaadUitOpslag();
     tekenStartKaarten();
   }
-  maakOntbrekendeFotos();
+  maakOntbrekendeFotos(Object.keys(planeten).filter((id) => document.querySelector(`.maker-knop[data-id="${id}"]`)));
 }
 
 function herlaadUitOpslag() {
@@ -368,8 +393,99 @@ function herlaadUitOpslag() {
 
 // Op jakevanpelt.com is Jake de baas, op owenvanpelt.com Owen. Daar staat je eigen planeet
 // voorop, en alleen je eigen planeet kun je helemaal weggooien. Op papa's laptop mag alles.
-const EIGENAAR = location.hostname.includes('jakevanpelt') ? 'jake' : location.hostname.includes('owenvanpelt') ? 'owen' : null;
-const magWissen = (id) => !EIGENAAR || EIGENAAR === K.spelerVan(id);
+const EIGENAAR = A.MODUS !== 'oud' ? null : location.hostname.includes('jakevanpelt') ? 'jake' : location.hostname.includes('owenvanpelt') ? 'owen' : null;
+const magWissen = (id) => (A.MODUS === 'spelen' ? K.spelerVan(id) === speler : !EIGENAAR || EIGENAAR === K.spelerVan(id));
+
+// ================= Kindaccount (ouderportaal) =================
+// De instellingen van de ouder toepassen: wie er in het gezin zit, hoeveel planeten elk kind heeft,
+// de familieplaneet, en of je bij broers en zussen mag kijken of bouwen.
+let alleenKijken = false; // planeet van een ander (of een bezoeker): alleen kijken, niets veranderen
+let beginschermGevraagd = false;
+function pasAccountToe(info) {
+  speler = info.kind.id;
+  K.MAKERS.splice(0, K.MAKERS.length, ...info.gezin.map((k) => ({ id: k.id, naam: k.naam })));
+  for (const k of info.gezin) K.AANTAL[k.id] = k.planeten;
+  const eigen = K.plekkenVan(speler);
+  const samen = info.familieplaneet ? ['samen'] : [];
+  const anderen = info.kind.elkaar === 'nee' ? [] : info.gezin.filter((k) => k.id !== speler).flatMap((k) => K.plekkenVan(k.id));
+  wolk.zetAccount(info.familie, [...eigen, ...samen, ...anderen], [...eigen, ...samen, ...(info.kind.elkaar === 'bouwen' ? anderen : [])]);
+}
+// Is deze planeet om alleen te bekijken?
+const isAlleenKijken = (id) => A.MODUS === 'kijken' || (A.MODUS === 'spelen' && !wolk.magSchrijven(id));
+
+// Net de QR-code gescand: vraag om de planeet op het beginscherm te zetten (een eigen icoon).
+let installatie = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installatie = e;
+});
+function vraagBeginscherm() {
+  beginschermGevraagd = true;
+  const v = $('#vraag');
+  v.querySelector('.vraag-tekst').innerHTML = `Welkom, ${veilig(naamVan(speler))}! Zet je planeten op het beginscherm, dan kom je er altijd met één tik.${installatie ? '' : '<small>Tik in Chrome op ⋮ en kies <b>Toevoegen aan startscherm</b>.</small>'}`;
+  v.querySelector('.ja').textContent = installatie ? '📲 Zet op beginscherm' : 'Oké';
+  v.querySelector('.nee').textContent = 'Later';
+  stem.zeg(`Welkom, ${naamVan(speler)}! Zet je planeten op het beginscherm, dan kom je er altijd met één tik.`);
+  const klaar = () => {
+    v.hidden = true;
+    v.querySelector('.ja').textContent = 'Ja';
+    v.querySelector('.nee').textContent = 'Nee';
+  };
+  v.querySelector('.ja').onclick = async () => {
+    geluid.klik();
+    klaar();
+    if (installatie) {
+      installatie.prompt();
+      installatie = null;
+    }
+  };
+  v.querySelector('.nee').onclick = () => {
+    geluid.klik();
+    klaar();
+  };
+  v.hidden = false;
+}
+
+// ================= Etalage (kijkstand) =================
+// Op de website van een kind, voor wie geen account op dit apparaat heeft: de planeten die het kind
+// wil laten zien. Draaien, wezens bekijken, het verhaal lezen; niets veranderen.
+let etalageNaam = null;
+async function toonEtalage() {
+  $('#spelerkeuze').hidden = true;
+  $('#start .ondertitel').textContent = 'Even kijken...';
+  $('#makers').innerHTML = '';
+  const e = await A.haalEtalage();
+  etalageNaam = e.naam;
+  for (const p of e.planeten) wolk.zetPakket(p.id, p.data);
+  herlaadUitOpslag();
+  K.MAKERS.splice(0, K.MAKERS.length, ...(e.naam ? [{ id: e.planeten[0]?.id.split('-')[0] || 'kind', naam: e.naam }] : []));
+  const lijst = $('#makers');
+  $('#start .ondertitel').textContent = e.naam ? (e.planeten.length ? `De planeten van ${e.naam}` : `${e.naam} heeft nog geen planeet laten zien.`) : 'Welkom bij de Planeetmakers!';
+  for (const p of e.planeten) {
+    const r = planeten[p.id];
+    const k = document.createElement('button');
+    k.className = 'maker-knop';
+    k.innerHTML = fotos[p.id] ? `<img class="mini foto" src="${veilig(fotos[p.id])}" alt="">` : '<span class="mini laden"></span>';
+    k.innerHTML += '<span class="maker-naam"></span><span class="maker-sub">👀 Kijken</span>';
+    k.querySelector('.maker-naam').textContent = r?.naam || 'Planeet';
+    k.onclick = () => {
+      geluid.plop();
+      begin(p.id);
+    };
+    lijst.appendChild(k);
+  }
+  const speel = document.createElement('div');
+  speel.className = 'etalage-spelen';
+  speel.innerHTML = '<button class="tt-klaar">🚀 Zelf spelen</button><a class="ouder-link" href="ouder.html">Ouderportaal</a>';
+  speel.querySelector('button').onclick = () => {
+    geluid.klik();
+    toonMelding('Om te spelen heb je je eigen QR-code nodig. Vraag papa of mama!', 4500);
+    stem.zeg('Om te spelen heb je je eigen QR-code nodig. Vraag papa of mama!');
+  };
+  lijst.after(speel);
+  if (e.naam) stem.zeg(`Welkom! Dit zijn de planeten van ${e.naam}. Tik op een planeet om te kijken.`);
+  maakOntbrekendeFotos(e.planeten.map((p) => p.id));
+}
 // Elke speler zijn eigen planeten: op de site van een kind alleen die van hem. Op papa's laptop
 // kies je eerst de speler (onthouden op dit apparaat).
 wolk.zetSpeler(EIGENAAR);
@@ -384,11 +500,22 @@ let speler = EIGENAAR || (() => {
 function tekenStartKaarten() {
   const lijst = $('#makers');
   lijst.innerHTML = '';
-  // Op papa's laptop: eerst kiezen wie er speelt. Op de tablet van een kind niet.
+  document.querySelector('.etalage-spelen')?.remove();
+  // Op papa's laptop: eerst kiezen wie er speelt. Op de tablet van een kind niet (tenzij er meer
+  // kinderen op deze tablet hun QR-code hebben gescand).
   const keuze = $('#spelerkeuze');
-  keuze.hidden = !!EIGENAAR;
   keuze.innerHTML = '';
-  if (!EIGENAAR)
+  const opApparaat = A.MODUS === 'spelen' ? A.kinderenOpApparaat() : [];
+  keuze.hidden = A.MODUS === 'spelen' ? opApparaat.length < 2 : !!EIGENAAR;
+  if (A.MODUS === 'spelen')
+    for (const k of opApparaat) {
+      const b = document.createElement('button');
+      b.className = 'speler-tab' + (k.slug === A.actief()?.slug ? ' aan' : '');
+      b.textContent = k.naam;
+      b.onclick = () => (k.slug === A.actief()?.slug ? null : A.wissel(k.slug));
+      keuze.appendChild(b);
+    }
+  else if (!EIGENAAR)
     for (const m of K.MAKERS) {
       const b = document.createElement('button');
       b.className = 'speler-tab' + (m.id === speler ? ' aan' : '');
@@ -404,7 +531,14 @@ function tekenStartKaarten() {
       keuze.appendChild(b);
     }
   $('#start .ondertitel').textContent = `Hoi ${naamVan(speler)}! Welke planeet?`;
-  for (const id of K.plekkenVan(speler)) {
+  const extra = [];
+  if (A.MODUS === 'spelen' && A.info) {
+    if (A.info.familieplaneet) extra.push({ id: 'samen', sub: '🏠 Familieplaneet' });
+    if (A.info.kind.elkaar !== 'nee')
+      for (const k of A.info.gezin.filter((x) => x.id !== speler))
+        for (const id of K.plekkenVan(k.id)) if (planeten[id]) extra.push({ id, sub: `${A.info.kind.elkaar === 'kijken' ? '👀' : '🤝'} Van ${k.naam}` });
+  }
+  for (const id of [...K.plekkenVan(speler), ...extra.map((x) => x.id)]) {
     const r = planeten[id];
     const k = document.createElement('button');
     k.className = 'maker-knop eigen';
@@ -414,7 +548,9 @@ function tekenStartKaarten() {
       : r
         ? `<span class="mini laden"></span>`
         : `<span class="mini leeg">+</span>`;
-    k.innerHTML += `<span class="maker-naam"></span><span class="maker-sub">Planeet ${K.plekNummer(id)}</span>`;
+    const sub = extra.find((x) => x.id === id)?.sub || `Planeet ${K.plekNummer(id)}`;
+    if (extra.some((x) => x.id === id)) k.classList.remove('eigen');
+    k.innerHTML += `<span class="maker-naam"></span><span class="maker-sub">${sub}</span>`;
     k.querySelector('.maker-naam').textContent = r ? r.naam || 'Zonder naam' : 'Nieuwe planeet';
     if (wolk.botsing(id)) k.insertAdjacentHTML('beforeend', '<span class="botsing-teken">⚠️</span>');
     k.addEventListener('click', () => {
@@ -586,6 +722,9 @@ async function toonPrullenbak() {
 async function begin(id) {
   zuinig.rust();
   wie = id;
+  alleenKijken = isAlleenKijken(id);
+  document.body.classList.toggle('alleen-kijken', alleenKijken);
+  if (alleenKijken && !planeten[id]) return toonStart();
   geschiedenis = [];
   knopTerug.classList.add('uit');
   startScherm.hidden = true;
@@ -596,9 +735,11 @@ async function begin(id) {
     // Ontbrekende velden aanvullen (oudere planeten of uit de wolk), zodat er nergens met "niets" gerekend wordt.
     recept = metId(vulAan(planeten[id]), id);
     bouwDock();
-    dock.hidden = false;
+    dock.hidden = alleenKijken;
     toonNaam();
-    stem.zeg(`Hoi ${naamVan(id)}! Daar is je planeet weer.`);
+    if (A.MODUS === 'kijken') stem.zeg(`Dit is ${recept.naam || 'een planeet'}. Tik op een wezen om het te bekijken!`);
+    else if (alleenKijken) stem.zeg(`Dit is de planeet van ${naamVan(id)}. Kijk maar rond!`);
+    else stem.zeg(`Hoi ${naamVan(speler)}! Daar is je planeet weer.`);
     const mijn = sessie;
     const p = await Planeet.maak(zicht(recept), 'snel');
     if (mijn !== sessie) return p.opruimen();
@@ -615,8 +756,10 @@ async function begin(id) {
     wezenIds = (recept.wezens || []).map((w) => w.id).join(',');
     werkJaarBij();
     if (weg && weg.nieuws.length) toonWeg(weg);
-    planGebed(mijn);
-    kijkInBrievenbus(mijn);
+    if (!alleenKijken) {
+      planGebed(mijn);
+      kijkInBrievenbus(mijn);
+    }
     if (recept.klaar) planHD(0);
   } else {
     startGeboorte();
@@ -637,10 +780,11 @@ function metId(r, eigenaar) {
   return r;
 }
 
-const naamVan = (id) => (K.MAKERS.find((m) => m.id === K.spelerVan(id)) || { naam: 'Maker' }).naam;
+// De familieplaneet is van iedereen: daar is de maker wie er nu speelt.
+const naamVan = (id) => (id === 'samen' ? (K.MAKERS.find((m) => m.id === speler) || { naam: 'Familie' }).naam : (K.MAKERS.find((m) => m.id === K.spelerVan(id)) || { naam: etalageNaam || 'Maker' }).naam);
 
 function toonNaam() {
-  $('#titel').textContent = recept.naam || `Planeet van ${naamVan(wie)}`;
+  $('#titel').textContent = recept.naam || (wie === 'samen' ? 'Familieplaneet' : `Planeet van ${naamVan(wie)}`);
 }
 
 // ================= Geboorte =================
@@ -1389,6 +1533,20 @@ const PANELEN = {
     el.appendChild(d);
     const [r, k] = rij();
     k.appendChild(knop(`<span class="groot">${icoon('feest', '🎉')}</span><span>Mijn planeet is klaar!</span>`, 'kaart feest', feest));
+    // Op de website van het kind laten zien (de etalage), of juist niet.
+    if (A.MODUS === 'spelen' && A.info && K.spelerVan(wie) === speler) {
+      const aan = (A.info.kind.publiek || []).includes(wie);
+      k.appendChild(
+        knop(`<span class="groot">🌍</span><span>Laat zien op mijn website</span>`, 'kaart', async (b) => {
+          const nu = !(A.info.kind.publiek || []).includes(wie);
+          if (await A.zetPubliek(wie, nu)) {
+            b.classList.toggle('aan', nu);
+            geluid.pling(nu ? 4 : 1);
+            stem.zeg(nu ? 'Nu kan iedereen deze planeet op jouw website bekijken!' : 'Deze planeet staat niet meer op je website.');
+          } else toonMelding('Dat lukte niet. Is er internet?', 2500);
+        }, { aan })
+      );
+    }
     el.appendChild(r);
     // Alleen je eigen planeet kun je weggooien. En ook dan gaat hij eerst naar de prullenbak,
     // waar papa hem nog een maand terug kan halen.
@@ -1705,7 +1863,7 @@ async function maakEchtKnop(w) {
     stem.zeg(w.weergave === 'echt' ? `${w.naam} is weer een tekening.` : `Daar is de echte ${w.naam}!`);
     return;
   }
-  const status = await echtStatus(K.spelerVan(wie), wolk.code);
+  const status = await echtStatus(A.MODUS === 'spelen' ? speler : K.spelerVan(wie), wolk.code);
   if (!status.kan) return toonMelding(wolk.aan ? 'De toverknop werkt nu even niet. Probeer het later nog eens.' : 'Papa moet eerst de wolk aanzetten (☁️ op het startscherm).', 4000);
   if (status.over <= 0) {
     stem.zeg('Je toverkracht is op voor vandaag. Morgen kan het weer!');
@@ -1720,7 +1878,7 @@ async function maakEchtKnop(w) {
     stem.zeg(`Ik ga ${w.naam} echt maken. Even geduld, dit duurt een halve minuut.`);
     const twinkel = setInterval(() => geluid.pling(Math.floor(Math.random() * 5)), 1400);
     try {
-      const { echt, over } = await vraagEcht(K.spelerVan(wie), { ...w, huid }, wolk.code);
+      const { echt, over } = await vraagEcht(A.MODUS === 'spelen' ? speler : K.spelerVan(wie), { ...w, huid }, wolk.code);
       zetWezen(w.id, { huid, echt, weergave: 'echt' });
       verbergMelding();
       geluid.geboorte();
@@ -1795,7 +1953,7 @@ function openKaart(w) {
     },
     opGeluid: () => maakGeluid(w, 1),
     // DNA sturen kan alleen met de wolk aan (en niet in de testomgeving).
-    opDna: wolk.aan && !SANDBOX ? () => openDnaSturen(w) : null,
+    opDna: !alleenKijken && wolk.aan && !SANDBOX && (A.MODUS !== 'spelen' || A.info?.kind.dna) ? () => openDnaSturen(w) : null,
   });
 }
 
@@ -1803,7 +1961,7 @@ function openKaart(w) {
 // Een getekend wezen naar een ander kind sturen. De ontvanger beslist altijd zelf of het op zijn
 // planeet mag komen wonen (en op welke: de planeet die hij dan open heeft).
 function openDnaSturen(w) {
-  const ik = K.spelerVan(wie);
+  const ik = A.MODUS === 'spelen' ? speler : K.spelerVan(wie);
   const el = document.createElement('section');
   el.id = 'dna';
   el.innerHTML = `<div class="dna-doos">
@@ -1839,7 +1997,7 @@ function openDnaSturen(w) {
 // Bij het openen van een planeet: ligt er DNA in de brievenbus? Dan vragen of het hier mag wonen.
 async function kijkInBrievenbus(mijn) {
   if (SANDBOX || !wolk.aan) return;
-  const post = await wolk.haalPost(K.spelerVan(wie));
+  const post = await wolk.haalPost(A.MODUS === 'spelen' ? speler : K.spelerVan(wie));
   if (mijn !== sessie || !post.length) return;
   const toon = () => {
     if (mijn !== sessie) return;
@@ -1870,7 +2028,7 @@ function vraagDna(p, mijn) {
   stem.zeg(zin);
   const ruimOp = () => {
     el.remove();
-    wolk.postWeg(K.spelerVan(wie), p.id);
+    wolk.postWeg(A.MODUS === 'spelen' ? speler : K.spelerVan(wie), p.id);
   };
   el.querySelector('.dna-nee').onclick = () => {
     geluid.klik();
@@ -2125,7 +2283,7 @@ function kiesGebed() {
 }
 function probeerGebed(mijn, nu = false) {
   if (mijn !== undefined && mijn !== sessie) return;
-  const druk = !wie || geboorte || !$('#weg').hidden || document.getElementById('verlies') || tekentafelOpen() || opname || gereedschap || !$('#wolkpaneel').hidden || document.getElementById('wezenkaart-groot') || document.getElementById('ontdekkingsboom') || document.getElementById('gebed') || stem.bezig;
+  const druk = !wie || alleenKijken || geboorte || !$('#weg').hidden || document.getElementById('verlies') || tekentafelOpen() || opname || gereedschap || !$('#wolkpaneel').hidden || document.getElementById('wezenkaart-groot') || document.getElementById('ontdekkingsboom') || document.getElementById('gebed') || stem.bezig;
   if (druk && !nu) return void (gebedTimer = setTimeout(() => probeerGebed(mijn), 20000));
   const g = kiesGebed();
   if (!g) return;
@@ -2743,7 +2901,7 @@ window.__maker = { dnaTest: (p) => vraagDna(p, sessie), dnaSturenTest: (w) => op
 if (wolk.koppelUitLink()) setTimeout(() => toonMelding('☁️ Gekoppeld! De planeten komen eraan...', 3500), 300);
 $('#kiesknop').addEventListener('click', () => {
   geluid.klik();
-  openKiezen({ makers: EIGENAAR ? K.MAKERS.filter((m) => m.id === EIGENAAR) : K.MAKERS, opBewaard: () => wolk.planStuur('wensen', 2000) });
+  openKiezen({ makers: A.MODUS === 'spelen' ? K.MAKERS.filter((m) => m.id === speler) : EIGENAAR ? K.MAKERS.filter((m) => m.id === EIGENAAR) : K.MAKERS, opBewaard: () => wolk.planStuur('wensen', 2000) });
 });
 $('#wolkknop').addEventListener('click', () => {
   geluid.klik();

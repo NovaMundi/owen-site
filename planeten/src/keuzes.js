@@ -8,7 +8,9 @@ export const MAKERS = [
 // Elke speler heeft drie planeetplekken: de eerste heet gewoon zoals de speler (zo bleven de
 // planeten van vóór de plekken op hun plaats), de andere twee owen-2 en owen-3.
 export const PLEKKEN = 3;
-export const plekkenVan = (speler) => [speler, ...Array.from({ length: PLEKKEN - 1 }, (_, i) => `${speler}-${i + 2}`)];
+// Hoeveel planeten elk kind heeft (uit het ouderportaal); anders 3.
+export const AANTAL = {};
+export const plekkenVan = (speler, n = AANTAL[speler] ?? PLEKKEN) => [speler, ...Array.from({ length: n - 1 }, (_, i) => `${speler}-${i + 2}`)];
 export const spelerVan = (planeetId) => String(planeetId || '').split('-')[0];
 export const plekNummer = (planeetId) => Number(String(planeetId).split('-')[1] || 1);
 export const ALLE_PLANEETIDS = MAKERS.flatMap((m) => plekkenVan(m.id));

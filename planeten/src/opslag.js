@@ -11,7 +11,11 @@
 
 // Testomgeving (?sandbox=1): alles in eigen laatjes, zodat testen nooit de echte planeten raakt.
 export const SANDBOX = new URLSearchParams(location.search).has('sandbox');
-export const sleutel = (k) => (SANDBOX ? 'zandbak-' + k : k);
+// Kijkstand (een bezoeker op de website van een kind): ook eigen laatjes, zodat kijken nooit iets
+// van een echte planeet op dit apparaat raakt.
+import { MODUS } from './account.js';
+export const KIJK = MODUS === 'kijken';
+export const sleutel = (k) => (SANDBOX ? 'zandbak-' + k : KIJK ? 'kijk-' + k : k);
 
 const DB = 'planeetmakers-media';
 const WINKEL = 'media';
@@ -35,7 +39,7 @@ function gebruikteCodes() {
   const codes = new Set();
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (!k || !(k.startsWith('planeetmakers') || k.startsWith('zandbak-planeetmakers'))) continue;
+    if (!k || !(k.startsWith('planeetmakers') || k.startsWith('zandbak-planeetmakers') || k.startsWith('kijk-planeetmakers'))) continue;
     for (const m of (localStorage.getItem(k) || '').matchAll(/"m:([a-z0-9]+)"/g)) codes.add(m[1]);
   }
   return codes;
