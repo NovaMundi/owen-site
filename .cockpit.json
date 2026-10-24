@@ -1,6 +1,6 @@
 {
   "health": "green",
   "stage": "live",
-  "next": "Testsessie Planeetmakers met de jongens; vóór 15 nov elke tablet de planeten één keer laten openen (sleutel-overgang)",
-  "note": "Panelgesprek 2 (6 experts, debat) uitgevoerd: wolk beveiligd met sleutel per apparaat, verliesmoment, zachtere teksten, korte ontdekkingsboom, gebed met spelersnaam, kijk mee. Daarna feature freeze tot de test."
+  "next": "Jongens laten spelen met eigen 3 planeetplekken, DNA sturen en mond; daarna panel over testsessie-aantekeningen",
+  "note": "Na testsessie: toveren gerepareerd (OpenAI-model gpt-image-1 uitgezet, nu gpt-image-2), ogen mee bij toveren, 10x toveren voor de jongens, eigen 3 planeten per speler (server-afgeschermd), mond tekenen, DNA sturen binnen familie"
 }
