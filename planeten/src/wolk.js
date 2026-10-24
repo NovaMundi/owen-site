@@ -42,6 +42,7 @@ function veilig(data) {
     r.naam = tekst(r.naam);
     r.wezens = (r.wezens || [])
       .filter((w) => BEELD.test(w.plaatje || '') && (!w.dicht || BEELD.test(w.dicht)) && (!w.tekening || BEELD.test(w.tekening)))
+      .map((w) => (w.mond && !BEELD.test(w.mond) ? { ...w, mond: null } : w))
       .map((w) => ({
         ...w,
         naam: tekst(w.naam) || 'Wezen',

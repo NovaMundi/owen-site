@@ -40,9 +40,9 @@ function schaduwTextuur() {
 // Welk plaatje laat het wezen nu zien: de tekening of de echte versie (✨ Maak echt).
 export function beeldVan(w) {
   if (w.weergave === 'echt' && w.echt && w.echt.plaatje) return { open: w.echt.plaatje, dicht: w.echt.plaatje, verhouding: w.echt.verhouding || 1, echt: true };
-  return { open: w.plaatje, dicht: w.dicht || w.plaatje, verhouding: w.verhouding || 1, echt: false };
+  return { open: w.plaatje, dicht: w.dicht || w.plaatje, mond: w.mond || null, verhouding: w.verhouding || 1, echt: false };
 }
-const sleutelVan = (w) => { const b = beeldVan(w); return JSON.stringify([b.open.length, b.open.slice(-40), w.beweging, w.maat, w.kijkt]); };
+const sleutelVan = (w) => { const b = beeldVan(w); return JSON.stringify([b.open.length, b.open.slice(-40), (b.mond || '').length, w.beweging, w.maat, w.kijkt]); };
 
 // ---- Wat ze aan het doen zijn: een klein wolkje boven hun hoofd (zoals in De Sims) ----
 const TAAK_ICOON = ['🔨', '💤', '🍎', '🙏', '🔥', '🌾', '⚔️', '🕊️', '🎒'];
@@ -282,12 +282,13 @@ export class WezensLaag {
     const s = this.soorten.get(id);
     if (!s) return;
     for (const d of s.dieren) this.groep.remove(d.mesh);
-    this.groep.remove(s.openInst, s.dichtInst, s.schaduwInst);
-    for (const inst of [s.openInst, s.dichtInst, s.schaduwInst]) inst.dispose();
-    s.open.map.dispose();
-    s.dicht.map.dispose();
-    s.open.dispose();
-    s.dicht.dispose();
+    const lagen = [s.openInst, s.dichtInst, s.schaduwInst, s.mondInst].filter(Boolean);
+    this.groep.remove(...lagen);
+    for (const inst of lagen) inst.dispose();
+    for (const m of [s.open, s.dicht, s.mondMat].filter(Boolean)) {
+      m.map.dispose();
+      m.dispose();
+    }
     s.schaduwMat.dispose();
     this.soorten.delete(id);
   }
@@ -307,8 +308,10 @@ export class WezensLaag {
     const beeld = beeldVan(w);
     const open = mat(beeld.open);
     const dicht = mat(beeld.dicht);
+    // Getekend met een mond? Dan ook een laag met de mond open (eten, dansen, praten).
+    const mondMat = beeld.mond ? mat(beeld.mond) : null;
     // Een beetje eigen licht, zodat de tekening vrolijk blijft, ook op de schaduwkant.
-    for (const m of [open, dicht]) {
+    for (const m of [open, dicht, mondMat].filter(Boolean)) {
       m.emissiveMap = m.map;
       m.emissiveIntensity = 0.35;
     }
@@ -325,11 +328,14 @@ export class WezensLaag {
     };
     const s = {
       w, sleutel, open, dicht, schaduwMat, dieren: [], doel: Math.min(aantal, PER_SOORT), schaal: 1, thuizen: null, thuisSleutel: null, midden: null, amfibie: false,
+      mondMat,
       openInst: inst(this.vlak, open),
       dichtInst: inst(this.vlak, dicht),
+      mondInst: mondMat ? inst(this.vlak, mondMat) : null,
       schaduwInst: inst(this.schaduwGeo, schaduwMat),
     };
     s.openInst.userData.soort = s.dichtInst.userData.soort = w.id;
+    if (s.mondInst) s.mondInst.userData.soort = w.id;
     this.soorten.set(w.id, s);
   }
 
@@ -424,6 +430,7 @@ export class WezensLaag {
       const verhouding = beeldVan(s.w).verhouding;
       const aantal = s.dieren.length;
       s.openInst.count = s.dichtInst.count = s.schaduwInst.count = aantal;
+      if (s.mondInst) s.mondInst.count = aantal;
       for (let i = 0; i < aantal; i++) {
         const d = s.dieren[i];
         d.geboren += dt;
@@ -432,6 +439,7 @@ export class WezensLaag {
           s.openInst.setMatrixAt(i, NUL);
           s.dichtInst.setMatrixAt(i, NUL);
           s.schaduwInst.setMatrixAt(i, NUL);
+          if (s.mondInst) s.mondInst.setMatrixAt(i, NUL);
           continue;
         }
         d.mesh.visible = true;
@@ -600,8 +608,17 @@ export class WezensLaag {
           d.knipper = 2 + Math.random() * 5;
         }
         d.dicht -= dt;
-        s.openInst.setMatrixAt(i, d.dicht > 0 ? NUL : d.mesh.matrix);
+        // Mond open: kauwen bij het eten, zingen rond het vuur, juichen na de vrede of na een tik.
+        let mondOpen = false;
+        if (s.mondInst && d.dicht <= 0) {
+          const ts = bezig && taak ? taak.soort : null;
+          if (ts === 'eten' || ts === 'akker') mondOpen = Math.sin(t * 9) > 0.2;
+          else if (ts === 'vuur' || ts === 'vrede' || ts === 'bidden') mondOpen = Math.sin(t * 3.2) > 0;
+          else if (d.sprong > 0) mondOpen = true;
+        }
+        s.openInst.setMatrixAt(i, d.dicht > 0 || mondOpen ? NUL : d.mesh.matrix);
         s.dichtInst.setMatrixAt(i, d.dicht > 0 ? d.mesh.matrix : NUL);
+        if (s.mondInst) s.mondInst.setMatrixAt(i, mondOpen ? d.mesh.matrix : NUL);
 
         // Schaduw op de grond (kleiner als hij hoog in de lucht is).
         if (b !== 'zwemmen') {
@@ -618,6 +635,7 @@ export class WezensLaag {
       s.openInst.instanceMatrix.needsUpdate = true;
       s.dichtInst.instanceMatrix.needsUpdate = true;
       s.schaduwInst.instanceMatrix.needsUpdate = true;
+      if (s.mondInst) s.mondInst.instanceMatrix.needsUpdate = true;
     }
     // Wolkjes boven wie iets aan het doen is (even groot op elk scherm).
     this.iconen.material.uniforms.schaal.value = ((this.schermHoogte || 800) * camera.projectionMatrix.elements[5]) / 2;
@@ -653,6 +671,10 @@ export class WezensLaag {
       // De dieren lopen rond: de omvang van de laag opnieuw laten uitrekenen voor het raken.
       s.openInst.boundingSphere = s.dichtInst.boundingSphere = null;
       doelen.push(s.openInst, s.dichtInst);
+      if (s.mondInst) {
+        s.mondInst.boundingSphere = null;
+        doelen.push(s.mondInst);
+      }
     }
     const hit = raker.intersectObjects(doelen, false).find((h) => h.instanceId !== undefined);
     if (!hit) return null;

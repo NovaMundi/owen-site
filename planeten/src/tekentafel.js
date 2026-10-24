@@ -9,6 +9,10 @@ import { icoon } from './iconen.js';
 
 const MAAT = 768; // tekenvel in pixels
 const OOG = [24, 40, 62];
+const MOND = [22, 36, 56]; // halve breedte van de mond
+// Ogen en monden staan los van de tekening: de ogen knipperen, de mond gaat open en dicht.
+const LOS = new Set(['oog', 'mond']);
+const losLijst = (lijst, t) => lijst.filter((a) => a.t === t && !a.weg).map(({ x, y, r }) => ({ x: Math.round(x), y: Math.round(y), r }));
 const DIK = [10, 24, 48];
 
 export function openTekentafel({ heeftWater, bestaand = null }) {
@@ -32,6 +36,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
           <button class="tt-knop aan" data-tool="kwast" title="Kwast">🖌️</button>
           <button class="tt-knop" data-tool="vul" title="Vullen">🪣</button>
           <button class="tt-knop" data-tool="oog" title="Ogen">👀</button>
+          <button class="tt-knop" data-tool="mond" title="Mond">👄</button>
           <button class="tt-knop" data-tool="gum" title="Gum">🧽</button>
           <span class="tt-scheiding"></span>
           <button class="tt-knop tt-maat" data-maat="0"><i style="width:10px;height:10px"></i></button>
@@ -54,7 +59,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
     let bezig = null;
     const uitleg = bestaand
       ? 'Kleur je wezen in met het emmertje, teken erbij of geef hem nieuwe ogen.'
-      : 'Teken je wezen! Met de ogen-knop geef je hem ogen die knipperen. Het papier gaat niet mee, alleen jouw tekening.';
+      : 'Teken je wezen! Met de ogen-knop geef je hem ogen die knipperen, en met de mond-knop een mond die kan eten en praten. Het papier gaat niet mee, alleen jouw tekening.';
     stem.zeg(uitleg);
 
     // Bestaand wezen aanpassen: de tekening als ondergrond, de ogen weer los zodat ze blijven knipperen.
@@ -67,6 +72,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
         const basis = onder.tekening ? volVel(img) : zonderRand(img);
         acties.unshift({ t: 'basis', canvas: basis });
         for (const o of onder.ogen || []) acties.push({ t: 'oog', x: o.x, y: o.y, r: o.r });
+        for (const o of onder.monden || []) acties.push({ t: 'mond', x: o.x, y: o.y, r: o.r });
         tekenAlles();
       };
       img.src = onder.tekening || onder.plaatje;
@@ -80,8 +86,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
       const rest = acties.slice(start);
       if (!rest.length) return zetConcept(null); // leeg gemaakt: niets te bewaren
       const ruw = teken.toDataURL('image/webp', 0.85);
-      const ogenLijst = rest.filter((a) => a.t === 'oog' && !a.weg).map(({ x, y, r }) => ({ x: Math.round(x), y: Math.round(y), r }));
-      zetConcept({ tekening: ruw.startsWith('data:image/webp') ? ruw : teken.toDataURL('image/png'), ogen: ogenLijst });
+      zetConcept({ tekening: ruw.startsWith('data:image/webp') ? ruw : teken.toDataURL('image/png'), ogen: losLijst(rest, 'oog'), monden: losLijst(rest, 'mond') });
     };
 
     // Kleuren
@@ -94,7 +99,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
         kleur = c;
         kleurRij.querySelectorAll('.aan').forEach((x) => x.classList.remove('aan'));
         b.classList.add('aan');
-        if (tool === 'gum' || tool === 'oog') kiesTool('kwast');
+        if (tool === 'gum' || LOS.has(tool)) kiesTool('kwast');
         geluid.plop();
       };
       kleurRij.appendChild(b);
@@ -108,6 +113,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
         kiesTool(b.dataset.tool);
         geluid.klik();
         if (b.dataset.tool === 'oog') stem.zeg('Tik waar de ogen moeten komen.');
+        if (b.dataset.tool === 'mond') stem.zeg('Tik waar de mond moet komen.');
         if (b.dataset.tool === 'vul') stem.zeg('Tik in een vlak om het te kleuren.');
       })
     );
@@ -167,7 +173,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
         const p = a.punten;
         lijnStuk(a, p[0], p[0]);
         for (let i = 1; i < p.length; i++) lijnStuk(a, p[i - 1], p[i]);
-        if (a.gum) for (const o of acties) if (o.t === 'oog' && !o.weg && a.punten.some((q) => Math.hypot(q[0] - o.x, q[1] - o.y) < o.r)) o.weg = true;
+        if (a.gum) for (const o of acties) if (LOS.has(o.t) && !o.weg && a.punten.some((q) => Math.hypot(q[0] - o.x, q[1] - o.y) < o.r)) o.weg = true;
       } else if (a.t === 'basis') tc.drawImage(a.canvas, 0, 0);
       else if (a.t === 'vul') vul(tc, Math.round(a.x), Math.round(a.y), a.kleur);
       else if (a.t === 'wis') {
@@ -181,8 +187,9 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
       for (const a of acties) delete a.weg;
       let start = 0;
       acties.forEach((a, i) => a.t === 'wis' && (start = i + 1));
-      for (let i = start; i < acties.length; i++) if (acties[i].t !== 'oog') voerUit(acties[i]);
+      for (let i = start; i < acties.length; i++) if (!LOS.has(acties[i].t)) voerUit(acties[i]);
       tekenOgen(oc, acties.slice(start), false);
+      tekenMonden(oc, acties.slice(start), false);
     }
 
     ogen.addEventListener('pointerdown', (e) => {
@@ -198,6 +205,10 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
         geluid.bubbel();
       } else if (tool === 'oog') {
         acties.push({ t: 'oog', x: p[0], y: p[1], r: OOG[maat] });
+        tekenAlles();
+        geluid.plop();
+      } else if (tool === 'mond') {
+        acties.push({ t: 'mond', x: p[0], y: p[1], r: MOND[maat] });
         tekenAlles();
         geluid.plop();
       } else {
@@ -225,7 +236,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
     el.querySelector('.tt-klaar').onclick = () => {
       let start = 0;
       acties.forEach((a, i) => a.t === 'wis' && (start = i + 1));
-      const sticker = maakSticker(teken, acties.slice(start).filter((a) => a.t === 'oog' && !a.weg));
+      const sticker = maakSticker(teken, acties.slice(start).filter((a) => a.t === 'oog' && !a.weg), acties.slice(start).filter((a) => a.t === 'mond' && !a.weg));
       if (!sticker) {
         stem.zeg('Teken eerst een wezen!');
         geluid.klik();
@@ -233,16 +244,15 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
       }
       geluid.pling(3);
       // De ruwe tekening en de ogen bewaren, zodat je hem later nog kunt aanpassen.
-      const ogenLijst = acties.slice(start).filter((a) => a.t === 'oog' && !a.weg).map(({ x, y, r }) => ({ x: Math.round(x), y: Math.round(y), r }));
       const ruw = teken.toDataURL('image/webp', 0.85);
-      eigenschappen({ ...sticker, tekening: ruw.startsWith('data:image/webp') ? ruw : teken.toDataURL('image/png'), ogen: ogenLijst });
+      eigenschappen({ ...sticker, tekening: ruw.startsWith('data:image/webp') ? ruw : teken.toDataURL('image/png'), ogen: losLijst(acties.slice(start), 'oog'), monden: losLijst(acties.slice(start), 'mond') });
     };
 
     // ---- Stap 2: hoe leeft hij? ----
     // Bij aanpassen blijven beweging, grootte en aantal zoals de natuur ze heeft gemaakt.
     function eigenschappen(sticker) {
       const w = bestaand
-        ? { ...bestaand, ...sticker }
+        ? { ...bestaand, mond: undefined, monden: undefined, ...sticker }
         : {
             huid: null,
             echt: null,
@@ -366,7 +376,7 @@ export function openTekentafel({ heeftWater, bestaand = null }) {
       el.querySelector('.tt-stop').onclick = () => {
         geluid.klik();
         if (!bestaand) {
-          zetConcept({ tekening: sticker.tekening, ogen: sticker.ogen });
+          zetConcept({ tekening: sticker.tekening, ogen: sticker.ogen, monden: sticker.monden });
           stem.zeg('Ik bewaar je tekening. De volgende keer kun je verder.');
         }
         sluit(null);
@@ -469,20 +479,62 @@ function tekenOgen(ctx, acties, dicht, onder = null) {
   }
 }
 
+// ---- Mond: dicht een glimlach, open een rond gat met een tongetje ----
+function tekenMonden(ctx, acties, open) {
+  for (const o of acties) {
+    if (o.t !== 'mond' || o.weg) continue;
+    const { x, y, r } = o;
+    ctx.save();
+    ctx.lineCap = 'round';
+    if (!open) {
+      // Glimlach met een wit randje, zodat hij ook op een donker wezen te zien is.
+      const lijn = Math.max(4, r * 0.22);
+      for (const [kleur, dik] of [['#ffffff', lijn * 2], ['#1c1c1e', lijn]]) {
+        ctx.strokeStyle = kleur;
+        ctx.lineWidth = dik;
+        ctx.beginPath();
+        ctx.arc(x, y - r * 0.55, r, Math.PI * 0.2, Math.PI * 0.8);
+        ctx.stroke();
+      }
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 0.8 + Math.max(3, r * 0.14), r * 0.62 + Math.max(3, r * 0.14), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#3a1016';
+      ctx.strokeStyle = '#1c1c1e';
+      ctx.lineWidth = Math.max(3, r * 0.14);
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 0.8, r * 0.62, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = '#ff6b81';
+      ctx.beginPath();
+      ctx.ellipse(x, y + r * 0.42, r * 0.55, r * 0.34, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 // ---- Sticker maken: bijsnijden, wit randje, open en dichte ogen ----
-function maakSticker(teken, ogen) {
+function maakSticker(teken, ogen, monden = []) {
   const tc = teken.getContext('2d', { willReadFrequently: true });
   const data = tc.getImageData(0, 0, MAAT, MAAT).data;
   const onder = (x, y) => {
     const o = (Math.round(Math.min(MAAT - 1, Math.max(0, y))) * MAAT + Math.round(Math.min(MAAT - 1, Math.max(0, x)))) * 4;
     return data[o + 3] < 60 ? '#f5c6a5' : `rgb(${data[o]},${data[o + 1]},${data[o + 2]})`;
   };
-  const versie = (dicht) => {
+  const versie = (dicht, mondOpen = false) => {
     const c = document.createElement('canvas');
     c.width = c.height = MAAT;
     const ctx = c.getContext('2d');
     ctx.drawImage(teken, 0, 0);
     tekenOgen(ctx, ogen, dicht, onder);
+    tekenMonden(ctx, monden, mondOpen);
     return c;
   };
   const open = versie(false), dicht = versie(true);
@@ -524,7 +576,8 @@ function maakSticker(teken, ogen) {
     const webp = uit.toDataURL('image/webp', 0.9);
     return webp.startsWith('data:image/webp') ? webp : uit.toDataURL('image/png');
   };
-  return { plaatje: plak(open), dicht: plak(dicht), verhouding: W / H };
+  // Met een mond: ook een versie met de mond open (ogen open), voor eten en praten.
+  return { plaatje: plak(open), dicht: plak(dicht), ...(monden.length ? { mond: plak(versie(false, true)) } : {}), verhouding: W / H };
 }
 
 // ---- Emmertje: vlak vullen ----
