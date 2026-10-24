@@ -2041,7 +2041,7 @@ function toonVerlies(e) {
   if (e) verliesRij.push(e);
   if (document.getElementById('verlies') || !verliesRij.length) return;
   // Niet midden in het tekenen: even wachten tot de tekentafel dicht is.
-  if (tekentafelOpen()) return void setTimeout(() => toonVerlies(), 3000);
+  if (tekentafelOpen() || document.getElementById('dna')) return void setTimeout(() => toonVerlies(), 3000);
   const v = verliesRij.shift();
   const wz = (recept.wezens || []).find((x) => x.id === v.soort);
   const s = leven.w && leven.w.soorten[v.soort];
@@ -2738,7 +2738,7 @@ renderer.setAnimationLoop((nu) => {
   zuinig.meet(dt);
 });
 
-window.__maker = { gebed: (nu = true) => probeerGebed(undefined, nu), get gereedschap() { return gereedschap; }, camera, controls, wezens, leven, beschaving, weer, maakStorm, get planeet() { return planeet; }, get recept() { return recept; }, get volg() { return volg; } }; // alleen voor testen
+window.__maker = { dnaTest: (p) => vraagDna(p, sessie), dnaSturenTest: (w) => openDnaSturen(w), gebed: (nu = true) => probeerGebed(undefined, nu), get gereedschap() { return gereedschap; }, camera, controls, wezens, leven, beschaving, weer, maakStorm, get planeet() { return planeet; }, get recept() { return recept; }, get volg() { return volg; } }; // alleen voor testen
 // Geopend via een koppel-link (?familie=...)? Dan hoort dit apparaat voortaan bij de familie.
 if (wolk.koppelUitLink()) setTimeout(() => toonMelding('☁️ Gekoppeld! De planeten komen eraan...', 3500), 300);
 $('#kiesknop').addEventListener('click', () => {
