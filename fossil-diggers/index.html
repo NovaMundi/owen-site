@@ -1,0 +1,1804 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fossil Diggers</title>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bruin: #7a4b23; --donker: #4a2c12;
+    --groen: #3fa34d; --blauw: #3b82c4; --paars: #8e44ad; --goud: #f2b705;
+    --lucht1: #8fd3ff; --lucht2: #c9ecff; --grond1: #f3dfb4; --grond2: #e6c98d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: Nunito, sans-serif; color: var(--donker);
+    background: linear-gradient(var(--lucht1) 0%, var(--lucht2) 35%, var(--grond1) 35%, var(--grond2) 100%);
+    background-attachment: fixed; min-height: 100vh; transition: background .5s;
+  }
+  header { text-align: center; padding: 14px 16px 4px; }
+  h1 { font-family: "Lilita One", sans-serif; font-size: 52px; margin: 0; color: var(--bruin);
+       text-shadow: 3px 3px 0 #fff; letter-spacing: 1px; }
+  .balk { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+  .pil { background: #fff; border-radius: 999px; padding: 8px 18px; font-weight: 800; font-size: 20px;
+         box-shadow: 0 3px 0 rgba(0,0,0,.15); }
+  main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 40px;
+         display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  main > * { min-width: 0; }
+  .kaart { background: #fffdf7; border-radius: 22px; padding: 16px;
+           box-shadow: 0 5px 0 rgba(0,0,0,.12); }
+  h2 { font-family: "Lilita One", sans-serif; font-size: 30px; margin: 0 0 8px; color: var(--bruin); }
+  h3.kop { font-family: "Lilita One", sans-serif; font-size: 22px; margin: 14px 0 0; color: var(--bruin); }
+  img.foto { mix-blend-mode: multiply; display: block; margin: 0 auto; }
+
+  /* graafplek */
+  #graaf { text-align: center; }
+  #plekken { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 4px; }
+  #plekken button { font-family: "Lilita One", sans-serif; font-size: 18px; border: 3px solid var(--bruin); background: #fff;
+                    border-radius: 12px; padding: 4px 10px; cursor: pointer; color: var(--bruin); }
+  #plekken button.hier { background: var(--bruin); color: #fff; }
+  #steenvak { height: 280px; display: flex; align-items: center; justify-content: center; position: relative; }
+  #steen {
+    width: 230px; height: 230px; border: none; cursor: pointer; position: relative;
+    background: center / contain no-repeat; mix-blend-mode: multiply;
+    transition: transform .08s, width .2s, height .2s;
+  }
+  #steen.groot { width: 290px; height: 290px; }
+  #steen:active { transform: scale(.94) rotate(-3deg); }
+  #steen.schud { animation: schud .25s; }
+  @keyframes schud { 25% { transform: translateX(-8px) rotate(-4deg);} 75% { transform: translateX(8px) rotate(4deg);} }
+  .barsten { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .barsten polyline { fill: none; stroke: #1f1712; stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round;
+                      vector-effect: non-scaling-stroke; filter: drop-shadow(1px 1px 0 rgba(255,255,255,.35)); }
+  .barsten g { opacity: 0; transform-origin: 50% 40%; transform: scale(.6); transition: opacity .12s, transform .15s ease-out; }
+  #steen[data-fase="1"] .b1, #steen[data-fase="2"] .b1, #steen[data-fase="2"] .b2,
+  #steen[data-fase="3"] g { opacity: 1; transform: none; }
+  #grootlabel { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); display: none;
+                font-family: "Lilita One", sans-serif; font-size: 24px; color: #fff; background: #e4572e;
+                padding: 2px 14px; border-radius: 999px; animation: wiebel 1s infinite; z-index: 2; }
+  @keyframes wiebel { 50% { transform: translateX(-50%) scale(1.1); } }
+  @media (min-width: 801px) {
+    #graaf { grid-column: 1; grid-row: 1; } #opdrachten { grid-column: 1; grid-row: 2; } #winkel { grid-column: 2; grid-row: 1 / span 2; }
+  }
+  /* geluksmeter */
+  #meter { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  #meter .klaver { font-size: 24px; }
+  #meterbalk { display: flex; gap: 3px; }
+  #meterbalk i { width: 18px; height: 18px; border-radius: 5px; background: #e4e4e4; box-shadow: inset 0 -2px 0 rgba(0,0,0,.12); }
+  #meterbalk i.aan { background: #3fa34d; }
+  #meter.vol #meterbalk i { background: #ffd23f; animation: twinkel .5s infinite alternate; }
+  #metertekst { font-weight: 800; font-size: 15px; }
+  #meter.vol #metertekst { color: #3fa34d; }
+  /* dynamiet */
+  #boem { display: none; margin: 10px auto 0; font-family: "Lilita One", sans-serif; font-size: 22px; border: none; border-radius: 14px;
+          padding: 8px 18px; background: #e4572e; color: #fff; cursor: pointer; box-shadow: 0 4px 0 #9c3317; }
+  #graaf.beef { animation: beef .5s; }
+  @keyframes beef { 20% { transform: translate(-10px, 4px); } 40% { transform: translate(9px, -5px); } 60% { transform: translate(-6px, 3px); } 80% { transform: translate(4px, -2px); } }
+  #vondst .rij { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 340px; }
+  img.mini { width: 60px; height: 60px; object-fit: contain; }
+  /* dino-hulpje */
+  #hulpje { position: absolute; left: 0; bottom: 0; width: 100px; display: none; }
+  #hulpje img { width: 100%; mix-blend-mode: multiply; display: block; animation: dobber 1.6s ease-in-out infinite; }
+  @keyframes dobber { 50% { transform: translateY(-4px) rotate(-2deg); } }
+  #hulpje.hop img { animation: hop .4s; }
+  @keyframes hop { 40% { transform: translateY(-16px) rotate(6deg); } }
+  #bel { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #fff; border-radius: 12px; padding: 4px 8px;
+         box-shadow: 0 2px 6px rgba(0,0,0,.25); white-space: nowrap; font-weight: 800; font-size: 14px; opacity: 0;
+         display: flex; align-items: center; gap: 4px; }
+  #bel img.mini { width: 36px; height: 36px; }
+  #bel.toon { animation: bel 1.8s; }
+  @keyframes bel { 0% { opacity: 0; transform: translate(-50%, 6px); } 15%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+  /* opdrachten */
+  .opdracht { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 14px; padding: 8px 10px; margin-top: 8px; }
+  .opdracht .ico { font-size: 34px; width: 60px; text-align: center; }
+  .opdracht .info { flex: 1; }
+  .voortbalk { height: 10px; background: #e4e4e4; border-radius: 5px; overflow: hidden; margin-top: 4px; }
+  .voortbalk div { height: 100%; background: var(--blauw); }
+  .opdracht.klaar { outline: 4px solid var(--goud); }
+  .opdracht.klaar .voortbalk div { background: var(--groen); }
+  .beloning { font-weight: 800; white-space: nowrap; opacity: .7; }
+  #balkje { width: 220px; height: 12px; background: #ddd; border-radius: 6px; margin: 0 auto; overflow: hidden; }
+  #balkje div { height: 100%; width: 0; background: var(--groen); transition: width .1s; }
+  #vondst { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; }
+  #vondst .groot { font-size: 110px; animation: plop .4s; }
+  #vondst img.groot { width: 170px; height: 170px; object-fit: contain; }
+  @keyframes plop { 0% { transform: scale(0) rotate(-40deg);} 70% { transform: scale(1.25);} 100% { transform: scale(1);} }
+  #vondst .tekst { font-family: "Lilita One", sans-serif; font-size: 30px; }
+  #vondst .geld { font-weight: 800; font-size: 26px; color: var(--groen); }
+  .hint { font-size: 17px; margin: 8px 0 0; opacity: .8; }
+
+  /* glimmend */
+  .glimvak { position: relative; border-radius: 16px; padding: 6px;
+             background: linear-gradient(135deg, #fff3b0, #ffd84d, #fff3b0); background-size: 200% 200%;
+             animation: glans 2s linear infinite; }
+  @keyframes glans { 0% { background-position: 0% 0%; } 100% { background-position: 200% 200%; } }
+  .glimvak::after { content: "✨"; position: absolute; top: -6px; right: -4px; font-size: 26px; animation: twinkel 1s infinite alternate; }
+  @keyframes twinkel { from { transform: scale(.7) rotate(0); } to { transform: scale(1.2) rotate(20deg); } }
+  .glimtekst { color: #c98a00; text-shadow: 1px 1px 0 #fff3b0; }
+
+  /* winkel */
+  .item { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 16px; padding: 8px 12px; margin-top: 8px; }
+  .item img.foto { width: 70px; height: 70px; object-fit: contain; margin: 0; }
+  .item .info { flex: 1; }
+  .item b { font-size: 19px; }
+  .item.aan { outline: 4px solid var(--groen); }
+  button.koop { font-family: "Lilita One", sans-serif; font-size: 21px; border: none; border-radius: 14px; padding: 8px 14px;
+                background: var(--goud); color: var(--donker); cursor: pointer; box-shadow: 0 4px 0 #b88900; white-space: nowrap; }
+  button.koop:disabled { background: #ddd; box-shadow: 0 4px 0 #aaa; cursor: not-allowed; color: #888; }
+
+  /* musea */
+  #musea { grid-column: 1 / -1; }
+  #tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-items: end; margin-top: 4px; }
+  #tabs button, #zalen { --mk: var(--groen); }
+  #tabs button[data-m="zeldzaam"], #zalen[data-m="zeldzaam"] { --mk: var(--blauw); }
+  #tabs button[data-m="bijna"], #zalen[data-m="bijna"] { --mk: var(--paars); }
+  #tabs button { display: flex; flex-direction: column; align-items: center; gap: 1px; cursor: pointer; margin-bottom: 6px;
+                 padding: 8px 6px; border: 3px solid var(--mk); border-radius: 16px; background: #fffaf0; color: var(--donker); }
+  #tabs button:hover { background: #fff; }
+  #tabs button.hier { background: var(--mk); color: #fff; margin-bottom: 0; padding-bottom: 14px; border-radius: 16px 16px 0 0; }
+  #tabs .mico { font-size: 26px; line-height: 1; }
+  #tabs .mnaam { font-family: "Lilita One", sans-serif; font-size: 19px; line-height: 1.1; text-align: center; }
+  #tabs .msub { font-size: 13px; font-weight: 800; opacity: .8; }
+  .glimtel { color: #c98a00; }
+  #tabs button.hier .glimtel { color: #fff3b0; }
+
+  /* de museumzaal: een echte ruimte met diepte */
+  #zalen { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 10px 12px; background: var(--mk);
+           border-radius: 0 0 16px 16px; }
+  #zalen .zlabel { color: #fff; font-weight: 800; font-size: 14px; opacity: .85; margin-right: 2px; }
+  #zalen button { font-family: "Lilita One", sans-serif; font-size: 16px; border: 2px solid rgba(255,255,255,.55); cursor: pointer;
+                  background: rgba(255,255,255,.14); color: #fff; border-radius: 999px; padding: 4px 12px; }
+  #zalen button:hover { background: rgba(255,255,255,.28); }
+  #zalen button.hier { background: #fff; color: var(--mk); border-color: #fff; }
+  .zaalwrap { position: relative; isolation: isolate; margin-top: 10px; border-radius: 18px; overflow: hidden; border: 6px solid #3a2414; }
+  .zaal { position: relative; aspect-ratio: 16 / 9; container-type: inline-size; overflow: hidden; background: #1c140c; user-select: none; }
+  .zaal.z-zeldzaam { --lijstkleur: linear-gradient(135deg, #f4f4f4, #9a9a9a, #e2e2e2); }
+  .zaal.z-gewoon   { --lijstkleur: linear-gradient(135deg, #8a5a2b, #4e3116); }
+  .zaal.z-bijna    { --lijstkleur: linear-gradient(135deg, #ffe48a, #b8860b, #ffd54a); }
+  .scene { position: absolute; inset: 0; transition: opacity .35s ease, transform .35s ease; }
+  .zaal.weg .scene { opacity: 0; transform: scale(1.12); }
+  .zaal.komt .scene { opacity: 0; transform: scale(.94); transition: none; }
+  .kamer { position: absolute; inset: 0; background: center / 100% 100% no-repeat;
+           transform: translate(calc(var(--px, 0) * -5px), calc(var(--py, 0) * -3px)); }
+
+  /* een fossiel op een sokkel; --s is hoe dichtbij hij staat */
+  .stuk { position: absolute; width: calc(var(--s) * 17cqw); display: flex; flex-direction: column; align-items: center; cursor: pointer;
+          transform: translate(-50%, -100%) translate(calc(var(--px, 0) * var(--s) * 14px), calc(var(--py, 0) * var(--s) * 5px)); }
+  .stuk .fossiel { width: 92%; max-height: calc(var(--s) * 14cqw); object-fit: contain; position: relative; z-index: 1;
+                   margin-bottom: calc(var(--s) * -.5cqw); filter: drop-shadow(0 0 .15cqw rgba(0,0,0,.7)) drop-shadow(0 .5cqw .6cqw rgba(0,0,0,.45)); transition: transform .25s; }
+  .stuk:hover .fossiel { transform: translateY(-5%) scale(1.05); }
+  .opsokkel { position: relative; width: 100%; display: flex; justify-content: center; align-items: flex-end; }
+  .stuk .sokkel { display: block; width: 92%; position: relative; }
+  .z-zeldzaam .stuk .sokkel { width: 58%; }
+  .z-bijna .stuk .sokkel { width: 74%; }
+  .schaduw { position: absolute; bottom: -1.5%; left: 0; right: 0; height: calc(var(--s) * 2.4cqw); z-index: -1;
+             background: radial-gradient(closest-side, rgba(0,0,0,.5), transparent); }
+  .pronk .schaduw { height: calc(var(--s) * 4cqw); left: -25%; right: -25%; bottom: -3%;
+                    background: radial-gradient(closest-side, rgba(255,240,200,.55), rgba(255,230,180,.15) 70%, transparent); }
+  .stuk.leeg .sokkel, .stuk.dicht .sokkel { filter: brightness(.85); }
+  .stuk .touw { position: absolute; bottom: -4%; width: 135%; z-index: 4; }
+
+  /* een fossiel in een lijst aan de muur */
+  .lijst { position: absolute; width: calc(var(--s) * 22cqw); padding: calc(var(--s) * 1.1cqw); background: var(--lijstkleur);
+           box-shadow: 0 .8cqw 1.4cqw rgba(0,0,0,.5); cursor: pointer; border-radius: 2px;
+           transform: translate(-50%, -50%) translate(calc(var(--px, 0) * var(--s) * 10px), 0); }
+  .lijst .mat { position: relative; aspect-ratio: 1; background: #f4ecd8; display: flex; align-items: center; justify-content: center;
+                box-shadow: inset 0 0 .8cqw rgba(0,0,0,.35); }
+  .lijst.leeg .mat { background: #d8cfbb; }
+  .lijst .fossiel { max-width: 86%; max-height: 86%; transition: transform .25s; }
+  .lijst:hover .fossiel { transform: scale(1.06); }
+
+  /* naambordjes */
+  .bordje { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; z-index: 3; bottom: 14%;
+            background: linear-gradient(#f0d27a, #b8892b); color: #3a2414; font-weight: 800;
+            font-size: max(8px, calc(var(--s) * 1.25cqw)); padding: .15em .7em; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  .lijst .bordje { bottom: auto; top: calc(100% + .5cqw); }
+  .bordje.grijs { background: linear-gradient(#e2e2e2, #9a9a9a); }
+  .pronk .bordje { background: linear-gradient(#fff4c2, #d4a017); }
+  .zaalnaam { position: absolute; top: 3%; left: 50%; transform: translateX(-50%); z-index: 900; white-space: nowrap;
+              font-family: "Lilita One", sans-serif; font-size: max(15px, 2.4cqw); color: #3a2414; padding: .1em .9em;
+              background: linear-gradient(#f6dc8c, #b8892b); border-radius: 6px; box-shadow: 0 .4cqw 1cqw rgba(0,0,0,.5); }
+
+  /* licht: spotlight op het pronkstuk, gouden licht op glimmers */
+  .licht { position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; mix-blend-mode: screen;
+           width: calc(var(--s) * 26cqw); clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+           background: linear-gradient(rgba(255,240,200,.45), rgba(255,235,190,.12) 75%, transparent); }
+  .licht.goud { background: linear-gradient(rgba(255,215,90,.7), rgba(255,200,60,.2) 75%, transparent); animation: flikker 2s infinite alternate; }
+  @keyframes flikker { from { opacity: .7; } to { opacity: 1; } }
+  .glimmer .fossiel { filter: drop-shadow(0 0 1.2cqw #ffd84d) drop-shadow(0 0 .3cqw #fff3b0) !important; }
+  .fonkel { position: absolute; font-size: max(10px, calc(var(--s) * 2cqw)); z-index: 5; pointer-events: none; animation: twinkel 1s infinite alternate; }
+
+  /* stofjes die in het licht zweven */
+  .stof { position: absolute; width: .35cqw; height: .35cqw; border-radius: 50%; background: rgba(255,250,230,.8);
+          pointer-events: none; z-index: 950; animation: zweef linear infinite; }
+  @keyframes zweef { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: .8; } 85% { opacity: .8; }
+                     100% { transform: translate(4cqw, -10cqw); opacity: 0; } }
+
+  .pijl { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1000; width: 46px; height: 46px; border-radius: 50%;
+          border: none; font-size: 22px; cursor: pointer; background: rgba(255,255,255,.9); box-shadow: 0 3px 8px rgba(0,0,0,.4); }
+  .pijl.links { left: 8px; } .pijl.rechts { right: 8px; }
+  #groot { position: absolute; top: 10px; right: 10px; z-index: 1000; border: none; border-radius: 10px; cursor: pointer;
+           font-family: "Lilita One", sans-serif; font-size: 17px; padding: 4px 12px; background: rgba(255,255,255,.9); box-shadow: 0 3px 8px rgba(0,0,0,.4); }
+  .zaalwrap:fullscreen { display: flex; align-items: center; justify-content: center; background: #000; border: none; border-radius: 0; margin: 0; }
+  .zaalwrap:fullscreen .zaal { width: min(100vw, 177.78vh); }
+
+  /* een fossiel van dichtbij bekijken */
+  #detail { position: fixed; inset: 0; background: rgba(20,12,4,.78); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 16px; }
+  #detail.open { display: flex; }
+  #detail .kaartje { background: #fffdf7; border-radius: 22px; padding: 18px; max-width: 420px; width: 100%; text-align: center; animation: plop .35s; }
+  #detail img { width: 100%; max-width: 280px; mix-blend-mode: multiply; }
+  #detail img.wazig { filter: grayscale(1) blur(8px) opacity(.35); }
+  #detail h3 { font-family: "Lilita One", sans-serif; font-size: 34px; margin: 4px 0; color: var(--bruin); }
+  #detail p { margin: 4px 0; font-size: 18px; }
+  #detail button { font-family: "Lilita One", sans-serif; font-size: 22px; border: none; border-radius: 14px; padding: 8px 18px; margin-top: 10px;
+                   background: var(--goud); color: var(--donker); cursor: pointer; box-shadow: 0 4px 0 #b88900; }
+
+  #feest { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .snipper { position: absolute; top: -20px; font-size: 26px; animation: val 2.2s linear forwards; }
+  @keyframes val { to { transform: translateY(110vh) rotate(540deg); } }
+  #opnieuw { margin-top: 14px; background: none; border: none; text-decoration: underline; cursor: pointer; opacity: .5; font-family: inherit; }
+
+  /* ---------- vormgeving: het landschap van je graafplek, perkament-panelen, Lilita One ---------- */
+  :root { --bruin: #5a3412; --donker: #3a2210; --amber: #f0a830; --perkament: #fbf4e4; --rand: #e3cfa3; }
+  body { background: #2a1a0c; color: var(--donker); }
+  #achtergrond { position: fixed; inset: -30px; z-index: -1; background: var(--plekfoto) center / cover no-repeat;
+                 filter: blur(7px) brightness(.62) saturate(1.1); transition: background-image .6s; }
+  #achtergrond::after { content: ""; position: absolute; inset: 0;
+                        background: linear-gradient(rgba(20,10,0,.15), rgba(20,10,0,.55)); }
+  header { padding: 18px 16px 6px; }
+  #logo { display: block; width: min(440px, 86vw); margin: 0 auto -4px; filter: drop-shadow(0 10px 18px rgba(0,0,0,.55)); }
+  .pil { background: rgba(28,16,6,.6); color: #fff; border: 1px solid rgba(255,255,255,.18); backdrop-filter: blur(6px);
+         box-shadow: 0 4px 14px rgba(0,0,0,.35); font-size: 18px; }
+  .kaart { background: var(--perkament); border: 3px solid var(--rand); border-radius: 20px;
+           box-shadow: 0 12px 32px rgba(0,0,0,.4), inset 0 1px 0 #fff; }
+  h2 { font-size: 28px; color: var(--bruin); letter-spacing: .5px; }
+  h3.kop { color: var(--bruin); }
+  .item, .opdracht { background: #fffaf0; border: 2px solid #efe0bf; }
+  button.koop { background: linear-gradient(#ffc75a, #f0a020); box-shadow: 0 4px 0 #b97408; color: #3a2210; }
+
+  /* de graafplek is een echt stukje landschap */
+  #plekken button { border: 2px solid var(--rand); background: #fffaf0; color: var(--bruin); }
+  #plekken button.hier { background: var(--bruin); border-color: var(--bruin); color: #fff; }
+  #steenvak { height: 340px; margin-top: 8px; border-radius: 16px; overflow: hidden; align-items: flex-end; padding-bottom: 22px;
+              background: var(--plekfoto) center 70% / cover no-repeat; box-shadow: inset 0 0 0 3px rgba(0,0,0,.08), inset 0 -40px 60px rgba(0,0,0,.18); }
+  #steen { mix-blend-mode: normal; background: center / contain no-repeat; width: 230px; height: auto; aspect-ratio: 1.4; max-height: 290px;
+           filter: drop-shadow(0 14px 10px rgba(0,0,0,.5)); }
+  #steen.groot { width: 300px; }
+  #grootlabel { top: 12px; box-shadow: 0 4px 10px rgba(0,0,0,.35); }
+  #vondst { justify-content: flex-end; padding-bottom: 18px; gap: 6px; background: radial-gradient(ellipse at 50% 60%, rgba(0,0,0,.25), transparent 70%); }
+  #vondst img.groot { width: 180px; height: 180px; filter: drop-shadow(0 10px 12px rgba(0,0,0,.55)); mix-blend-mode: normal; }
+  #vondst .tekst, #vondst .geld { background: rgba(28,16,6,.78); color: #fff; padding: 2px 16px; border-radius: 12px; }
+  #vondst .tekst { font-size: 26px; }
+  #vondst .geld { color: #8dff9c; font-size: 22px; }
+  #vondst .tekst.glimtekst { color: #ffd84d; text-shadow: none; }
+  #vondst .rij img.mini { mix-blend-mode: normal; width: 70px; height: 70px; filter: drop-shadow(0 6px 6px rgba(0,0,0,.5)); }
+  .glimvak { background: none; padding: 0; animation: none; }
+  .glimvak img { filter: drop-shadow(0 0 14px #ffd84d) drop-shadow(0 0 4px #fff3b0) !important; }
+  #vondst img.brokken { width: 230px; filter: drop-shadow(0 8px 6px rgba(0,0,0,.45)); animation: neerval .35s ease-out; }
+  @keyframes neerval { from { transform: translateY(-30px) scale(1.1); opacity: .4; } }
+  .wolk { position: absolute; left: 50%; bottom: 60px; width: 0; height: 0; pointer-events: none; }
+  .wolk span { position: absolute; width: 70px; height: 70px; margin: -35px; border-radius: 50%;
+               background: radial-gradient(circle, rgba(225,215,195,.75), rgba(225,215,195,0) 70%);
+               animation: puf 1s ease-out var(--d) forwards; opacity: 0; }
+  @keyframes puf { 0% { opacity: .9; transform: translate(0, 0) scale(.4); } 100% { opacity: 0; transform: translate(calc(var(--x) * 2.2), -60px) scale(2); } }
+  #hulpje { left: 14px; bottom: 14px; width: 105px; }
+  #hulpje img { mix-blend-mode: normal; filter: drop-shadow(0 8px 6px rgba(0,0,0,.45)); }
+  #balkje { margin-top: 12px; background: #eadbbb; }
+  #balkje div { background: linear-gradient(90deg, #f0a020, #ffc75a); }
+  #meterbalk i { background: #eadbbb; }
+  #boem { background: linear-gradient(#ff7a4a, #e4572e); }
+
+  /* ---------- brede graafplek, eigen plekje voor de dino, winkel als uitklapmenu ---------- */
+  @media (min-width: 801px) {
+    #graaf { grid-column: 1 / -1; grid-row: 1; }
+    #opdrachten { grid-column: 1; grid-row: 2; }
+    #winkel { grid-column: 2; grid-row: 2; }
+    #steenvak { height: 440px; }
+  }
+  #vondst { z-index: 5; }
+  #vondst .tekst, #vondst .geld { max-width: 90%; text-align: center; }
+  #hulpje { left: auto; right: 7%; bottom: 11%; width: auto; align-items: flex-end; gap: 2px; z-index: 2; }
+  #hulpje img { width: 130px; }
+  #hulpsteen { width: 72px; aspect-ratio: 1.4; margin-bottom: 6px; background: center bottom / contain no-repeat;
+               filter: drop-shadow(0 6px 5px rgba(0,0,0,.45)); }
+  #hulpsteen { position: relative; }
+  #hulpsteen.kapot { animation: neerval .3s ease-out; background-size: 135% auto; }
+  #hulpsteen.vondst { animation: plop .4s; }
+  #hulpsteen.terug { animation: terug .35s ease-out; }
+  @keyframes terug { from { opacity: 0; transform: translateY(-14px); } }
+  .wolk.klein { bottom: 30%; }
+  .wolk.klein span { width: 34px; height: 34px; margin: -17px; }
+  #bel { z-index: 3; }
+  @media (max-width: 800px) {
+    #hulpje { right: 8px; bottom: 8px; }
+    #hulpje img { width: 76px; }
+    #hulpsteen { width: 42px; margin-bottom: 3px; }
+  }
+
+  .rubriek { border: 2px solid #efe0bf; border-radius: 14px; margin-top: 8px; background: #fffaf0; overflow: hidden; }
+  .rkop { width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: none; background: none;
+          cursor: pointer; text-align: left; font-family: Nunito, sans-serif; color: var(--donker); }
+  .rkop:hover { background: #fff4dc; }
+  .rkop .rico { font-size: 22px; }
+  .rkop b { font-family: "Lilita One", sans-serif; font-weight: normal; font-size: 20px; color: var(--bruin); }
+  .rsam { flex: 1; min-width: 0; font-weight: 800; font-size: 14px; opacity: .65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nieuw { background: #e4572e; color: #fff; font-weight: 800; font-size: 12px; padding: 2px 9px; border-radius: 999px;
+           white-space: nowrap; animation: pols 1s infinite alternate; }
+  @keyframes pols { to { transform: scale(1.08); } }
+  .pijltje { font-size: 18px; color: var(--bruin); transition: transform .2s; }
+  .rubriek.open .pijltje { transform: rotate(180deg); }
+  .rinhoud { display: none; padding: 0 10px 10px; }
+  .rubriek.open .rinhoud { display: block; }
+  .rubriek.open .rkop { border-bottom: 2px solid #efe0bf; }
+  .rinhoud .item { background: #fff; }
+
+  /* schuine sokkels: hoog of laag, gespiegeld aan de rechterkant van de zaal */
+  .stuk .sokkel.hoog { width: 64%; }
+  .stuk .sokkel.laag { width: 96%; }
+  .z-bijna .stuk .sokkel.laag { width: 104%; }
+  .stuk .sokkel.spiegel { transform: scaleX(-1); }
+  /* het voorvlak (en het bovenvlak) zit bij een schuine sokkel iets naar opzij */
+  .stuk.zijL .bordje { left: 44%; }
+  .stuk.zijR .bordje { left: 56%; }
+  .stuk.zijL .opsokkel { transform: translateX(-5%); }
+  .stuk.zijR .opsokkel { transform: translateX(5%); }
+
+  /* museumzaal in perspectief (svg) */
+  .zaalsvg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .svgstuk { cursor: pointer; }
+  .svgstuk .zijdonker { fill: rgba(0,0,0,.38); }
+  .svgstuk .toplicht { fill: rgba(255,255,255,.16); }
+  .svgstuk .voorrand { fill: none; stroke: rgba(0,0,0,.35); stroke-width: 1.5; }
+  .svgstuk.leeg polygon { filter: brightness(.85); }
+  .svgstuk image.fossiel { filter: drop-shadow(0 3px 4px rgba(0,0,0,.5)); transition: transform .25s; transform-box: fill-box; transform-origin: center bottom; }
+  .svgstuk:hover image.fossiel { transform: translateY(-4%) scale(1.04); }
+  .svgstuk.glimmer image.fossiel { filter: drop-shadow(0 0 10px #ffd84d) drop-shadow(0 0 3px #fff3b0); }
+  .svloerschaduw { fill: rgba(0,0,0,.35); filter: blur(4px); }
+  .sfossielschaduw { fill: rgba(0,0,0,.35); }
+  .slicht { fill: url(#spotlicht); mix-blend-mode: screen; pointer-events: none; }
+  .slicht.goud { fill: url(#spotgoud); animation: flikker 2s infinite alternate; }
+  .sbordje rect { fill: url(#bordjegoud); fill: #d9b14e; stroke: #8a6418; stroke-width: 1; }
+  .sbordje text { fill: #3a2414; font-family: Nunito, sans-serif; font-weight: 800; text-anchor: middle; dominant-baseline: middle; }
+  .sbordje.grijs rect { fill: #c4c4c4; stroke: #888; }
+  .sfonkel { animation: twinkel 1s infinite alternate; transform-box: fill-box; transform-origin: center; pointer-events: none; }
+  .lijstschaduw { fill: rgba(0,0,0,.4); filter: blur(5px); }
+  .lijstmat { fill: #f4ecd8; }
+  .slijst.leeg .lijstmat { fill: #d8cfbb; }
+
+  /* ---------- museumstatus, recensies en voorzieningen ---------- */
+  #museumstatus { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; margin: 6px 0 4px; }
+  @media (max-width: 800px) { #museumstatus { grid-template-columns: 1fr 1fr; } }
+  .mstat { background: #fffaf0; border: 2px solid #efe0bf; border-radius: 14px; padding: 10px 12px; text-align: center; }
+  .mtitel { font-family: "Lilita One", sans-serif; font-size: 24px; color: var(--bruin); }
+  .mgetal { font-family: "Lilita One", sans-serif; font-size: 24px; color: var(--donker); }
+  .mklein { font-size: 13px; font-weight: 800; opacity: .7; }
+  .mbalk { height: 12px; background: #eadbbb; border-radius: 6px; overflow: hidden; margin: 6px 0 4px; }
+  .mbalk div { height: 100%; background: linear-gradient(90deg, #f0a020, #ffc75a); }
+  .sterren span { color: #d8cdb4; }
+  .sterren span.vol { color: #f2b705; }
+  .sterren span.half { background: linear-gradient(90deg, #f2b705 50%, #d8cdb4 50%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .recensies { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+  .recensie { display: flex; gap: 8px; align-items: flex-start; background: #fff; border-radius: 12px; padding: 8px 10px; font-size: 15px; border-left: 5px solid #e4a020; }
+  .recensie.blij { border-left-color: var(--groen); }
+  .recensie small { opacity: .6; font-weight: 800; }
+  .rgezicht { font-size: 24px; }
+  #voorzieningen { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 8px 0 14px; }
+  .voorz { background: #fffaf0; border: 2px solid #efe0bf; border-radius: 14px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+  .voorz img.foto { width: 76px; height: 76px; object-fit: contain; }
+  .voorz small { font-size: 12px; opacity: .75; flex: 1; }
+  .voorz button.koop { font-size: 16px; padding: 6px 10px; }
+  .stipjes { display: flex; gap: 3px; }
+  .stipjes i { width: 12px; height: 12px; border-radius: 50%; background: #e2d6bb; }
+  .stipjes i.aan { background: var(--goud); box-shadow: 0 0 4px var(--goud); }
+  .mooier { background: #fff6dc; border-radius: 12px; padding: 8px; margin-top: 8px; }
+  .goudrand { fill: #e2b33c; stroke: #8a6418; stroke-width: 1; }
+  .topster { fill: #ffd84d; stroke: #8a6418; stroke-width: 1.2; text-anchor: middle; dominant-baseline: middle; filter: drop-shadow(0 0 6px #ffd84d); pointer-events: none; }
+  .bezoeker { animation: kijken 6s ease-in-out infinite; transform-box: fill-box; transform-origin: center bottom; pointer-events: none; }
+  @keyframes kijken { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
+  .pil { position: relative; }
+  .kassaplus { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); white-space: nowrap; font-size: 14px; color: #8dff9c; animation: opstijg 1.8s ease-out forwards; pointer-events: none; }
+  @keyframes opstijg { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -30px); } }
+
+  /* ---------- vleugels, deuren, verbouwen ---------- */
+  #tabs button.dicht { opacity: .75; border-style: dashed; }
+  #tabs button.dicht .mico { filter: grayscale(1); }
+  .deurscherm { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                background: radial-gradient(ellipse at center, rgba(20,12,4,.55), rgba(20,12,4,.88)); z-index: 950; }
+  .deurscherm img { height: 62%; filter: drop-shadow(0 12px 20px rgba(0,0,0,.6)); }
+  .zaal:has(.deurscherm) ~ .pijl { display: none; }
+  .deurvraag { position: absolute; top: 4%; font-family: "Lilita One", sans-serif; font-size: max(40px, 7cqw); color: #ffd84d;
+               text-shadow: 0 3px 0 #5a3412, 0 0 20px #ffd84d; animation: wiebel2 1.6s ease-in-out infinite; }
+  @keyframes wiebel2 { 50% { transform: rotate(8deg) scale(1.1); } }
+  .deurtekst { margin-top: 10px; text-align: center; color: #fff; font-family: "Lilita One", sans-serif; font-size: max(18px, 2.4cqw); }
+  .deurtekst span { font-family: Nunito, sans-serif; font-weight: 800; font-size: max(13px, 1.5cqw); opacity: .9; }
+  .feestscherm { position: fixed; inset: 0; z-index: 6000; display: flex; align-items: center; justify-content: center;
+                 background: rgba(20,12,4,.8); padding: 16px; animation: inkomen .3s; }
+  @keyframes inkomen { from { opacity: 0; } }
+  .feestkaart { background: var(--perkament); border-radius: 22px; padding: 20px; max-width: 440px; width: 100%; text-align: center; animation: plop .4s; }
+  .feesttitel { font-family: "Lilita One", sans-serif; font-size: 34px; color: var(--bruin); }
+  .feestnaam { font-family: "Lilita One", sans-serif; font-size: 24px; color: var(--groen); }
+  .deurbreek { position: relative; height: 170px; display: flex; justify-content: center; overflow: hidden; }
+  .deurbreek img { height: 100%; position: absolute; }
+  .deurbreek .dl { clip-path: inset(0 50% 0 0); animation: deurL 1s .5s ease-in forwards; }
+  .deurbreek .dr { clip-path: inset(0 0 0 50%); animation: deurR 1s .5s ease-in forwards; }
+  @keyframes deurL { to { transform: translateX(-70%) rotate(-25deg); opacity: 0; } }
+  @keyframes deurR { to { transform: translateX(70%) rotate(25deg); opacity: 0; } }
+  .verbouw { grid-column: 1 / -1; }
+  .verbouw button.koop { margin-top: 6px; }
+  .verbouwscherm { position: absolute; inset: 0; z-index: 1200; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                   background: rgba(40,28,14,.88); color: #fff; border-radius: 12px; }
+  .verbouwscherm.klaar { background: rgba(40,28,14,.35); animation: wegvagen 2.6s ease-in forwards; }
+  @keyframes wegvagen { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+  .steiger { font-size: 48px; animation: schud .3s infinite; }
+  .verbouwtekst { font-family: "Lilita One", sans-serif; font-size: 26px; text-align: center; text-shadow: 0 3px 0 rgba(0,0,0,.5); }
+  .verbouwtekst.groot { font-size: 46px; color: #ffd84d; }
+  .verbouwtekst span { font-size: 22px; color: #fff; }
+
+  /* ---------- zolder, naam, nieuwe volgorde ---------- */
+  #museumnaam { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .titelbadge { font-family: Nunito, sans-serif; font-weight: 800; font-size: 15px; background: var(--goud); color: var(--donker);
+                padding: 3px 12px; border-radius: 999px; }
+  #hernoem { border: none; background: #fff2d2; border-radius: 10px; font-size: 18px; cursor: pointer; padding: 3px 8px; }
+  .zolderbeeld { position: relative; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 6px solid #3a2414;
+                 background: url(img/zolder.jpg) center / cover; }
+  .zolderstuk { position: absolute; width: 9%; height: 13%; transform: translate(-50%, -100%); }
+  .zolderstuk.vers img { animation: plop .4s; }
+  .zolderstuk img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 4px 4px rgba(0,0,0,.6)); display: block; }
+  .zolderstuk .keer { position: absolute; right: -4px; top: -6px; background: #e4572e; color: #fff; font-weight: 800; font-size: 12px; padding: 1px 6px; border-radius: 999px; }
+  .zoldervol { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); font-family: "Lilita One", sans-serif; font-size: 26px;
+               color: #ffd84d; text-shadow: 0 3px 0 #3a2414; animation: wiebel 1s infinite; white-space: nowrap; }
+  .zolderkaart { background: #fffaf0; border: 2px solid #efe0bf; border-radius: 14px; padding: 12px 14px; margin-top: 10px; text-align: center; }
+  .zolderkaart p { margin: 4px 0 8px; }
+  .zbalk { text-align: left; margin: 6px 0; font-weight: 800; font-size: 14px; }
+  #openknop { margin-top: 8px; font-size: 22px; }
+  #naaminvoer { width: 100%; font-family: "Lilita One", sans-serif; font-size: 24px; padding: 8px 12px; border-radius: 12px;
+                border: 3px solid var(--rand); text-align: center; margin: 6px 0; }
+  .naamideeen { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 10px; }
+  .naamidee { border: 2px solid var(--rand); background: #fff; border-radius: 999px; padding: 4px 10px; cursor: pointer; font-family: Nunito, sans-serif; font-weight: 800; }
+  .verhuis { font-size: 54px; animation: wiebel2 1.2s infinite; }
+</style>
+</head>
+<body data-plek="groeve">
+<div id="achtergrond"></div>
+<header>
+  <h1><img id="logo" src="img/uit/logo.webp" alt="Fossil Diggers"></h1>
+  <div class="balk">
+    <div class="pil">💰 € <span id="geld">0,00</span></div>
+    <div class="pil">🪨 <span id="stenen">0</span> stenen gehakt</div>
+    <div class="pil">✨ <span id="glimteller">0</span> glimmers</div>
+    <div class="pil">💎 <span id="edelteller">0</span> edelstenen</div>
+  </div>
+</header>
+
+<main>
+  <section class="kaart" id="graaf">
+    <h2>⛏️ <span id="pleknaam">De Groeve</span></h2>
+    <div id="plekken"></div>
+    <div id="steenvak">
+      <div id="grootlabel">GROTE STEEN! 💪</div>
+      <button id="steen" aria-label="Hak de steen" data-fase="0">
+        <svg class="barsten" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <g class="b1"><polyline points="47,20 52,31 45,41 53,52 49,63"/></g>
+          <g class="b2"><polyline points="49,41 60,46 67,43 76,51"/><polyline points="45,47 36,53 30,50 23,58"/></g>
+          <g class="b3"><polyline points="49,63 56,72 51,83"/><polyline points="60,46 64,34 72,29"/><polyline points="36,53 33,66 26,72"/></g>
+        </svg>
+      </button>
+      <div id="vondst"></div>
+      <div id="hulpje"><div id="bel"></div><div id="hulpsteen"></div><img src="img/uit/dinohulpje.webp" alt="Dino-hulpje"></div>
+    </div>
+    <div id="balkje"><div></div></div>
+    <p class="hint" id="hint"></p>
+    <div id="meter"><span class="klaver">🍀</span><div id="meterbalk"></div><span id="metertekst"></span></div>
+    <button id="boem"></button>
+  </section>
+
+  <section class="kaart" id="opdrachten">
+    <h2>📋 Opdrachten</h2>
+    <div id="opdrachtlijst"></div>
+  </section>
+
+  <section class="kaart" id="winkel">
+    <h2>🛒 Winkel</h2>
+    <div id="items"></div>
+  </section>
+
+  <section class="kaart" id="musea">
+    <h2 id="museumnaam">📦 Jouw zolder</h2>
+    <div id="zolder"></div>
+    <div id="museumdeel">
+      <div id="tabs"></div>
+      <div id="zalen"></div>
+      <div class="zaalwrap">
+        <button class="pijl links" data-r="-1" aria-label="Vorige zaal">◀</button>
+        <div id="zaal" class="zaal"></div>
+        <button class="pijl rechts" data-r="1" aria-label="Volgende zaal">▶</button>
+        <button id="groot">⛶ Groot scherm</button>
+      </div>
+      <h3 class="kop">⭐ Wat vinden de bezoekers?</h3>
+      <div id="museumstatus"></div>
+      <h3 class="kop">🛠️ Maak je museum beter</h3>
+      <div id="voorzieningen"></div>
+    </div>
+    <button id="opnieuw">Helemaal opnieuw beginnen</button>
+  </section>
+</main>
+<div id="feest"></div>
+<div id="detail"><div class="kaartje"></div></div>
+
+<script>
+// ---------- de plekken waar je kunt graven ----------
+const PLEKKEN = [
+  { id: "groeve",   naam: "De Groeve",   steen: "steen",          prijs: 0,    waarde: 1 },
+  { id: "strand",   naam: "Het Strand",  steen: "steen-strand",   prijs: 250,  waarde: 1.5 },
+  { id: "ijs",      naam: "Het IJs",     steen: "steen-ijs",      prijs: 1200,  waarde: 2.5 },
+  { id: "woestijn", naam: "De Woestijn", steen: "steen-woestijn", prijs: 4500, waarde: 4 },
+  { id: "vulkaan",  naam: "De Vulkaan",  steen: "steen-vulkaan",  prijs: 14000, waarde: 7 }
+];
+
+// ---------- de fossielen: [plaatje, naam, plek] ----------
+const SOORTEN = {
+  gewoon: { naam: "Gewone fossielen", klas: "m-gewoon", min: 0.80, max: 2.50, fossielen: [
+    ["schelp", "Schelp", "groeve"], ["haaientand", "Haaientand", "groeve"], ["blad", "Versteend blad", "groeve"],
+    ["slak", "Slakkenhuis", "groeve"], ["veer", "Veer", "groeve"], ["botje", "Botje", "groeve"],
+    ["zee-egel", "Zee-egel", "strand"], ["zanddollar", "Zanddollar", "strand"], ["krab", "Krab", "strand"],
+    ["gewei", "Rendiergewei", "ijs"], ["beertand", "Berentand", "ijs"], ["neushoorn", "Neushoorn-hoorn", "ijs"],
+    ["hout", "Versteend hout", "woestijn"], ["klauw", "Dino-klauw", "woestijn"], ["krokotand", "Krokodillentand", "woestijn"],
+    ["lavaslak", "Lava-slak", "vulkaan"], ["obsidiaan", "Zwart-glas-blad", "vulkaan"], ["barnsteen", "Barnsteen-mug", "vulkaan"],
+    ["zeelelie", "Zeelelie", "strand"], ["belemniet", "Belemniet", "strand"],
+    ["mammoetkies", "Mammoetkies", "ijs"], ["wolventand", "Wolventand", "ijs"],
+    ["dinowervel", "Dino-wervel", "woestijn"], ["voetafdruk", "Dino-voetafdruk", "woestijn"],
+    ["askever", "As-kever", "vulkaan"], ["salamander", "Vuursalamander", "vulkaan"]
+  ]},
+  zeldzaam: { naam: "Zeldzame fossielen", klas: "m-zeldzaam", min: 10, max: 30, fossielen: [
+    ["trilobiet", "Trilobiet", "groeve"], ["ammoniet", "Ammoniet", "groeve"], ["dino-ei", "Dino-ei", "groeve"],
+    ["dino-nek", "Dino-nek", "groeve"], ["oervis", "Oervis", "groeve"],
+    ["schildpad", "Schildpad-schild", "strand"], ["haaienkaak", "Haaienkaak", "strand"],
+    ["sabeltand", "Sabeltandtijger", "ijs"], ["beerschedel", "Holenbeer", "ijs"],
+    ["triceratops", "Triceratops-hoorn", "woestijn"], ["raptor", "Raptor-poot", "woestijn"],
+    ["pterodactylus", "Pterodactylus-vleugel", "vulkaan"], ["vuurschelp", "Vuur-ammoniet", "vulkaan"],
+    ["ichthyosaurus", "Ichthyosaurus", "strand"], ["neushoornschedel", "Neushoorn-schedel", "ijs"],
+    ["stegosaurus", "Stegosaurus-plaat", "woestijn"], ["drakentand", "Draken-tand", "vulkaan"]
+  ]},
+  bijna: { naam: "Bijna-niet-te-doen fossielen", klas: "m-bijna", min: 50, max: 150, fossielen: [
+    ["trex", "T-rex schedel", "groeve"], ["mammoet", "Mammoet", "groeve"], ["draak", "Draken-bot", "groeve"], ["goud", "Gouden fossiel", "groeve"],
+    ["plesiosaurus", "Plesiosaurus", "strand"], ["reuzenhert", "Reuzenhert", "ijs"],
+    ["dinoschedel", "Triceratops-schedel", "woestijn"], ["drakenei", "Draken-ei", "vulkaan"]
+  ]}
+};
+const foto = (f, klas = "foto") => `<img class="${klas}" src="img/${f}.jpg" alt="">`;
+// edelstenen: kans per steen en basiswaarde (keer de waarde van de plek)
+const EDELSTENEN = [
+  { f: "goudklomp", naam: "Goudklompje", kans: 0.0015, waarde: 25 },
+  { f: "smaragd", naam: "Smaragd", kans: 0.0004, waarde: 90 },
+  { f: "diamant", naam: "Diamant", kans: 0.0001, waarde: 300 }
+];
+const GLIMKANS = 1 / 25;   // zoveel kans dat een fossiel glimmend is
+const GLIMWAARDE = 5;      // glimmend is zoveel keer meer waard
+
+// ---------- winkel ----------
+// kleding geeft extra geluk. Je draagt per plek op je lijf (slot) het beste stuk dat je hebt;
+// stukken op verschillende plekken tellen bij elkaar op. Nieuwe kleding: gewoon een regel erbij.
+const BASISKANS = { bijna: 0.0015, zeldzaam: 0.011, gewoon: 0.14 };
+const KLEDING = [
+  { id: "jas", slot: "jas", foto: "geluksjas", naam: "Geluksjas", uitleg: "Je vindt vaker fossielen!", prijs: 60,
+    extra: { bijna: 0.002, zeldzaam: 0.011, gewoon: 0.045 } },
+  { id: "klaver", slot: "jas", foto: "klaverjas", naam: "Klavertje vier jas", uitleg: "Superveel geluk! Nog vaker zeldzame fossielen.", prijs: 900,
+    extra: { bijna: 0.006, zeldzaam: 0.026, gewoon: 0.09 } },
+  { id: "onderbroek", slot: "broek", foto: "onderbroek", naam: "Diamanten onderbroek", uitleg: "Je vindt 2 keer zo vaak edelstenen! En een beetje meer fossielen.", prijs: 4000,
+    extra: { bijna: 0.0015, zeldzaam: 0.0075, gewoon: 0.02 }, edel: 1 }
+];
+// gereedschap: hoeveel keer slaan voor een gewone en een grote steen
+const GEREEDSCHAP = [
+  { id: "hamer", foto: "hamer", naam: "Kleine hamer", uitleg: "Daar begin je mee.", prijs: 0, slagen: 3, grootSlagen: 10 },
+  { id: "grotehamer", foto: "grotehamer", naam: "Grote hamer", uitleg: "Stenen gaan sneller kapot!", prijs: 120, slagen: 2, grootSlagen: 6 },
+  { id: "boor", foto: "boor", naam: "Boor", uitleg: "Eén keer en klaar! Grote stenen in 3 keer.", prijs: 1500, slagen: 1, grootSlagen: 3 },
+  { id: "laser", foto: "laserboor", naam: "Laserboor", uitleg: "Zelfs grote stenen in één keer!", prijs: 6000, slagen: 1, grootSlagen: 1 }
+];
+const GROOTKANS = 0.12; // zoveel kans op een grote steen
+const METERMAX = 8;     // na zoveel lege stenen zit er zeker een fossiel in de volgende
+const DYNAMIET = { prijs: 150, stenen: 5 };
+// het dino-hulpje graaft vanzelf; de snack maakt hem sneller
+const HULP = [
+  { id: "hulpje", foto: "dinohulpje", naam: "Dino-hulpje", uitleg: "Graaft vanzelf elke 5 seconden een steen!", prijs: 600, elke: 5000 },
+  { id: "snack", foto: "dinohulpje", naam: "Dino-supersnack", uitleg: "Je dino-hulpje graaft 2 keer zo snel!", prijs: 4000, elke: 2500 }
+];
+
+// ---------- opslaan ----------
+const BEGIN = { geld: 0, stenen: 0, gevonden: {}, gekocht: {}, glim: {}, plekken: { groeve: true }, plek: "groeve",
+                meter: 0, dynamiet: 0, opdrachten: [{ type: "elk", n: 5, tekst: "Vind 5 fossielen", beloning: 10, voort: 0 }], edel: {},
+                museum: { voorz: {}, sokkel: {}, totaal: 0, beker: false, stijl: 0, open: false, naam: "" } };
+let spel;
+try { spel = JSON.parse(localStorage.getItem("fossil-diggers-v2")) || structuredClone(BEGIN); }
+catch { spel = structuredClone(BEGIN); }
+spel = { ...structuredClone(BEGIN), ...spel }; // oude opslag krijgt de nieuwe dingen erbij
+spel.museum = { ...structuredClone(BEGIN.museum), ...spel.museum };
+function bewaar() { try { localStorage.setItem("fossil-diggers-v2", JSON.stringify(spel)); } catch {} }
+
+const plek = () => PLEKKEN.find(p => p.id === spel.plek);
+// wat je aanhebt: per slot het duurste stuk dat je gekocht hebt
+function aanhebben() {
+  const beste = {};
+  KLEDING.filter(k => spel.gekocht[k.id]).forEach(k => { if (!beste[k.slot] || k.prijs > beste[k.slot].prijs) beste[k.slot] = k; });
+  return Object.values(beste);
+}
+const besteGereedschap = () => [...GEREEDSCHAP].reverse().find(w => w.prijs === 0 || spel.gekocht[w.id]);
+
+// ---------- kansen ----------
+function trek(groot) {
+  const k = { ...BASISKANS };
+  aanhebben().forEach(kl => Object.keys(k).forEach(s => k[s] += kl.extra[s]));
+  const x = groot ? 2 : 1; // in een grote steen zit vaker iets
+  const r = Math.random();
+  if (r < k.bijna * x) return heeftSoort("zeldzaam") ? "bijna" : "zeldzaam"; // eerst de zeldzame vleugel open
+  if (r < (k.bijna + k.zeldzaam) * x) return "zeldzaam";
+  if (r < (k.bijna + k.zeldzaam + k.gewoon) * x) return "gewoon";
+  return null;
+}
+
+// ---------- geluid ----------
+let ac;
+function toon(freq, duur, type = "square", vol = 0.08) {
+  try {
+    ac = ac || new AudioContext();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = freq; g.gain.value = vol;
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duur);
+    o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + duur);
+  } catch {}
+}
+
+// ---------- graven: wat zit er in een steen? ----------
+function graaf(groot, zeker) {
+  // eerst kijken of er een edelsteen in zit (kleding kan die kans groter maken)
+  const x = 1 + aanhebben().reduce((som, k) => som + (k.edel || 0), 0);
+  let r = Math.random();
+  for (const e of EDELSTENEN) {
+    if (r < e.kans * x) return { soort: "edel", f: e.f, naam: e.naam, glim: false,
+      waarde: Math.round(e.waarde * (.8 + Math.random() * .4) * plek().waarde * (groot ? 2 : 1) * 100) / 100 };
+    r -= e.kans * x;
+  }
+  const soort = trek(groot) || (zeker ? "gewoon" : null);
+  if (!soort) return null;
+  const s = SOORTEN[soort];
+  const hier = s.fossielen.filter(f => f[2] === spel.plek);
+  const [f, naam] = hier[Math.floor(Math.random() * hier.length)];
+  const glim = Math.random() < GLIMKANS;
+  const waarde = Math.round((s.min + Math.random() * (s.max - s.min)) * plek().waarde * (groot ? 2 : 1) * (glim ? GLIMWAARDE : 1) * 100) / 100;
+  return { soort, f, naam, glim, waarde };
+}
+// een vondst in je museum zetten; geeft terug of hij nieuw is
+function bewaarVondst(v) {
+  if (v.soort === "edel") { // edelstenen gaan niet in het museum, je krijgt alleen het geld
+    spel.geld += v.waarde;
+    spel.edel[v.naam] = (spel.edel[v.naam] || 0) + 1;
+    return false;
+  }
+  const nieuw = !spel.gevonden[v.naam] || (v.glim && !spel.glim[v.naam]);
+  spel.geld += v.waarde;
+  spel.gevonden[v.naam] = (spel.gevonden[v.naam] || 0) + 1;
+  if (v.glim) spel.glim[v.naam] = true;
+  meldOpdracht("fossiel", v);
+  return nieuw;
+}
+
+// ---------- hakken ----------
+const steen = document.getElementById("steen"), vondst = document.getElementById("vondst"), vak = document.getElementById("steenvak");
+let bezig = false, tik = 0, groot = false, zeker = false, inhoud = null;
+
+function nieuweSteen() {
+  tik = 0;
+  groot = Math.random() < GROOTKANS;
+  zeker = spel.meter >= METERMAX;
+  inhoud = graaf(groot, zeker);
+  steen.classList.toggle("groot", groot);
+  const src = `img/uit/${plek().steen}.webp`;
+  steen.style.backgroundImage = `url(${src})`;
+  const hs = document.getElementById("hulpsteen"); // de dino hakt op hetzelfde soort steen
+  if (!hs.classList.contains("kapot") && !hs.classList.contains("vondst")) hs.style.backgroundImage = `url(${src})`;
+  const im = new Image();
+  im.onload = () => steen.style.aspectRatio = im.naturalWidth / im.naturalHeight;
+  im.src = src;
+  // elke steen breekt een beetje anders
+  steen.querySelector(".barsten").style.transform = `scaleX(${Math.random() < .5 ? -1 : 1}) rotate(${Math.round(Math.random() * 24 - 12)}deg)`;
+  steen.dataset.fase = 0;
+  document.getElementById("grootlabel").style.display = groot ? "block" : "none";
+  toonBalk(); tekenMeter();
+}
+function tekenMeter() {
+  const vol = spel.meter >= METERMAX;
+  document.getElementById("meter").classList.toggle("vol", vol);
+  document.getElementById("meterbalk").innerHTML = Array.from({ length: METERMAX }, (_, i) => `<i class="${i < spel.meter ? "aan" : ""}"></i>`).join("");
+  document.getElementById("metertekst").textContent = vol ? "Volgende steen: zeker een fossiel!" : "Geluksmeter";
+}
+const nodig = () => groot ? besteGereedschap().grootSlagen : besteGereedschap().slagen;
+function toonBalk() {
+  document.querySelector("#balkje div").style.width = (tik / nodig() * 100) + "%";
+  document.getElementById("hint").textContent = `Klik ${nodig()} keer op de steen om hem kapot te hakken!`;
+}
+
+steen.addEventListener("click", () => {
+  if (bezig) return;
+  tik++;
+  steen.classList.remove("schud"); void steen.offsetWidth; steen.classList.add("schud");
+  toon(110 + (tik / nodig()) * 120, 0.12, "triangle", 0.2);
+  steen.dataset.fase = Math.min(3, Math.floor(tik / nodig() * 4));
+  toonBalk();
+  if (tik >= nodig()) breek();
+});
+
+function euro(n) { return n.toFixed(2).replace(".", ","); }
+
+function breek() {
+  bezig = true;
+  onthul();
+}
+
+function onthul() {
+  spel.stenen++;
+  meldOpdracht("steen", { groot });
+  steen.style.display = "none";
+  document.getElementById("grootlabel").style.display = "none";
+  vondst.style.display = "flex";
+  let wachten = 700;
+  if (zeker) spel.meter = 0;
+  const v = inhoud;
+  if (!v) {
+    spel.meter = Math.min(METERMAX, spel.meter + 1);
+    vondst.innerHTML = `<img class="brokken" src="img/uit/${plek().steen.replace("steen", "brokken")}.webp" alt="">${stofwolk()}<div class="tekst">Niks deze keer...</div>`;
+  } else {
+    const nieuw = bewaarVondst(v);
+    const edel = v.soort === "edel";
+    vondst.innerHTML = `<div class="${v.glim || edel ? "glimvak" : ""}"><img class="groot" src="img/uit/${v.f}.webp" alt=""></div>
+      <div class="tekst ${v.glim || edel ? "glimtekst" : ""}">${edel ? "💎 EDELSTEEN! " : v.glim ? "GLIMMENDE " : ""}${v.naam}${nieuw ? " (NIEUW!)" : ""}</div>
+      <div class="geld">+ € ${euro(v.waarde)}</div>`;
+    if (v.soort === "gewoon" && !v.glim) { toon(660, 0.15); }
+    else { [523, 659, 784, 1047, v.glim ? 1319 : 0].forEach((f, i) => f && setTimeout(() => toon(f, 0.18), i * 110));
+           feest(v.glim || v.soort === "bijna" || v.soort === "edel" ? 60 : 25, v.glim, v.soort === "edel"); }
+    wachten = v.glim || v.soort === "edel" ? 2200 : 1400;
+  }
+  bewaar(); teken();
+  setTimeout(() => {
+    vondst.style.display = "none"; steen.style.display = "block";
+    nieuweSteen(); bezig = false;
+  }, wachten);
+}
+
+// een wolkje stof als de steen kapotgaat
+function stofwolk(klein) {
+  return `<div class="wolk ${klein ? "klein" : ""}">${Array.from({ length: 9 }, (_, i) =>
+    `<span style="--x:${(i - 4) * (klein ? 8 : 22)}px;--d:${i * .03}s"></span>`).join("")}</div>`;
+}
+
+// ---------- dynamiet: 5 stenen tegelijk ----------
+function boem() {
+  if (bezig || spel.dynamiet < 1) return;
+  bezig = true; spel.dynamiet--;
+  const g = document.getElementById("graaf");
+  g.classList.remove("beef"); void g.offsetWidth; g.classList.add("beef");
+  [70, 55, 45].forEach((f, i) => setTimeout(() => toon(f, .4, "sawtooth", .25), i * 90));
+  const vondsten = [];
+  let totaal = 0;
+  for (let i = 0; i < DYNAMIET.stenen; i++) {
+    spel.stenen++;
+    meldOpdracht("steen", { groot: false });
+    const v = graaf(false, false);
+    if (v) { bewaarVondst(v); vondsten.push(v); totaal += v.waarde; }
+    else spel.meter = Math.min(METERMAX, spel.meter + 1);
+  }
+  steen.style.display = "none";
+  document.getElementById("grootlabel").style.display = "none";
+  vondst.style.display = "flex";
+  vondst.innerHTML = `<div class="tekst">💥 BOEM! ${DYNAMIET.stenen} stenen!</div>
+    <div class="rij">${vondsten.map(v => `<div class="${v.glim ? "glimvak" : ""}"><img class="mini" src="img/uit/${v.f}.webp" alt=""></div>`).join("") || `<img class="brokken" src="img/uit/${plek().steen.replace("steen", "brokken")}.webp" alt="">${stofwolk()}`}</div>
+    <div class="geld">${vondsten.length ? `+ € ${euro(totaal)}` : "Niks gevonden..."}</div>`;
+  if (vondsten.length) feest(vondsten.some(v => v.glim || v.soort !== "gewoon") ? 50 : 20, vondsten.some(v => v.glim));
+  bewaar(); teken();
+  setTimeout(() => {
+    vondst.style.display = "none"; steen.style.display = "block";
+    nieuweSteen(); bezig = false;
+  }, 2200);
+}
+document.getElementById("boem").addEventListener("click", boem);
+
+// ---------- het dino-hulpje graaft vanzelf ----------
+let hulpTimer;
+function startHulpje() {
+  clearInterval(hulpTimer);
+  const h = spel.gekocht.snack ? HULP[1] : spel.gekocht.hulpje ? HULP[0] : null;
+  document.getElementById("hulpje").style.display = h ? "flex" : "none";
+  if (h) hulpTimer = setInterval(hulpGraaft, h.elke);
+}
+// het steentje van de dino: leeg = verpulveren tot brokken, iets gevonden = het fossiel springt eruit
+let hulpSteenTimer;
+function hulpSteenBreekt(v) {
+  const hs = document.getElementById("hulpsteen");
+  setTimeout(() => { // even wachten tot de houweel de steen raakt
+    hs.className = "";
+    void hs.offsetWidth;
+    if (v) { hs.style.backgroundImage = `url(img/uit/${v.f}.webp)`; hs.innerHTML = ""; hs.className = "vondst"; }
+    else {
+      hs.style.backgroundImage = `url(img/uit/${plek().steen.replace("steen", "brokken")}.webp)`;
+      hs.innerHTML = stofwolk(true); hs.className = "kapot";
+      toon(140, .1, "triangle", .08);
+    }
+    clearTimeout(hulpSteenTimer);
+    hulpSteenTimer = setTimeout(() => { // een nieuwe steen voor de volgende klap
+      hs.innerHTML = ""; hs.className = "terug";
+      hs.style.backgroundImage = `url(img/uit/${plek().steen}.webp)`;
+    }, 1300);
+  }, 180);
+}
+function hulpGraaft() {
+  spel.stenen++;
+  const v = graaf(false, false);
+  const h = document.getElementById("hulpje"), bel = document.getElementById("bel");
+  h.classList.remove("hop"); void h.offsetWidth; h.classList.add("hop");
+  hulpSteenBreekt(v);
+  if (v) {
+    bewaarVondst(v);
+    bel.innerHTML = `<img class="mini" src="img/uit/${v.f}.webp" alt=""><span>+ € ${euro(v.waarde)}</span>`;
+    toon(880, .08, "sine", .05);
+    if (v.glim || v.soort !== "gewoon") feest(15, v.glim);
+  } else bel.innerHTML = `<span>niks...</span>`;
+  bel.classList.remove("toon"); void bel.offsetWidth; bel.classList.add("toon");
+  bewaar(); teken();
+}
+
+// ---------- opdrachten ----------
+const OPDRACHTICO = { steen: "🪨", groot: "💪", zeldzaam: "🔵", glim: "✨", elk: "🦴" };
+const kies = lijst => lijst[Math.floor(Math.random() * lijst.length)];
+function maakOpdracht() {
+  // de beloning groeit mee met de verste plek die je hebt ontdekt
+  const w = Math.max(...PLEKKEN.filter(p => spel.plekken[p.id]).map(p => p.waarde));
+  const r = Math.random();
+  if (r < .3) { const n = kies([10, 15, 20, 25]); return { type: "steen", n, tekst: `Hak ${n} stenen`, beloning: Math.round(n * 1.5 * w) }; }
+  if (r < .6) {
+    const [f, naam] = kies(SOORTEN.gewoon.fossielen.filter(x => spel.plekken[x[2]]));
+    const n = kies([2, 3]);
+    return { type: "fossiel", f, naam, n, tekst: `Vind ${n}x ${naam}`, beloning: Math.round(n * 10 * w) };
+  }
+  if (r < .78) { const n = kies([2, 3, 4]); return { type: "groot", n, tekst: `Hak ${n} grote stenen`, beloning: Math.round(n * 12 * w) }; }
+  if (r < .93) return { type: "zeldzaam", n: 1, tekst: "Vind een zeldzaam fossiel", beloning: Math.round(50 * w) };
+  return { type: "glim", n: 1, tekst: "Vind een glimmend fossiel", beloning: Math.round(200 * w) };
+}
+function vulOpdrachten() { while (spel.opdrachten.length < 3) spel.opdrachten.push({ ...maakOpdracht(), voort: 0 }); }
+function meldOpdracht(wat, x) {
+  spel.opdrachten.forEach(o => {
+    if (o.voort >= o.n) return;
+    if (wat === "steen" && (o.type === "steen" || (o.type === "groot" && x.groot))) o.voort++;
+    if (wat === "fossiel" && (o.type === "elk" || (o.type === "fossiel" && o.naam === x.naam) || (o.type === "zeldzaam" && x.soort !== "gewoon") || (o.type === "glim" && x.glim))) o.voort++;
+  });
+}
+function tekenOpdrachten() {
+  document.getElementById("opdrachtlijst").innerHTML = spel.opdrachten.map((o, i) => {
+    const klaar = o.voort >= o.n;
+    return `<div class="opdracht ${klaar ? "klaar" : ""}">${o.f ? foto(o.f, "foto mini") : `<span class="ico">${OPDRACHTICO[o.type]}</span>`}
+      <div class="info"><b>${o.tekst}</b><div class="voortbalk"><div style="width:${Math.min(100, o.voort / o.n * 100)}%"></div></div>
+        <small>${Math.min(o.voort, o.n)} / ${o.n}</small></div>
+      ${klaar ? `<button class="koop" data-o="${i}">🎁 € ${o.beloning}</button>` : `<span class="beloning">🎁 € ${o.beloning}</span>`}</div>`;
+  }).join("");
+}
+document.getElementById("opdrachtlijst").addEventListener("click", e => {
+  const knop = e.target.closest("button[data-o]"); if (!knop) return;
+  const o = spel.opdrachten[+knop.dataset.o];
+  if (!o || o.voort < o.n) return;
+  spel.geld += o.beloning;
+  spel.opdrachten.splice(+knop.dataset.o, 1);
+  vulOpdrachten();
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => toon(f, .18), i * 100));
+  feest(30); bewaar(); teken();
+});
+
+function feest(aantal, glim, edel) {
+  const vak = document.getElementById("feest");
+  for (let i = 0; i < aantal; i++) {
+    const d = document.createElement("div");
+    d.className = "snipper";
+    d.textContent = edel ? ["💎", "✨", "💰"][i % 3] : glim ? ["✨", "⭐", "💛"][i % 3] : ["⭐", "✨", "🎉", "🍀"][i % 4];
+    d.style.left = Math.random() * 100 + "vw";
+    d.style.animationDelay = Math.random() * 0.8 + "s";
+    vak.appendChild(d);
+    setTimeout(() => d.remove(), 3200);
+  }
+}
+
+// ---------- tekenen ----------
+function winkelItem(it, soort, aan) {
+  const heb = it.prijs === 0 || spel.gekocht[it.id];
+  const gebruik = [].concat(aan).includes(it); // aan kan één ding zijn of een lijst (kleding)
+  return `<div class="item ${gebruik ? "aan" : ""}">${foto(it.foto)}
+    <div class="info"><b>${it.naam}</b><br>${gebruik ? (it.slot ? "Deze heb je aan! 😎" : "Deze gebruik je nu! 😎") : it.uitleg}</div>
+    <button class="koop" data-soort="${soort}" data-id="${it.id}" ${heb || spel.geld < it.prijs ? "disabled" : ""}>
+      ${heb ? "Heb je al!" : "€ " + it.prijs}</button></div>`;
+}
+
+function teken() {
+  document.body.dataset.plek = spel.plek;
+  document.body.style.setProperty("--plekfoto", `url(img/plek-${spel.plek}.jpg)`);
+  document.getElementById("geld").textContent = euro(spel.geld);
+  document.getElementById("stenen").textContent = spel.stenen;
+  document.getElementById("glimteller").textContent = Object.keys(spel.glim).length;
+  document.getElementById("edelteller").textContent = Object.values(spel.edel).reduce((a, b) => a + b, 0);
+  document.getElementById("pleknaam").textContent = plek().naam;
+
+  document.getElementById("plekken").innerHTML = PLEKKEN.filter(p => spel.plekken[p.id]).map(p =>
+    `<button data-plek="${p.id}" class="${p.id === spel.plek ? "hier" : ""}">${p.naam}</button>`).join("");
+
+  // reizen: alleen de volgende plek kun je kopen
+  const volgende = PLEKKEN.find(p => !spel.plekken[p.id]);
+  const reis = volgende ? `<div class="item">${foto(volgende.steen)}
+    <div class="info"><b>Reis naar ${volgende.naam}</b><br>Nieuwe fossielen ontdekken!</div>
+    <button class="koop" data-soort="reis" data-id="${volgende.id}" ${spel.geld < volgende.prijs ? "disabled" : ""}>€ ${volgende.prijs}</button></div>`
+    : `<p>Je hebt alle plekken ontdekt! 🌍</p>`;
+
+  const dyn = `<div class="item">${foto("dynamiet")}
+    <div class="info"><b>Dynamiet</b><br>Blaas ${DYNAMIET.stenen} stenen tegelijk op! Je hebt er <b>${spel.dynamiet}</b>.</div>
+    <button class="koop" data-soort="dynamiet" data-id="dynamiet" ${spel.geld < DYNAMIET.prijs ? "disabled" : ""}>€ ${DYNAMIET.prijs}</button></div>`;
+  const hulp = HULP.map(it => {
+    const heb = spel.gekocht[it.id], kan = it.id !== "snack" || spel.gekocht.hulpje;
+    return `<div class="item">${foto(it.foto)}<div class="info"><b>${it.naam}</b><br>${kan ? it.uitleg : "Koop eerst een dino-hulpje."}</div>
+      <button class="koop" data-soort="hulp" data-id="${it.id}" ${heb || !kan || spel.geld < it.prijs ? "disabled" : ""}>
+      ${heb ? "Heb je al!" : "€ " + it.prijs}</button></div>`;
+  }).join("");
+
+  // de winkel is een uitklapmenu: per rubriek een balk met wat je hebt, en een seintje als er iets nieuws te koop is
+  const kanKopen = lijst => lijst.some(it => it.prijs > 0 && !spel.gekocht[it.id] && spel.geld >= it.prijs && (it.id !== "snack" || spel.gekocht.hulpje));
+  const hulpSam = [spel.gekocht.snack ? "Supersnelle dino" : spel.gekocht.hulpje ? "Dino-hulpje" : "", spel.dynamiet ? `💥 ${spel.dynamiet} dynamiet` : ""]
+    .filter(Boolean).join(" · ");
+  document.getElementById("items").innerHTML =
+    rubriek("reizen", "🗺️", "Reizen", volgende ? `Volgende: ${volgende.naam}` : "Alles ontdekt!", volgende && spel.geld >= volgende.prijs, reis) +
+    rubriek("gereedschap", "⛏️", "Gereedschap", besteGereedschap().naam, kanKopen(GEREEDSCHAP),
+      GEREEDSCHAP.map(it => winkelItem(it, "gereedschap", besteGereedschap())).join("")) +
+    rubriek("hulp", "🦖", "Hulp", hulpSam || "Nog geen hulp", kanKopen(HULP), hulp + dyn) +
+    rubriek("kleding", "👕", "Kleding", aanhebben().map(k => k.naam).join(", ") || "Nog niks aan", kanKopen(KLEDING),
+      KLEDING.map(it => winkelItem(it, "kleding", aanhebben())).join(""));
+
+  const b = document.getElementById("boem");
+  b.style.display = spel.dynamiet > 0 ? "block" : "none";
+  b.textContent = `💥 Dynamiet! (${spel.dynamiet})`;
+  tekenMeter();
+  tekenOpdrachten();
+  tekenMuseumKop();
+  if (isOpen()) tekenMuseumStatus();
+  controleerVleugels();
+  tekenMuseum();
+}
+
+// ---------- de musea: elk museum heeft zalen, elke zaal heeft een pronkstuk ----------
+const HANGT = new Set(["blad", "veer", "oervis", "obsidiaan", "plesiosaurus", "draak", "pterodactylus", "zanddollar", "voetafdruk", "salamander", "zeelelie"]);
+const MUSEUMNAAM = { gewoon: "Gewone vleugel", zeldzaam: "Zeldzame vleugel", bijna: "Bijna-niet-te-doen vleugel" };
+const MUSEUMKORT = { gewoon: ["🐚", "Gewone vleugel"], zeldzaam: ["🦕", "Zeldzame vleugel"], bijna: ["🦖", "Bijna-niet-te-doen vleugel"] };
+const ZALEN = {
+  gewoon: [
+    { naam: "Zeezaal", ico: "🌊", img: "hal-gewoon-zee",
+      pronk: "krab", stukken: ["schelp", "slak", "zee-egel", "zanddollar", "lavaslak", "zeelelie", "belemniet"] },
+    { naam: "Botten en tanden", ico: "🦴", img: "hal-gewoon-botten",
+      pronk: "klauw", stukken: ["haaientand", "botje", "krokotand", "dinowervel", "voetafdruk"] },
+    { naam: "IJstijdzaal", ico: "🧊", img: "hal-gewoon-ijstijd",
+      pronk: "gewei", stukken: ["beertand", "neushoorn", "mammoetkies", "wolventand"] },
+    { naam: "Planten en insecten", ico: "🌿", img: "hal-gewoon-planten",
+      pronk: "barnsteen", stukken: ["blad", "veer", "hout", "obsidiaan", "askever", "salamander"] }
+  ],
+  zeldzaam: [
+    { naam: "Oerzee", ico: "🐚", img: "hal-zeldzaam-zee",
+      pronk: "ammoniet", stukken: ["trilobiet", "oervis", "schildpad", "vuurschelp", "ichthyosaurus"] },
+    { naam: "Dinozaal", ico: "🦕", img: "hal-zeldzaam-dinos",
+      pronk: "dino-nek", stukken: ["dino-ei", "triceratops", "pterodactylus", "raptor", "stegosaurus"] },
+    { naam: "Reuzenkoppen", ico: "🐯", img: "hal-zeldzaam-roofdieren",
+      pronk: "sabeltand", stukken: ["beerschedel", "haaienkaak", "neushoornschedel", "drakentand"] }
+  ],
+  bijna: [
+    { naam: "Reuzenzaal", ico: "🦖", img: "hal-bijna-reuzen",
+      pronk: "trex", stukken: ["dinoschedel", "mammoet", "reuzenhert", "plesiosaurus"] },
+    { naam: "Schatkamer", ico: "👑", img: "hal-bijna-schat",
+      pronk: "drakenei", stukken: ["goud", "draak"] }
+  ]
+};
+// alle fossielen op plaatje: f -> [plaatje, naam, plek, soort]
+const ALLE = {};
+Object.entries(SOORTEN).forEach(([soort, s]) => s.fossielen.forEach(([f, n, p]) => ALLE[f] = [f, n, p, soort]));
+
+let museum = "gewoon", zaalNr = 0, laatsteZaal = "";
+
+function info(f) {
+  const [, naam, plek] = ALLE[f];
+  const open = !!spel.plekken[plek];
+  const heb = open && !!spel.gevonden[naam];
+  return { naam, plek, open, heb, glim: heb && !!spel.glim[naam] };
+}
+
+// Elke zaal is een foto in één-punts-perspectief. Per foto is gemeten (in % van de foto):
+// vx, vy = verdwijnpunt; yB / yC = waar vloer / plafond de achterwand raken; xL, xR = hoeken van de achterwand;
+// oog = ooghoogte van de camera in meters (geijkt op de lambrisering). Zie tools/perspectief.html.
+const PERSPECTIEF = {
+  "hal-gewoon-zee":          { vx: 50.6, vy: 54,   yB: 72,   yC: 21,   xL: 21.5, xR: 79.7, oog: 1.35 },
+  "hal-gewoon-botten":       { vx: 50,   vy: 57.5, yB: 70.5, yC: 24,   xL: 25,   xR: 74.8, oog: 1.17 },
+  "hal-gewoon-ijstijd":      { vx: 49.5, vy: 50,   yB: 65,   yC: 16.7, xL: 20,   xR: 79,   oog: 1.03 },
+  "hal-gewoon-planten":      { vx: 49.5, vy: 50,   yB: 69.4, yC: 13.9, xL: 22,   xR: 77,   oog: 1.21 },
+  "hal-zeldzaam-zee":        { vx: 50,   vy: 62,   yB: 69,   yC: 22.8, xL: 27.2, xR: 72.8, oog: 1.27 },
+  "hal-zeldzaam-dinos":      { vx: 50,   vy: 61,   yB: 67.8, yC: 0,    xL: 34,   xR: 66,   oog: 1.6 },
+  "hal-zeldzaam-roofdieren": { vx: 50,   vy: 57,   yB: 69.4, yC: 17,   xL: 21,   xR: 79,   oog: 1.3 },
+  "hal-bijna-reuzen":        { vx: 50,   vy: 58,   yB: 69,   yC: 18.9, xL: 26.5, xR: 73.5, oog: 1.6 },
+  "hal-bijna-schat":         { vx: 50,   vy: 51.5, yB: 62.5, yC: 18,   xL: 27,   xR: 73,   oog: 1.3 }
+};
+const ZW = 1600, ZH = 900, FOCUS = 1300;  // tekenvlak van de zaal en brandpuntsafstand (pixels)
+// sokkels in meters: breedte, diepte, hoogte; en hoeveel ruimte het fossiel erboven krijgt
+const SOKKEL = { pronk: [0.62, 0.62, 0.95], hoog: [0.38, 0.38, 0.95], laag: [0.66, 0.55, 0.5] };
+// Echte grootte van elk fossiel: de grootste maat in meters (ongeveer zoals in het echt).
+const ECHTE_MAAT = {
+  schelp: 0.06, haaientand: 0.08, blad: 0.15, slak: 0.06, veer: 0.12, botje: 0.25,
+  "zee-egel": 0.07, zanddollar: 0.08, krab: 0.12, zeelelie: 0.4, belemniet: 0.12,
+  gewei: 1.2, beertand: 0.12, neushoorn: 0.8, mammoetkies: 0.3, wolventand: 0.07,
+  hout: 0.4, klauw: 0.25, krokotand: 0.06, dinowervel: 0.35, voetafdruk: 0.4,
+  lavaslak: 0.07, obsidiaan: 0.2, barnsteen: 0.06, askever: 0.05, salamander: 0.25,
+  trilobiet: 0.1, ammoniet: 0.4, "dino-ei": 0.2, "dino-nek": 1.8, oervis: 0.5,
+  schildpad: 1.0, haaienkaak: 1.2, ichthyosaurus: 1.2, sabeltand: 0.35, beerschedel: 0.45,
+  neushoornschedel: 0.8, triceratops: 1.0, raptor: 0.3, stegosaurus: 0.8, pterodactylus: 1.0,
+  vuurschelp: 0.4, drakentand: 0.2,
+  trex: 1.5, mammoet: 3.0, draak: 2.0, goud: 0.3, plesiosaurus: 3.5, reuzenhert: 3.5,
+  dinoschedel: 2.0, drakenei: 0.45
+};
+// Zo groot staat een fossiel in de zaal (meters): de verhouding blijft kloppen (groter is groter),
+// maar samengedrukt zodat een tandje nog goed te zien is en een reuzenhert in de zaal past.
+const toonMaat = f => 0.26 + 0.4 * Math.sqrt(ECHTE_MAAT[f] || 0.3);
+// zoveel ruimte (breedte en hoogte) heeft een fossiel op elk soort sokkel; groter wordt verkleind tot dit
+const FOSSIELBOX = { pronk: 1.15, laag: 0.85, hoog: 0.52 };
+const FOSSIELRUIMTE = FOSSIELBOX;
+const LIJST = 0.8;        // kleinste lijst aan de muur, in meters
+const MAX_OVERLAP = 0.02; // een voorste sokkel mag een fossiel of naambordje (bijna) niet afdekken
+
+// Rekent per zaal de opstelling uit, op basis van wat er echt in de zaal staat. Komen er fossielen bij,
+// dan wordt de zaal vanzelf opnieuw ingedeeld (niets met de hand). Volgorde:
+// 1. het pronkstuk in het midden;
+// 2. de vloerfossielen, grootste eerst, elk op een sokkel die bij zijn grootte past (groot = laag en breed,
+//    klein = hoog), om en om links en rechts zo dicht mogelijk bij het pronkstuk;
+// 3. lijsten op de achterwand, alleen waar niets ervoor staat (lukt dat niet, dan gaat hij op de vloer);
+// 4. tellen hoeveel plekken er nog vrij zijn voor later.
+// Een voorste sokkel mag een achterste een stukje afdekken, maar nooit het fossiel of het naambordje.
+const geometrieCache = {};
+function zaalGeometrie(z) {
+  const sleutel = z.img + "|" + z.pronk + "|" + z.stukken.join(",");
+  if (geometrieCache[sleutel]) return geometrieCache[sleutel];
+  const m = PERSPECTIEF[z.img];
+  const vx = m.vx / 100 * ZW, vy = m.vy / 100 * ZH, yB = m.yB / 100 * ZH, yC = m.yC / 100 * ZH;
+  const OOG = m.oog;
+  const p = (X, Y, Z) => [vx + FOCUS * X / Z, vy + FOCUS * (OOG - Y) / Z];
+  const zAchter = FOCUS * OOG / (yB - vy);
+  const xLinks = (m.xL / 100 * ZW - vx) * zAchter / FOCUS, xRechts = (m.xR / 100 * ZW - vx) * zAchter / FOCUS;
+  const zVoor = FOCUS * OOG / (ZH * 0.98 - vy);
+  const kader = (X, Z, bw, bd, hoogte) => {
+    const pts = [];
+    for (const x of [X - bw / 2, X + bw / 2]) for (const y of [0, hoogte]) for (const zz of [Z - bd / 2, Z + bd / 2]) pts.push(p(x, y, zz));
+    return [Math.min(...pts.map(q => q[0])), Math.min(...pts.map(q => q[1])), Math.max(...pts.map(q => q[0])), Math.max(...pts.map(q => q[1]))];
+  };
+  const opp = k => (k[2] - k[0]) * (k[3] - k[1]);
+  const overlap = (a, b) => {
+    const w = Math.min(a[2], b[2]) - Math.max(a[0], b[0]), h = Math.min(a[3], b[3]) - Math.max(a[1], b[1]);
+    return w > 0 && h > 0 ? (w * h) / Math.min(opp(a), opp(b)) : 0;
+  };
+  const midX = (xLinks + xRechts) / 2;
+  const zMin = zVoor + 0.5, zMax = Math.min(zAchter - 1.0, zMin + 7);
+  const pronkZ = zMin + Math.min(2.6, (zMax - zMin) * 0.35); // het pronkstuk niet te ver weg
+  const soortVoor = f => toonMaat(f) > FOSSIELBOX.hoog * 1.05 ? "laag" : "hoog";
+  const maak = (soort, X, Z, maat) => {
+    const [bw, bd, bh] = SOKKEL[soort], fz = Math.min(maat, FOSSIELBOX[soort]);
+    const fb = Math.max(bw, fz);
+    const zicht = kader(X, Z - bd / 2 + 0.001, fb, 0.002, bh + fz), onder = kader(X, Z - bd / 2 + 0.001, bw, 0.002, bh * 0.7);
+    return { soort, X, Z, bw, bd, bh, fz, k: kader(X, Z, fb, bd, bh + fz), zicht: [zicht[0], zicht[1], zicht[2], onder[1]] };
+  };
+  const vloer = [{ f: z.pronk, pronk: true, plek: maak("pronk", midX, pronkZ, toonMaat(z.pronk)) }];
+  // kandidaat-plekken in verspringende rijen, om en om links en rechts, dichtbij het pronkstuk eerst
+  const rijStap = Math.max(0.8, (zMax - zMin) / 7), kolStap = 0.95;
+  const kandidaten = [];
+  let rij = 0;
+  for (let Z = zMin; Z <= zMax + 0.01; Z += rijStap, rij++) {
+    for (let X = xLinks + 0.55 + (rij % 2) * kolStap / 2; X <= xRechts - 0.55; X += kolStap) {
+      const inBeeld = vx + FOCUS * (X - 0.4) / Z > 0.06 * ZW && vx + FOCUS * (X + 0.4) / Z < 0.94 * ZW;
+      const bijPronk = Math.abs(X - midX) < 1.3 && Math.abs(Z - pronkZ) < 1.3;
+      const voorPronk = Math.abs(X - midX) < 0.9 && Z < pronkZ;
+      if (inBeeld && !bijPronk && !voorPronk) kandidaten.push({ X, Z });
+    }
+  }
+  const afstand = c => Math.hypot((c.X - midX) * 0.7, c.Z - pronkZ);
+  // om en om: links-voor, rechts-achter, links-achter, rechts-voor ... zodat er diepte in de opstelling zit
+  const kant = (opLinks, voor) => kandidaten.filter(c => (c.X < midX) === opLinks && (c.Z < pronkZ + 0.3) === voor).sort((a, b) => afstand(a) - afstand(b));
+  const rijtjes = [kant(true, true), kant(false, false), kant(true, false), kant(false, true)];
+  const volgorde = [];
+  while (rijtjes.some(r => r.length)) rijtjes.forEach(r => r.length && volgorde.push(r.shift()));
+  const lijsten = [];
+  const past = (plek) => vloer.every(v => {
+    const [voor, achter] = v.plek.Z < plek.Z ? [v.plek, plek] : [plek, v.plek];
+    return overlap(voor.k, achter.zicht) <= MAX_OVERLAP && Math.hypot(v.plek.X - plek.X, v.plek.Z - plek.Z) > 0.55 + (v.plek.fz + plek.fz) / 2;
+  }) && lijsten.every(l => overlap(plek.k, l.plek.k) === 0);
+  const zetNeer = f => {
+    const soort = f ? soortVoor(f) : "hoog", maat = f ? toonMaat(f) : FOSSIELBOX.hoog;
+    for (let i = 0; i < volgorde.length; i++) {
+      const plek = maak(soort, volgorde[i].X, volgorde[i].Z, maat);
+      if (past(plek)) { volgorde.splice(i, 1); return plek; }
+    }
+    return null;
+  };
+  const muurFossielen = z.stukken.filter(f => HANGT.has(f));
+  const naarVloer = z.stukken.filter(f => !HANGT.has(f)).sort((a, b) => toonMaat(b) - toonMaat(a));
+  for (const f of naarVloer) {
+    const plek = zetNeer(f);
+    if (plek) vloer.push({ f, plek }); else console.warn("Geen vloerplek meer in", z.naam, "voor", f);
+  }
+  // lijsten: groot in een grote zaal, kleiner als er meer nodig zijn
+  const muurHoog = OOG + (vy - yC) * zAchter / FOCUS;
+  const muurPlekken = L => {
+    const eerste = Math.max(1.75, 1.3 + L / 2), hoogste = muurHoog - L / 2 - 0.15;
+    const rijen = [eerste];
+    while (rijen.length < 3) { const Y = rijen[rijen.length - 1] + L + 0.4; if (Y > hoogste) break; rijen.push(Y); }
+    if (rijen.length === 1 && hoogste > eerste + L + 0.15) rijen.push(hoogste);
+    const wand = [];
+    for (const Y of rijen) {
+      const xs = [];
+      for (let X = xLinks + L / 2 + 0.3; X <= xRechts - L / 2 - 0.3; X += L + 0.6) xs.push(X);
+      xs.sort((a, b) => Math.abs(a - midX) - Math.abs(b - midX));
+      for (const X of xs) {
+        const [a, b] = [p(X - L / 2, Y + L / 2, zAchter - 0.02), p(X + L / 2, Y - L / 2, zAchter - 0.02)];
+        const k = [a[0], a[1], b[0], b[1]];
+        if (vloer.every(v => overlap(v.plek.k, k) === 0) && wand.every(l => overlap(l.k, k) === 0)) wand.push({ X, Y, L, k });
+      }
+    }
+    return wand;
+  };
+  let wand = [];
+  for (let L = Math.max(LIJST, Math.min(2.2, muurHoog * 0.2)); L >= LIJST - 0.01; L -= 0.2) {
+    wand = muurPlekken(L);
+    if (wand.length >= muurFossielen.length + 2) break;
+  }
+  for (const f of muurFossielen) {
+    if (wand.length) lijsten.push({ f, plek: wand.shift() });
+    else { const plek = zetNeer(f); if (plek) vloer.push({ f, plek }); else console.warn("Geen plek meer in", z.naam, "voor", f); }
+  }
+  // hoeveel kleine fossielen er later nog bij passen
+  let vrijVloer = 0;
+  while (zetNeerTest()) vrijVloer++;
+  function zetNeerTest() { const plek = zetNeer(null); if (plek) { vloer.push({ f: null, plek, reserve: true }); return true; } return false; }
+  const stukken = vloer.filter(v => !v.reserve);
+  return geometrieCache[sleutel] = { p, vx, vy, stukken, lijsten, vrijVloer, vrijWand: wand.length, reserve: vloer.filter(v => v.reserve).map(v => v.plek) };
+}
+
+const MATERIAAL = { gewoon: "tex-hout", zeldzaam: "tex-marmer", bijna: "tex-goud" };
+const fmt = pts => pts.map(q => q.map(n => n.toFixed(1)).join(",")).join(" ");
+
+function svgBordje(i, cx, cy, breedte, pronk) {
+  const tekst = i.heb ? `${pronk ? "★ " : ""}${i.naam}` : "???";
+  const fs = Math.max(7, Math.min(26, breedte * 0.16, breedte * 1.05 / (tekst.length * 0.56 + 1)));
+  const bw = Math.max(breedte * 0.8, tekst.length * fs * 0.56 + fs);
+  return `<g class="sbordje ${i.heb ? "" : "grijs"}">
+    <rect x="${(cx - bw / 2).toFixed(1)}" y="${(cy - fs * 0.85).toFixed(1)}" width="${bw.toFixed(1)}" height="${(fs * 1.5).toFixed(1)}" rx="${(fs * .2).toFixed(1)}"/>
+    <text x="${cx.toFixed(1)}" y="${(cy + fs * 0.12).toFixed(1)}" font-size="${fs.toFixed(1)}">${tekst}</text></g>`;
+}
+
+function svgFonkels(x, y, w, h, s) {
+  return [[0, .05], [.9, .15], [.05, .7], [.95, .8]].map(([fx, fy], n) =>
+    `<text class="sfonkel" x="${(x + fx * w).toFixed(1)}" y="${(y + fy * h).toFixed(1)}" font-size="${(s * 0.22).toFixed(1)}" style="animation-delay:${n * .25}s">✨</text>`).join("");
+}
+
+function svgSokkel(f, plek, pronk, g) {
+  const i = info(f), { p, vx } = g;
+  const { X, Z, bw, bd, bh, fz, soort } = plek;
+  const x0 = X - bw / 2, x1 = X + bw / 2, z0 = Z - bd / 2, z1 = Z + bd / 2;
+  const mat = `url(#mat-${stijlKey()})`;
+  // de zijkant die je ziet: links van het verdwijnpunt de rechterkant, rechts de linkerkant
+  const zijX = p(X, 0, Z)[0] < vx ? x1 : x0;
+  const zij = [p(zijX, 0, z0), p(zijX, 0, z1), p(zijX, bh, z1), p(zijX, bh, z0)];
+  const top = [p(x0, bh, z0), p(x1, bh, z0), p(x1, bh, z1), p(x0, bh, z1)];
+  const voor = [p(x0, 0, z0), p(x1, 0, z0), p(x1, bh, z0), p(x0, bh, z0)];
+  const voorB = voor[1][0] - voor[0][0];
+  // schaduw op de vloer
+  const [sx, sy] = p(X, 0, Z), sr = voorB * 0.85;
+  let svg = `<ellipse class="svloerschaduw" cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" rx="${sr.toFixed(1)}" ry="${(sr * 0.22).toFixed(1)}"/>`;
+  // spotlicht op het pronkstuk en op glimmers
+  const nv = i.heb ? sokkelNiveau(f) : 0;
+  if (pronk || i.glim || nv >= 1) {
+    const [lx, ly] = p(X, bh, Z);
+    svg += `<polygon class="slicht ${i.glim ? "goud" : ""}" points="${fmt([[lx - voorB * .25, 0], [lx + voorB * .25, 0], [lx + voorB * 1.1, ly + voorB * .1], [lx - voorB * 1.1, ly + voorB * .1]])}"/>`;
+  }
+  svg += `<g class="svgstuk ${i.heb ? "" : "leeg"} ${i.glim ? "glimmer" : ""}" data-f="${f}">
+    <polygon points="${fmt(zij)}" fill="${mat}"/><polygon points="${fmt(zij)}" class="zijdonker"/>
+    <polygon points="${fmt(top)}" fill="${stijlKey() === "bijna" ? "#8e1622" : mat}"/><polygon points="${fmt(top)}" class="toplicht"/>
+    <polygon points="${fmt(voor)}" fill="${mat}"/><polygon points="${fmt(voor)}" class="voorrand"/>`;
+  if (nv >= 2) { // gouden rand boven- en onderaan de sokkel
+    const band = (y0, y1) => fmt([p(x0, y0, z0), p(x1, y0, z0), p(x1, y1, z0), p(x0, y1, z0)]);
+    svg += `<polygon class="goudrand" points="${band(bh * .9, bh)}"/><polygon class="goudrand" points="${band(0, bh * .08)}"/>`;
+  }
+  if (nv >= 3) { const [sx2, sy2] = p(X, bh * 0.42, z0); svg += `<text class="topster" x="${sx2.toFixed(1)}" y="${sy2.toFixed(1)}" font-size="${(voorB * .38).toFixed(1)}">★</text>`; }
+  if (i.heb) {
+    // het fossiel staat midden op het bovenvlak
+    const maat = fz;
+    const [fx, fy] = p(X, bh, Z - bd * 0.1);
+    const fw = p(X + maat / 2, bh, Z - bd * 0.1)[0] - p(X - maat / 2, bh, Z - bd * 0.1)[0], fh = fw;
+    svg += `<ellipse class="sfossielschaduw" cx="${fx.toFixed(1)}" cy="${fy.toFixed(1)}" rx="${(Math.min(fw * .4, voorB * .5)).toFixed(1)}" ry="${(Math.min(fw, voorB) * .08).toFixed(1)}"/>
+      <image class="fossiel" href="img/uit/${f}.webp" x="${(fx - fw / 2).toFixed(1)}" y="${(fy - fh).toFixed(1)}" width="${fw.toFixed(1)}" height="${fh.toFixed(1)}" preserveAspectRatio="xMidYMax meet"/>`;
+    if (i.glim) svg += svgFonkels(fx - fw / 2, fy - fh, fw, fh, fw);
+  }
+  const [bx, by] = p(X, bh * 0.8, z0);
+  svg += svgBordje(i, bx, by, voorB, pronk);
+  if (!i.open) {
+    const [tx, ty] = p(X, 0, z0 - 0.15), tw = voorB * 1.6;
+    svg += `<image href="img/uit/touw.webp" x="${(tx - tw / 2).toFixed(1)}" y="${(ty - tw * .5).toFixed(1)}" width="${tw.toFixed(1)}" height="${(tw * .5).toFixed(1)}" preserveAspectRatio="xMidYMax meet"/>`;
+  }
+  return svg + `</g>`;
+}
+
+function svgLijst(f, plek, g) {
+  const i = info(f);
+  const [x0, y0, x1, y1] = plek.k, w = x1 - x0, h = y1 - y0, rand = w * 0.09;
+  let svg = `<g class="svgstuk slijst ${i.heb ? "" : "leeg"} ${i.glim ? "glimmer" : ""}" data-f="${f}">
+    <rect class="lijstschaduw" x="${(x0 + w * .03).toFixed(1)}" y="${(y0 + h * .05).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}"/>
+    <rect x="${x0.toFixed(1)}" y="${y0.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="url(#lijst-${i.heb && sokkelNiveau(f) >= 2 ? "bijna" : stijlKey()})"/>
+    <rect class="lijstmat" x="${(x0 + rand).toFixed(1)}" y="${(y0 + rand).toFixed(1)}" width="${(w - rand * 2).toFixed(1)}" height="${(h - rand * 2).toFixed(1)}"/>`;
+  if (i.heb) {
+    // kleine dingen staan kleiner in de lijst dan grote, maar altijd goed zichtbaar
+    const vul = Math.max(0.45, Math.min(1, toonMaat(f) / (plek.L * 0.75)));
+    const m = rand * 1.5 + (w - rand * 3) * (1 - vul) / 2;
+    svg += `<image class="fossiel" href="img/uit/${f}.webp" x="${(x0 + m).toFixed(1)}" y="${(y0 + m).toFixed(1)}" width="${(w - m * 2).toFixed(1)}" height="${(h - m * 2).toFixed(1)}" preserveAspectRatio="xMidYMid meet"/>`;
+    if (i.glim) svg += svgFonkels(x0 + m, y0 + m, w - m * 2, h - m * 2, w);
+  }
+  if (i.heb && sokkelNiveau(f) >= 3) svg += `<text class="topster" x="${(x1 - rand).toFixed(1)}" y="${(y0 + rand * 2.2).toFixed(1)}" font-size="${(w * .22).toFixed(1)}">★</text>`;
+  if (i.heb && sokkelNiveau(f) >= 1) svg = `<polygon class="slicht" points="${fmt([[x0 + w * .35, 0], [x1 - w * .35, 0], [x1 + w * .15, y1], [x0 - w * .15, y1]])}"/>` + svg;
+  svg += svgBordje(i, x0 + w / 2, y1 + w * 0.13, w, false);
+  return svg + `</g>`;
+}
+
+function zaalSvg(z) {
+  const g = zaalGeometrie(z);
+  const lijsten = g.lijsten;
+  const lagen = [...g.stukken.map(s => ({ Z: s.plek.Z, svg: svgSokkel(s.f, s.plek, s.pronk, g) })), ...svgBezoekers(g, z)];
+  lagen.sort((a, b) => b.Z - a.Z); // van achter naar voor
+  const tex = MATERIAAL[stijlKey()];
+  return `<svg class="zaalsvg" viewBox="0 0 ${ZW} ${ZH}" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="spotlicht" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff0c8" stop-opacity=".42"/><stop offset=".55" stop-color="#fff0c8" stop-opacity=".16"/><stop offset="1" stop-color="#fff0c8" stop-opacity="0"/></linearGradient>
+      <linearGradient id="spotgoud" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffd25a" stop-opacity=".6"/><stop offset=".55" stop-color="#ffd25a" stop-opacity=".22"/><stop offset="1" stop-color="#ffd25a" stop-opacity="0"/></linearGradient>
+      <pattern id="mat-${stijlKey()}" patternUnits="userSpaceOnUse" width="220" height="220"><image href="img/${tex}.jpg" width="220" height="220"/></pattern>
+      <linearGradient id="lijst-gewoon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8a5a2b"/><stop offset="1" stop-color="#4e3116"/></linearGradient>
+      <linearGradient id="lijst-zeldzaam" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f4f4"/><stop offset=".5" stop-color="#9a9a9a"/><stop offset="1" stop-color="#e2e2e2"/></linearGradient>
+      <linearGradient id="lijst-bijna" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe48a"/><stop offset=".5" stop-color="#b8860b"/><stop offset="1" stop-color="#ffd54a"/></linearGradient>
+    </defs>
+    ${lijsten.map(l => svgLijst(l.f, l.plek, g)).join("")}
+    ${lagen.map(l => l.svg).join("")}
+  </svg>`;
+}
+
+function stofjes() {
+  return Array.from({ length: 16 }, () =>
+    `<span class="stof" style="left:${10 + Math.random() * 80}%;top:${20 + Math.random() * 70}%;
+      animation-duration:${8 + Math.random() * 10}s;animation-delay:${-Math.random() * 18}s"></span>`).join("");
+}
+
+// ---------- een succesvol museum: bezoekers, sterren en upgrades ----------
+// Elk fossiel trekt bezoekers (zeldzamer = meer, glimmend = dubbel, mooiere sokkel = meer).
+// Voorzieningen maken het museum fijner: meer bezoekers en betere waardering. De kassa verdient geld per bezoeker.
+// Niets gaat kapot en er zijn geen vaste kosten: je kunt alleen beter worden.
+const TREKKRACHT = { gewoon: 2, zeldzaam: 8, bijna: 30 };
+const SOKKELNIVEAUS = [
+  { naam: "Gewoon", uitleg: "" },
+  { naam: "Spotlight", uitleg: "Een lamp die er mooi op schijnt." },
+  { naam: "Glanzende rand", uitleg: "Een sokkel met een glanzende rand." },
+  { naam: "Topstuk", uitleg: "Een gouden ster: hier komt iedereen voor kijken!" }
+];
+const SOKKELPRIJS = { gewoon: 150, zeldzaam: 600, bijna: 2500 };   // keer 1, 5 of 20 per niveau
+const SOKKELKEER = [1, 5, 20];
+const VOORZIENINGEN = [
+  { id: "kassa", foto: "v-kassa", naam: "Kassa", uitleg: "Bezoekers betalen een kaartje. Hoe hoger, hoe duurder het kaartje.", prijs: 300 },
+  { id: "bankjes", foto: "v-bankjes", naam: "Bankjes", uitleg: "Even zitten en rustig kijken.", prijs: 500 },
+  { id: "cafe", foto: "v-cafe", naam: "Café", uitleg: "Warme chocolademelk en taart!", prijs: 2000 },
+  { id: "winkel", foto: "v-winkel", naam: "Museumwinkel", uitleg: "Dino-knuffels en fossielboeken.", prijs: 4000 },
+  { id: "lampen", foto: "v-lampen", naam: "Mooie lampen", uitleg: "Alles ziet er nog mooier uit.", prijs: 6000 },
+  { id: "gids", foto: "v-gids", naam: "Audiogids", uitleg: "Bezoekers horen alles over je fossielen.", prijs: 8000 }
+];
+const VOORZ_MAX = 5, VOORZ_KEER = 1.8;
+const KAARTJE = [0, 0.2, 0.4, 0.7, 1.1, 1.6];  // euro per bezoeker, per kassaniveau
+const TITELS = [[0, "Mini-museum"], [40, "Dorpsmuseum"], [150, "Stadsmuseum"], [500, "Groot museum"],
+  [1200, "Nationaal museum"], [2500, "Wereldberoemd museum"]];
+const MUSEUMDAG = 10; // een museumdag duurt 10 minuten echt spelen
+
+const mus = () => spel.museum;
+const voorzNiveau = id => mus().voorz[id] || 0;
+const voorzPrijs = v => Math.round(v.prijs * Math.pow(VOORZ_KEER, voorzNiveau(v.id)));
+const sokkelNiveau = f => mus().sokkel[f] || 0;
+const sokkelPrijs = f => Math.round(SOKKELPRIJS[ALLE[f][3]] * SOKKELKEER[sokkelNiveau(f)]);
+
+function museumScore() {
+  const alle = Object.keys(ALLE);
+  let punten = 0, gevonden = 0, niveaus = 0;
+  for (const f of alle) {
+    const i = info(f); if (!i.heb) continue;
+    gevonden++; niveaus += sokkelNiveau(f);
+    punten += TREKKRACHT[ALLE[f][3]] * (i.glim ? 2 : 1) * (1 + 0.5 * sokkelNiveau(f));
+  }
+  const comfort = ["bankjes", "cafe", "winkel", "lampen", "gids"].reduce((s, id) => s + voorzNiveau(id), 0);
+  const bezoekers = isOpen() ? Math.round(punten * (1 + 0.12 * comfort)) : 0;
+  // sterren (0 tot 5): collectie 2, mooie sokkels 1, comfort 1, beleving 1
+  const deelCollectie = gevonden / alle.length;
+  const deelSokkels = gevonden ? niveaus / (gevonden * 3) : 0;
+  const deelComfort = (voorzNiveau("bankjes") + voorzNiveau("cafe") + voorzNiveau("winkel")) / (3 * VOORZ_MAX);
+  const deelBeleving = (voorzNiveau("lampen") + voorzNiveau("gids")) / (2 * VOORZ_MAX);
+  const ruw = 2 * deelCollectie + deelSokkels + deelComfort + deelBeleving;
+  const sterren = gevonden ? Math.max(0.5, Math.round(ruw * 2) / 2) : 0;
+  const titel = [...TITELS].reverse().find(t => bezoekers >= t[0])[1];
+  const volgende = TITELS.find(t => t[0] > bezoekers);
+  const perMinuut = bezoekers / MUSEUMDAG * KAARTJE[voorzNiveau("kassa")];
+  // zoveel bezoekers lopen er in elke vleugel rond (naar hoeveel die vleugel trekt)
+  const perVleugel = {};
+  for (const m of Object.keys(ZALEN)) {
+    const fs = ZALEN[m].flatMap(z => [z.pronk, ...z.stukken]);
+    const p = fs.reduce((t, f) => { const i = info(f); return t + (i.heb ? TREKKRACHT[ALLE[f][3]] * (i.glim ? 2 : 1) * (1 + 0.5 * sokkelNiveau(f)) : 0); }, 0);
+    perVleugel[m] = punten ? Math.round(bezoekers * p / punten) : 0;
+  }
+  return { bezoekers, sterren, titel, volgende, perMinuut, gevonden, totaal: alle.length, perVleugel,
+    delen: { deelCollectie, deelSokkels, deelComfort, deelBeleving } };
+}
+
+// wat bezoekers over je museum zeggen: waar ze blij van worden en wat ze missen
+const NAMEN = ["Sanne (9)", "Opa Kees", "Mila (7)", "Juf Petra", "Daan (10)", "Familie Jansen", "Noah (6)", "Oma Ria"];
+function recensies(sc) {
+  const goed = [], beter = [];
+  const heb = f => info(f).heb;
+  if (heb("trex")) goed.push("WAUW, een echte T-rex schedel! Mijn mond viel open.");
+  if (heb("mammoet") || heb("reuzenhert")) goed.push("Wat een reuzen! Ik voelde me heel klein.");
+  if (Object.keys(spel.glim).length) goed.push("Die glimmende fossielen waren prachtig!");
+  if (Object.keys(mus().sokkel).length >= 3) goed.push("De fossielen staan er echt mooi bij.");
+  if (voorzNiveau("cafe")) goed.push("Lekkere chocolademelk in het café!");
+  if (voorzNiveau("winkel")) goed.push("Ik heb een dino-knuffel gekocht in de winkel!");
+  if (voorzNiveau("gids")) goed.push("Met de audiogids leerde ik zoveel!");
+  if (sc.deelCollectie >= 0.6) goed.push("Zoveel verschillende fossielen, ik kwam ogen tekort.");
+  if (sc.gevonden) goed.push("Wat een mooie fossielen! Ik kom zeker terug.", "Mijn favoriet was de " + (ALLE[Object.keys(ALLE).filter(f => info(f).heb).slice(-1)[0]] || [, "schelp"])[1].toLowerCase() + "!");
+  if (!sc.gevonden) beter.push("Er staat nog helemaal niks! Ga snel graven.");
+  if (stijlNr() === 1) goed.push("Wat een prachtig marmer! Net een echt stadsmuseum.");
+  if (stijlNr() === 2) goed.push("Het lijkt wel een paleis! Wat een goud!");
+  if (stijlNr() === 0 && sc.bezoekers >= 150) beter.push("Mooie fossielen, maar het gebouw mag wel wat chiquer!");
+  if (sc.deelCollectie < 0.3) beter.push("Leuk, maar het is nog een beetje leeg.");
+  if (!voorzNiveau("kassa")) beter.push("Het is gratis, maar is er geen kassa? Ik wil best een kaartje kopen!");
+  if (!voorzNiveau("bankjes")) beter.push("Mijn voeten doen pijn. Was er maar een bankje.");
+  if (!voorzNiveau("cafe")) beter.push("Ik had zo'n dorst. Een café zou fijn zijn!");
+  if (!voorzNiveau("winkel")) beter.push("Ik wilde een souvenir kopen, maar er is geen winkel.");
+  if (!Object.keys(mus().sokkel).length && sc.gevonden > 3) beter.push("De fossielen staan er een beetje saai bij.");
+  if (!voorzNiveau("lampen") && sc.gevonden > 8) beter.push("Het is wat donker hier en daar.");
+  if (!heb("trex") && sc.gevonden > 10) beter.push("Ik hoop dat jullie ooit een T-rex hebben!");
+  // twee keer iets wat goed is, één keer iets wat beter kan (draait door, zodat je steeds iets nieuws leest)
+  const ronde = Math.floor(Date.now() / 12000);
+  const kies = (lijst, n) => lijst.length ? lijst[(ronde + n) % lijst.length] : null;
+  return [kies(goed, 0), kies(beter, 0), kies(goed, 1)].filter((x, n, a) => x && a.indexOf(x) === n)
+    .map((tekst, n) => ({ tekst, naam: NAMEN[(ronde + n * 3) % NAMEN.length], blij: goed.includes(tekst) }));
+}
+
+function sterrenHtml(n) {
+  let s = "";
+  for (let i = 1; i <= 5; i++) s += `<span class="${n >= i ? "vol" : n >= i - 0.5 ? "half" : ""}">★</span>`;
+  return `<span class="sterren">${s}</span>`;
+}
+
+function tekenMuseumStatus() {
+  const sc = museumScore();
+  const v = sc.volgende;
+  const tot = v ? Math.min(100, sc.bezoekers / v[0] * 100) : 100;
+  const top = sc.sterren >= 5 && !v && stijlNr() === 2;
+  if (top && !mus().beker) { mus().beker = true; feest(80, true); bewaar(); }
+  document.getElementById("museumstatus").innerHTML = `
+    <div class="mstat">
+      <div class="mtitel">Op weg naar ${v ? v[1] : "de top"}</div>
+      <div class="mbalk"><div style="width:${tot}%"></div></div>
+      <div class="mklein">${v ? `Nog ${v[0] - sc.bezoekers} bezoekers per dag tot <b>${v[1]}</b>` : "Het allerbeste museum van de wereld!"}</div>
+    </div>
+    <div class="mstat"><div class="mgetal">👥 ${sc.bezoekers}</div><div class="mklein">bezoekers per dag</div></div>
+    <div class="mstat"><div class="mgetal">${sterrenHtml(sc.sterren)}</div><div class="mklein">waardering</div></div>
+    <div class="mstat"><div class="mgetal">${voorzNiveau("kassa") ? "💰 € " + euro(sc.perMinuut) : "🎟️ Gratis"}</div><div class="mklein">${voorzNiveau("kassa") ? "per minuut van de kassa" : "Koop een kassa, dan betalen bezoekers!"}</div></div>
+    ${verbouwKaart(sc)}
+    <div class="recensies">${recensies(sc).map(r => `<div class="recensie ${r.blij ? "blij" : ""}">
+      <span class="rgezicht">${r.blij ? "😄" : "🤔"}</span><span>“${r.tekst}”<br><small>${r.naam}</small></span></div>`).join("")}</div>`;
+  document.getElementById("voorzieningen").innerHTML = VOORZIENINGEN.map(vz => {
+    const n = voorzNiveau(vz.id), max = n >= VOORZ_MAX, prijs = voorzPrijs(vz);
+    return `<div class="voorz">${foto(vz.foto)}<b>${vz.naam}</b>
+      <span class="stipjes">${Array.from({ length: VOORZ_MAX }, (_, k) => `<i class="${k < n ? "aan" : ""}"></i>`).join("")}</span>
+      <small>${vz.uitleg}</small>
+      <button class="koop" data-voorz="${vz.id}" ${max || spel.geld < prijs ? "disabled" : ""}>${max ? "Helemaal klaar!" : `${n ? "Beter maken" : "Kopen"} € ${prijs}`}</button></div>`;
+  }).join("");
+}
+
+document.getElementById("voorzieningen").addEventListener("click", e => {
+  const knop = e.target.closest("button[data-voorz]"); if (!knop || knop.disabled) return;
+  const vz = VOORZIENINGEN.find(v => v.id === knop.dataset.voorz), prijs = voorzPrijs(vz);
+  if (spel.geld < prijs || voorzNiveau(vz.id) >= VOORZ_MAX) return;
+  spel.geld -= prijs; mus().voorz[vz.id] = voorzNiveau(vz.id) + 1;
+  [392, 523, 659, 784].forEach((f, i) => setTimeout(() => toon(f, 0.2), i * 100));
+  feest(25); bewaar(); teken();
+});
+
+// de kassa: elke 10 seconden komt er geld binnen
+setInterval(() => {
+  const sc = museumScore();
+  mus().totaal += sc.bezoekers / MUSEUMDAG / 6;
+  const verdiend = sc.perMinuut / 6;
+  if (verdiend > 0) {
+    spel.geld += verdiend;
+    const pil = document.getElementById("geld").parentElement;
+    const plus = document.createElement("span"); plus.className = "kassaplus"; plus.textContent = `+ € ${euro(verdiend)} 🎟️`;
+    pil.appendChild(plus); setTimeout(() => plus.remove(), 1800);
+  }
+  bewaar(); teken();
+}, 10000);
+
+// bezoekers in de zaal: hoe meer bezoekers je trekt, hoe meer mensen je ziet rondlopen
+const BEZOEKERS = [["bezoeker1", 1.35], ["bezoeker2", 1.68], ["bezoeker3", 1.72], ["bezoeker4", 1.62], ["bezoeker5", 1.95]];
+function svgBezoekers(g, z) {
+  const sc = museumScore();
+  if (!sc.bezoekers) return [];
+  const hier = sc.perVleugel[museum] || 0;
+  if (!hier) return [];
+  const aantal = Math.min(g.reserve.length, 1 + Math.floor(Math.log2(1 + hier / 25)), 5);
+  const start = (z.naam.length * 7) % BEZOEKERS.length;
+  return g.reserve.slice(0, aantal).map((plek, n) => {
+    const [img, hoogte] = BEZOEKERS[(start + n) % BEZOEKERS.length];
+    const [vx0, vy0] = g.p(plek.X, 0, plek.Z), top = g.p(plek.X, hoogte, plek.Z)[1];
+    const h = vy0 - top, w = h * 0.55;
+    return { Z: plek.Z, svg: `<g class="bezoeker" style="animation-delay:${-n * 1.3}s">
+      <ellipse class="svloerschaduw" cx="${vx0.toFixed(1)}" cy="${vy0.toFixed(1)}" rx="${(w * .45).toFixed(1)}" ry="${(w * .1).toFixed(1)}"/>
+      <image href="img/uit/${img}.webp" x="${(vx0 - w / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" preserveAspectRatio="xMidYMax meet"/></g>` };
+  });
+}
+
+// ---------- één museum, drie vleugels, en een stijl die je samen verbouwt ----------
+// De vleugels horen bij de soort fossiel. De gewone vleugel is meteen open; de andere gaan open zodra je
+// het eerste fossiel van die soort vindt. Het uiterlijk is voor het hele museum hetzelfde en verbouw je
+// zelf: van hout, via marmer, naar een paleis. Een verbouwing gaat nooit meer terug.
+const STIJLEN = [
+  { id: "hout", sleutel: "gewoon", naam: "houten museum" },
+  { id: "marmer", sleutel: "zeldzaam", naam: "marmeren museum", nodig: 150, titel: "Stadsmuseum", prijs: 2500 },
+  { id: "goud", sleutel: "bijna", naam: "paleismuseum", nodig: 2500, titel: "Wereldberoemd museum", prijs: 20000 }
+];
+// welke themazaal bij welke foto hoort (de perspectiefmeting is per thema, dus voor alle stijlen hetzelfde)
+const THEMA = { "hal-gewoon-zee": "zeezaal", "hal-gewoon-botten": "botten", "hal-gewoon-ijstijd": "ijstijd", "hal-gewoon-planten": "planten",
+  "hal-zeldzaam-zee": "oerzee", "hal-zeldzaam-dinos": "dinos", "hal-zeldzaam-roofdieren": "roofdieren",
+  "hal-bijna-reuzen": "reuzen", "hal-bijna-schat": "schat" };
+const stijlNr = () => spel.museum.stijl || 0;
+const stijlKey = () => STIJLEN[stijlNr()].sleutel;          // bepaalt materiaal van sokkels en lijsten
+const zaalFoto = (z, nr = stijlNr()) => `img/hal-${STIJLEN[nr].id}-${THEMA[z.img]}.jpg`;
+const heeftSoort = soort => SOORTEN[soort].fossielen.some(f => spel.gevonden[f[1]]);
+const vleugelOpen = id => id === "gewoon" || heeftSoort(id);
+
+function deurScherm(id) {
+  const geheim = id === "bijna" && !vleugelOpen("zeldzaam");
+  const tekst = id === "zeldzaam"
+    ? "Vind je eerste <b>zeldzame</b> fossiel om deze vleugel te openen!"
+    : geheim ? "Wat zit hier achter? Dat is nog een geheim..." : "Vind je eerste <b>bijna-niet-te-doen</b> fossiel om deze vleugel te openen!";
+  return `<div class="deurscherm"><img src="img/uit/deur.webp" alt="Dichte deur"><div class="deurvraag">?</div>
+    <div class="deurtekst">🔒 ${MUSEUMNAAM[id]}<br><span>${tekst}</span></div></div>`;
+}
+
+// ---------- een nieuwe vleugel gaat open: groot feest ----------
+let vierWacht = null;
+function controleerVleugels() {
+  if (!isOpen()) return;
+  if (!mus().vleugels) mus().vleugels = ["gewoon", ...["zeldzaam", "bijna"].filter(vleugelOpen)]; // bestaand spel: niets opnieuw vieren
+  const nieuw = ["zeldzaam", "bijna"].find(id => vleugelOpen(id) && !mus().vleugels.includes(id));
+  if (!nieuw || vierWacht) return;
+  mus().vleugels.push(nieuw); bewaar();
+  // pas vieren als de vondst zelf in beeld is geweest
+  vierWacht = setInterval(() => {
+    if (bezig || document.querySelector(".feestscherm")) return;
+    clearInterval(vierWacht); vierWacht = null; vierVleugel(nieuw);
+  }, 400);
+}
+function brul() {
+  try {
+    ac = ac || new AudioContext();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "sawtooth"; o.frequency.setValueAtTime(190, ac.currentTime); o.frequency.exponentialRampToValueAtTime(55, ac.currentTime + 1.1);
+    g.gain.setValueAtTime(0.25, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 1.2);
+    o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + 1.2);
+  } catch {}
+}
+function vierVleugel(id) {
+  const d = document.createElement("div");
+  d.className = "feestscherm";
+  d.innerHTML = `<div class="feestkaart">
+    <div class="deurbreek"><img class="dl" src="img/uit/deur.webp" alt=""><img class="dr" src="img/uit/deur.webp" alt=""></div>
+    <div class="feesttitel">🎉 Nieuwe vleugel open!</div>
+    <div class="feestnaam">${MUSEUMKORT[id][0]} ${MUSEUMNAAM[id]}</div>
+    <p>Je hebt je eerste ${id === "zeldzaam" ? "zeldzame" : "bijna-niet-te-doen"} fossiel gevonden. De deur is open!</p>
+    <button class="koop">Ga kijken!</button></div>`;
+  (document.fullscreenElement || document.body).appendChild(d);
+  brul(); setTimeout(() => feest(70), 400);
+  d.querySelector("button").onclick = () => {
+    d.remove(); naarZaal(id, 0);
+    document.getElementById("musea").scrollIntoView({ behavior: "smooth" });
+  };
+}
+
+// ---------- verbouwen ----------
+function volgendeStijl() { return STIJLEN[stijlNr() + 1]; }
+function verbouwKaart(sc) {
+  const v = volgendeStijl();
+  if (!v) return `<div class="mstat verbouw klaar"><div class="mtitel">👑 Een echt paleis!</div><div class="mklein">Je museum is helemaal verbouwd.</div></div>`;
+  const mag = sc.bezoekers >= v.nodig, kan = mag && spel.geld >= v.prijs;
+  return `<div class="mstat verbouw">
+    <div class="mtitel">🏗️ Verbouwen naar ${v.naam}</div>
+    <div class="mbalk"><div style="width:${Math.min(100, sc.bezoekers / v.nodig * 100)}%"></div></div>
+    <div class="mklein">${mag ? `Je bent nu ${v.titel}! Je mag verbouwen.` : `Kan vanaf <b>${v.titel}</b> (${v.nodig} bezoekers per dag). Nog ${v.nodig - sc.bezoekers} te gaan.`}</div>
+    <button class="koop" id="verbouwknop" ${kan ? "" : "disabled"}>${mag ? `Verbouwen! € ${v.prijs}` : `🔒 € ${v.prijs}`}</button></div>`;
+}
+function verbouw() {
+  const v = volgendeStijl(), sc = museumScore();
+  if (!v || sc.bezoekers < v.nodig || spel.geld < v.prijs) return;
+  spel.geld -= v.prijs; bewaar(); teken();
+  document.getElementById("musea").scrollIntoView({ behavior: "smooth" });
+  const wrap = document.querySelector(".zaalwrap");
+  const o = document.createElement("div");
+  o.className = "verbouwscherm";
+  o.innerHTML = `<div class="steiger">🏗️🧱🔨🧱🏗️</div><div class="verbouwtekst">De bouwvakkers zijn aan het werk...</div>`;
+  wrap.appendChild(o);
+  const tik = setInterval(() => toon(900 + Math.random() * 300, .05, "square", .06), 220);
+  setTimeout(() => {
+    clearInterval(tik);
+    spel.museum.stijl = stijlNr() + 1; bewaar(); teken(); tekenMuseum(true);
+    o.innerHTML = `<div class="verbouwtekst groot">✨ Klaar! ✨<br><span>Je museum is nu een ${STIJLEN[stijlNr()].naam}!</span></div>`;
+    o.classList.add("klaar");
+    [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => toon(f, 0.2), i * 110));
+    feest(80, stijlNr() === 2);
+    setTimeout(() => o.remove(), 2600);
+  }, 2400);
+}
+document.getElementById("museumstatus").addEventListener("click", e => { if (e.target.closest("#verbouwknop")) verbouw(); });
+
+// ---------- de zolder: daar begint het, je eigen museum open je later ----------
+// Je eerste fossielen gaan in dozen op de zolder. Bij genoeg fossielen en geld kun je je eigen museum openen
+// en het een naam geven. Pas dan komen er bezoekers.
+const OPENEN = { fossielen: 10, prijs: 40 };
+const NAAMIDEEEN = ["Het Dinopaleis", "De Bottenbende", "Fossielenhuis", "Museum Oertijd", "De Schatkamer"];
+const isOpen = () => !!spel.museum.open;
+const aantalVondsten = () => Object.values(spel.gevonden).reduce((a, b) => a + b, 0);
+const NAAMNAARF = {};
+Object.values(ALLE).forEach(([f, naam]) => NAAMNAARF[naam] = f);
+const plankPlek = n => ({ x: 24 + (n % 5) * 13, y: n < 5 ? 37.6 : 56.6 }); // op de twee planken van de zolderfoto
+
+let zolderSleutel = "", zolderGezien = new Set();
+function tekenZolder() {
+  const fossielen = Object.keys(spel.gevonden).slice(0, 10);
+  const sleutel = JSON.stringify(spel.gevonden) + Math.floor(spel.geld);
+  if (sleutel === zolderSleutel) return; // niets veranderd: niet opnieuw tekenen (anders springt alles steeds)
+  zolderSleutel = sleutel;
+  const nF = aantalVondsten(), klaarF = nF >= OPENEN.fossielen, klaarG = spel.geld >= OPENEN.prijs;
+  document.getElementById("zolder").innerHTML = `
+    <div class="zolderbeeld ${klaarF ? "vol" : ""}">
+      ${fossielen.map((naam, n) => { const p = plankPlek(n), f = NAAMNAARF[naam];
+        const nieuw = !zolderGezien.has(naam); zolderGezien.add(naam);
+        return `<div class="zolderstuk ${nieuw ? "vers" : ""}" style="left:${p.x}%;top:${p.y}%"><img src="img/uit/${f}.webp" alt="${naam}">
+          ${spel.gevonden[naam] > 1 ? `<span class="keer">x${spel.gevonden[naam]}</span>` : ""}</div>`; }).join("")}
+      ${klaarF ? `<div class="zoldervol">De zolder is vol! 📦</div>` : ""}
+    </div>
+    <div class="zolderkaart">
+      <div class="mtitel">📦 Je fossielen liggen nog op zolder</div>
+      <p>Verzamel genoeg fossielen en geld, dan kun je je <b>eigen museum</b> openen!</p>
+      <div class="zbalk"><span>🦴 Fossielen ${Math.min(nF, OPENEN.fossielen)} / ${OPENEN.fossielen}</span><div class="mbalk"><div style="width:${Math.min(100, nF / OPENEN.fossielen * 100)}%"></div></div></div>
+      <div class="zbalk"><span>💰 Geld € ${euro(Math.min(spel.geld, OPENEN.prijs))} / € ${OPENEN.prijs}</span><div class="mbalk"><div style="width:${Math.min(100, spel.geld / OPENEN.prijs * 100)}%"></div></div></div>
+      <button class="koop" id="openknop" ${klaarF && klaarG ? "" : "disabled"}>🏛️ Museum openen € ${OPENEN.prijs}</button>
+    </div>`;
+}
+
+// de naam kiezen (ook later nog te veranderen met het potloodje)
+function naamScherm(eerste) {
+  const d = document.createElement("div");
+  d.className = "feestscherm";
+  d.innerHTML = `<div class="feestkaart">
+    <div class="feesttitel">${eerste ? "🏛️ Je eigen museum!" : "✏️ Nieuwe naam"}</div>
+    <p>Hoe gaat je museum heten?</p>
+    <input id="naaminvoer" maxlength="20" placeholder="Het Fossielenmuseum" value="${eerste ? "" : (spel.museum.naam || "")}">
+    <div class="naamideeen">${NAAMIDEEEN.map(n => `<button class="naamidee">${n}</button>`).join("")}</div>
+    <button class="koop" id="naamklaar">${eerste ? "Open mijn museum!" : "Opslaan"}</button></div>`;
+  (document.fullscreenElement || document.body).appendChild(d);
+  const invoer = d.querySelector("#naaminvoer");
+  setTimeout(() => invoer.focus(), 50);
+  d.querySelectorAll(".naamidee").forEach(b => b.onclick = () => { invoer.value = b.textContent; });
+  const klaar = () => {
+    spel.museum.naam = invoer.value.trim().slice(0, 20) || "Het Fossielenmuseum";
+    d.remove();
+    if (eerste) {
+      spel.museum.open = true;
+      spel.museum.vleugels = ["gewoon", ...["zeldzaam", "bijna"].filter(vleugelOpen)]; // geen losse vleugelfeestjes bij het openen
+      bewaar(); teken(); tekenMuseum(true);
+      welkom();
+    } else { bewaar(); teken(); }
+  };
+  d.querySelector("#naamklaar").onclick = klaar;
+  invoer.onkeydown = e => { if (e.key === "Enter") klaar(); };
+}
+function welkom() {
+  document.getElementById("musea").scrollIntoView({ behavior: "smooth" });
+  const d = document.createElement("div");
+  d.className = "feestscherm";
+  d.innerHTML = `<div class="feestkaart"><div class="verhuis">📦➡️🏛️</div>
+    <div class="feesttitel">Welkom in<br>${spel.museum.naam}!</div>
+    <p>Je fossielen staan nu in je eigen museum. De eerste bezoekers komen eraan!</p>
+    <button class="koop">Naar binnen!</button></div>`;
+  (document.fullscreenElement || document.body).appendChild(d);
+  [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => toon(f, 0.2), i * 110));
+  feest(80);
+  d.querySelector("button").onclick = () => d.remove();
+}
+
+document.getElementById("zolder").addEventListener("click", e => {
+  if (!e.target.closest("#openknop")) return;
+  if (aantalVondsten() < OPENEN.fossielen || spel.geld < OPENEN.prijs || isOpen()) return;
+  spel.geld -= OPENEN.prijs; bewaar(); teken();
+  naamScherm(true);
+});
+document.getElementById("museumnaam").addEventListener("click", e => { if (e.target.closest("#hernoem")) naamScherm(false); });
+
+function tekenMuseumKop() {
+  const open = isOpen();
+  document.getElementById("zolder").style.display = open ? "none" : "";
+  document.getElementById("museumdeel").style.display = open ? "" : "none";
+  if (!open) { tekenZolder(); document.getElementById("museumnaam").innerHTML = "📦 Jouw zolder"; return; }
+  const sc = museumScore();
+  document.getElementById("museumnaam").innerHTML = `🏛️ ${spel.museum.naam} <span class="titelbadge">${mus().beker ? "🏆 " : ""}${sc.titel}</span>
+    <button id="hernoem" title="Naam veranderen">✏️</button>`;
+}
+
+function telling(fs) {
+  const alle = fs.map(info);
+  return { vol: alle.filter(i => i.heb).length, glim: alle.filter(i => i.glim).length, totaal: fs.length };
+}
+
+function tekenMuseum(forceer) {
+  document.getElementById("tabs").innerHTML = Object.keys(ZALEN).map(id => {
+    const t = telling(ZALEN[id].flatMap(z => [z.pronk, ...z.stukken]));
+    const [ico, naam] = MUSEUMKORT[id], open = vleugelOpen(id);
+    const geheim = id === "bijna" && !vleugelOpen("zeldzaam");
+    const sub = open ? `${t.vol}/${t.totaal}${t.glim ? ` <span class="glimtel">✨${t.glim}</span>` : ""}${t.vol === t.totaal ? " 🏆" : ""}` : geheim ? "❓ nog geheim" : "🔒 nog dicht";
+    return `<button data-m="${id}" class="${id === museum ? "hier" : ""} ${open ? "" : "dicht"}" title="${MUSEUMNAAM[id]}">
+      <span class="mico">${open ? ico : "🔒"}</span><span class="mnaam">${geheim ? "???" : naam}</span>
+      <span class="msub">${sub}</span></button>`;
+  }).join("");
+  const zalenEl = document.getElementById("zalen");
+  zalenEl.dataset.m = museum;
+  zalenEl.innerHTML = !vleugelOpen(museum) ? `<span class="zlabel">Deze vleugel is nog dicht</span>` : `<span class="zlabel">Zalen:</span>` + ZALEN[museum].map((z, nr) => {
+    const t = telling([z.pronk, ...z.stukken]);
+    return `<button data-z="${nr}" class="${nr === zaalNr ? "hier" : ""}">${z.ico} ${z.naam} ${t.vol}/${t.totaal}</button>`;
+  }).join("");
+
+  // de zaal zelf alleen opnieuw tekenen als er iets veranderd is
+  const z = ZALEN[museum][zaalNr];
+  const sleutel = museum + zaalNr + stijlNr() + vleugelOpen(museum) + JSON.stringify([z.pronk, ...z.stukken].map(f => [info(f), sokkelNiveau(f)])) + museumScore().bezoekers;
+  if (!forceer && sleutel === laatsteZaal) return;
+  laatsteZaal = sleutel;
+
+  const zaal = document.getElementById("zaal");
+  zaal.className = "zaal z-" + museum + (zaal.classList.contains("komt") ? " komt" : "");
+  zaal.innerHTML = `<div class="scene"><div class="kamer" style="background-image:url(${zaalFoto(z)})"></div>
+    ${vleugelOpen(museum) ? zaalSvg(z) + `<div class="zaalnaam">${z.ico} ${z.naam}</div>` : deurScherm(museum)}${stofjes()}</div>`;
+}
+
+// van zaal naar zaal lopen
+function naarZaal(m, nr) {
+  const zaal = document.getElementById("zaal");
+  zaal.classList.add("weg");
+  toon(90, .1, "sine", .25); setTimeout(() => toon(80, .1, "sine", .25), 180);
+  setTimeout(() => {
+    museum = m; zaalNr = nr;
+    zaal.classList.remove("weg"); zaal.classList.add("komt");
+    tekenMuseum(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => zaal.classList.remove("komt")));
+  }, 350);
+}
+
+document.getElementById("tabs").addEventListener("click", e => {
+  const knop = e.target.closest("button"); if (!knop || knop.dataset.m === museum) return;
+  naarZaal(knop.dataset.m, 0);
+});
+document.getElementById("zalen").addEventListener("click", e => {
+  const knop = e.target.closest("button"); if (!knop || +knop.dataset.z === zaalNr) return;
+  naarZaal(museum, +knop.dataset.z);
+});
+document.querySelectorAll(".pijl").forEach(p => p.addEventListener("click", () => {
+  if (!vleugelOpen(museum)) return;
+  const n = ZALEN[museum].length;
+  naarZaal(museum, (zaalNr + +p.dataset.r + n) % n);
+}));
+
+const zaalEl = document.getElementById("zaal");
+
+// het museum op het hele scherm
+document.getElementById("groot").addEventListener("click", () => {
+  const w = document.querySelector(".zaalwrap");
+  if (document.fullscreenElement) document.exitFullscreen(); else w.requestFullscreen?.();
+});
+document.addEventListener("fullscreenchange", () => {
+  document.getElementById("groot").textContent = document.fullscreenElement ? "✕ Klein scherm" : "⛶ Groot scherm";
+});
+
+// klik op een fossiel om hem van dichtbij te bekijken
+zaalEl.addEventListener("click", e => {
+  const el = e.target.closest("[data-f]"); if (!el) return;
+  const f = el.dataset.f, i = info(f), soort = ALLE[f][3];
+  const plek = PLEKKEN.find(p => p.id === i.plek).naam;
+  let tekst;
+  if (!i.open) tekst = `<h3>🔒 Nog dicht</h3><p>Reis eerst naar <b>${plek}</b> om dit fossiel te vinden.</p>`;
+  else if (!i.heb) tekst = `<h3>???</h3><p>Dit fossiel heb je nog niet. Je vindt hem bij <b>${plek}</b>. Blijf graven!</p>`;
+  else tekst = `<h3>${i.glim ? "✨ " : ""}${i.naam}</h3>
+    <p>Je hebt er <b>${spel.gevonden[i.naam]}</b> gevonden.</p><p>Gevonden bij: <b>${plek}</b></p>
+    <p>Zeldzaamheid: <b>${SOORTEN[soort].naam.replace(" fossielen", "")}</b></p>
+    ${i.glim ? `<p class="glimtekst"><b>Je hebt ook de glimmende!</b></p>` : ""}
+    <div class="mooier"><b>Sokkel: ${SOKKELNIVEAUS[sokkelNiveau(f)].naam}</b>
+      ${sokkelNiveau(f) < 3 ? `<p>Volgende: <b>${SOKKELNIVEAUS[sokkelNiveau(f) + 1].naam}</b>. ${SOKKELNIVEAUS[sokkelNiveau(f) + 1].uitleg} Dan komen er meer bezoekers!</p>
+      <button class="koop" data-mooier="${f}" ${spel.geld < sokkelPrijs(f) ? "disabled" : ""}>✨ Mooier maken € ${sokkelPrijs(f)}</button>` : "<p>Mooier kan niet! ⭐</p>"}</div>`;
+  document.querySelector("#detail .kaartje").innerHTML =
+    `<img src="img/${f}.jpg" class="${i.heb ? "" : "wazig"}" alt="">${tekst}<button>Terug naar de zaal</button>`;
+  // op groot scherm moet het kaartje ín het grote scherm staan, anders zie je het niet
+  const d = document.getElementById("detail");
+  (document.fullscreenElement || document.body).appendChild(d);
+  d.classList.add("open");
+});
+document.getElementById("detail").addEventListener("click", e => {
+  const m = e.target.closest("button[data-mooier]");
+  if (m) {
+    const f = m.dataset.mooier, prijs = sokkelPrijs(f);
+    if (spel.geld < prijs || sokkelNiveau(f) >= 3) return;
+    spel.geld -= prijs; mus().sokkel[f] = sokkelNiveau(f) + 1;
+    [523, 659, 784].forEach((q, n) => setTimeout(() => toon(q, 0.2), n * 100)); feest(20);
+    bewaar(); teken(); tekenMuseum(true);
+    e.currentTarget.classList.remove("open");
+    return;
+  }
+  if (e.target.id === "detail" || e.target.tagName === "BUTTON") e.currentTarget.classList.remove("open");
+});
+
+let openRubriek = "gereedschap";
+function rubriek(id, ico, titel, samenvatting, nieuw, inhoud) {
+  const open = openRubriek === id;
+  return `<div class="rubriek ${open ? "open" : ""}">
+    <button class="rkop" data-rubriek="${id}" aria-expanded="${open}"><span class="rico">${ico}</span><b>${titel}</b>
+      <span class="rsam">${samenvatting}</span>${nieuw && !open ? `<span class="nieuw">Nieuw te koop!</span>` : ""}<span class="pijltje">▾</span></button>
+    <div class="rinhoud">${inhoud}</div></div>`;
+}
+
+document.getElementById("items").addEventListener("click", e => {
+  const kop = e.target.closest("[data-rubriek]");
+  if (kop) { openRubriek = openRubriek === kop.dataset.rubriek ? "" : kop.dataset.rubriek; teken(); return; }
+  const knop = e.target.closest("button.koop"); if (!knop || knop.disabled) return;
+  const { soort, id } = knop.dataset;
+  if (soort === "reis") {
+    const p = PLEKKEN.find(x => x.id === id);
+    if (spel.geld < p.prijs) return;
+    spel.geld -= p.prijs; spel.plekken[id] = true; spel.plek = id;
+  } else if (soort === "dynamiet") {
+    if (spel.geld < DYNAMIET.prijs) return;
+    spel.geld -= DYNAMIET.prijs; spel.dynamiet++;
+  } else {
+    const it = (soort === "kleding" ? KLEDING : soort === "hulp" ? HULP : GEREEDSCHAP).find(w => w.id === id);
+    if (spel.geld < it.prijs || spel.gekocht[id]) return;
+    spel.geld -= it.prijs; spel.gekocht[id] = true;
+    if (soort === "hulp") startHulpje();
+  }
+  [392, 523, 659].forEach((f, i) => setTimeout(() => toon(f, 0.2), i * 100));
+  feest(20); bewaar(); teken();
+  if (!bezig) nieuweSteen();
+});
+
+document.getElementById("plekken").addEventListener("click", e => {
+  const id = e.target.dataset.plek; if (!id || bezig || id === spel.plek) return;
+  spel.plek = id; bewaar(); teken(); nieuweSteen();
+});
+
+document.getElementById("opnieuw").addEventListener("click", () => {
+  if (confirm("Weet je het zeker? Al je fossielen en geld zijn dan weg.")) {
+    spel = structuredClone(BEGIN); vulOpdrachten(); bewaar(); teken(); nieuweSteen(); startHulpje();
+  }
+});
+
+vulOpdrachten();
+teken();
+nieuweSteen();
+startHulpje();
+</script>
+</body>
+</html>
