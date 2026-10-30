@@ -463,6 +463,9 @@
   .wolkpil { cursor: pointer; font-family: Nunito, sans-serif; font-size: 16px; }
   .wolkpil:not(.aan) { background: #f0a020; color: #3a2210; animation: pols 1.2s infinite alternate; }
   #wolknaam, #wolkwacht { width: 100%; padding: 10px 12px; border-radius: 12px; border: 3px solid var(--rand); font-family: "Lilita One", sans-serif; font-size: 22px; text-align: center; margin: 4px 0; }
+  .ofwel { margin: 6px 0; opacity: .6; font-weight: 800; }
+  .koop.tweede { background: linear-gradient(#fff, #f3e6c8); box-shadow: 0 4px 0 #c9b48a; }
+  .meenemen { display: block; margin: 6px 0 10px; font-weight: 800; }
   #wolkfout { color: #c0392b; font-weight: 800; min-height: 1em; }
   .wolkcode { font-family: "Lilita One", sans-serif; font-size: 30px; letter-spacing: 1px; background: #fff; border: 3px dashed var(--goud);
               border-radius: 12px; padding: 8px; margin: 6px 0 10px; color: var(--bruin); user-select: all; }
@@ -1815,9 +1818,8 @@ vulOpdrachten();
 teken();
 nieuweSteen();
 startHulpje();
-// ---------- je museum gaat mee: bij papa én bij mama verder spelen ----------
-// Inloggen met je naam en een wachtwoordje dat je zelf kiest. Samen worden die een geheime sleutel
-// (versleuteld, dus niemand ziet je wachtwoordje). De opslag op dit apparaat blijft de baas: zonder
+// ---------- je museum gaat mee: inloggen en op elk apparaat verder spelen ----------
+// Een account met naam en wachtwoordje (de server bewaart alleen een versleutelde versie). De opslag op dit apparaat blijft de baas: zonder
 // internet speel je gewoon door. Er wordt nooit stil iets overschreven: heeft iemand ergens anders
 // verder gespeeld, dan kies je zelf welk spel je houdt.
 const WOLK = "https://jakevanpelt.com/.netlify/functions/fossil-diggers";
@@ -1828,11 +1830,6 @@ if (wolk.code && !wolk.naam) wolk = { code: "", naam: "", versie: 0, vuil: false
 const bewaarWolk = () => { try { localStorage.setItem(WOLKSLEUTEL, JSON.stringify(wolk)); } catch {} };
 let wolkStatus = wolk.code ? "bezig" : "uit", wolkTimer = null, wolkKiezen = false;
 
-async function maakSleutel(naam, wachtwoord) {
-  const tekst = naam.trim().toLowerCase() + "|" + wachtwoord.trim().toLowerCase() + "|fossil-diggers";
-  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(tekst));
-  return "fd-" + [...new Uint8Array(h)].slice(0, 16).map(b => b.toString(16).padStart(2, "0")).join("");
-}
 // een kort kenmerk van het spel, om te zien of er echt iets veranderd is
 const kenmerk = () => { const t = JSON.stringify(spel); let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return String(h); };
 const samenvatting = s => {
@@ -1865,7 +1862,7 @@ async function haalUitWolk(welkom) {
   try {
     const r = await fetch(`${WOLK}?code=${encodeURIComponent(wolk.code)}`);
     const d = await r.json();
-    if (!d) { wolkStatus = "ok"; if (welkom) melding(`Nieuw account gemaakt voor ${wolk.naam}! Je museum wordt nu bewaard. ☁️`); await stuurNaarWolk(true); return; }
+    if (!d) { wolkStatus = "ok"; if (welkom) melding(`Hoi ${wolk.naam}! Je museum wordt nu bewaard. ☁️`); await stuurNaarWolk(true); return; }
     if (d.versie === wolk.versie) { wolkStatus = "ok"; if (wolk.vuil) stuurNaarWolk(); }
     else if (!wolk.vuil) { neemOver(d); if (welkom) melding(`Welkom terug, ${wolk.naam}! Je speelt verder waar je was. 🎉`); }
     else kiesTussen(d);
@@ -1908,46 +1905,93 @@ function melding(tekst) {
 // het wolkje bovenin en het inlogscherm
 function tekenWolkPil() {
   const el = document.getElementById("wolkpil"); if (!el) return;
-  el.textContent = !wolk.code ? "☁️ Inloggen om op te slaan" : wolkStatus === "offline" ? `☁️ ${wolk.naam}: geen internet` : `☁️ ${wolk.naam}`;
+  el.textContent = !wolk.code ? "☁️ Inloggen of account maken" : wolkStatus === "offline" ? `☁️ ${wolk.naam}: geen internet` : `☁️ ${wolk.naam}`;
   el.classList.toggle("aan", !!wolk.code);
 }
-function wolkScherm() {
-  const d = document.createElement("div");
-  d.className = "feestscherm";
-  d.innerHTML = wolk.code
-    ? `<div class="feestkaart"><div class="feesttitel">☁️ Hoi ${wolk.naam}!</div>
-        <p>Je museum wordt bewaard. Log op een ander apparaat in met dezelfde naam en hetzelfde wachtwoordje, dan speel je daar verder.</p>
-        <button class="koop" id="wolkuit">Uitloggen</button><br><button class="sluit" id="wolksluit">Sluiten</button></div>`
-    : `<div class="feestkaart"><div class="feesttitel">☁️ Inloggen</div>
-        <p>Met je naam en een wachtwoordje kun je ook bij mama of papa verder spelen. Nog geen account? Verzin dan nu een wachtwoordje en onthoud het goed!</p>
-        <input id="wolknaam" placeholder="Je naam" maxlength="20" autocomplete="off">
-        <input id="wolkwacht" placeholder="Je wachtwoordje" maxlength="20" autocomplete="off">
-        <p id="wolkfout"></p>
-        <button class="koop" id="wolkin">Inloggen</button><br><button class="sluit" id="wolksluit">Sluiten</button></div>`;
-  (document.fullscreenElement || document.body).appendChild(d);
-  d.querySelector("#wolksluit").onclick = () => d.remove();
-  const uit = d.querySelector("#wolkuit");
-  if (uit) uit.onclick = () => { wolk = { code: "", naam: "", versie: 0, vuil: false, laatst: "" }; bewaarWolk(); tekenWolkPil(); d.remove(); };
-  const inKnop = d.querySelector("#wolkin");
-  if (inKnop) {
-    const fout = t => d.querySelector("#wolkfout").textContent = t;
-    const login = async () => {
-      const naam = d.querySelector("#wolknaam").value.trim(), ww = d.querySelector("#wolkwacht").value.trim();
-      if (naam.length < 2) return fout("Typ eerst je naam.");
-      if (ww.length < 4) return fout("Je wachtwoordje moet minstens 4 tekens hebben.");
-      const code = await maakSleutel(naam, ww);
-      wolk = { code, naam, versie: -1, vuil: false, laatst: "" };
-      // heeft dit apparaat al een spel, dan wordt er gekozen als het account ook al een spel heeft
-      if (Object.keys(spel.gevonden).length || spel.stenen > 5) wolk.vuil = true;
-      bewaarWolk(); d.remove(); wolkStatus = "bezig"; tekenWolkPil(); haalUitWolk(true);
-    };
-    inKnop.onclick = login;
-    d.querySelector("#wolkwacht").onkeydown = e => { if (e.key === "Enter") login(); };
-    setTimeout(() => d.querySelector("#wolknaam").focus(), 50);
-  }
+async function accountVraag(actie, naam, wachtwoord) {
+  const r = await fetch(`${WOLK}?actie=${actie}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ naam, wachtwoord }) });
+  return { status: r.status, ...(await r.json()) };
+}
+const heeftVoortgang = () => Object.keys(spel.gevonden).length > 0 || spel.stenen > 5;
+function leegSpel() {
+  spel = structuredClone(BEGIN); vulOpdrachten();
+  try { localStorage.setItem("fossil-diggers-v2", JSON.stringify(spel)); } catch {}
+  laatsteZaal = ""; zolderSleutel = ""; museum = "gewoon"; zaalNr = 0;
+  teken(); nieuweSteen(); startHulpje(); tekenMuseum(true);
 }
 
-document.getElementById("wolkpil").addEventListener("click", wolkScherm);
+function wolkScherm(stand) {
+  const d = document.createElement("div");
+  d.className = "feestscherm";
+  const veld = `<input id="wolknaam" placeholder="Je naam" maxlength="20" autocomplete="off">
+    <input id="wolkwacht" placeholder="Je wachtwoordje" maxlength="20" autocomplete="off"><p id="wolkfout"></p>`;
+  if (wolk.code) d.innerHTML = `<div class="feestkaart"><div class="feesttitel">☁️ Hoi ${wolk.naam}!</div>
+      <p>Je museum wordt bewaard. Log op een ander apparaat in met dezelfde naam en hetzelfde wachtwoordje, dan speel je daar verder.</p>
+      <button class="koop" id="wolkuit">Uitloggen</button><br><button class="sluit" id="wolksluit">Sluiten</button></div>`;
+  else if (stand === "nieuw") d.innerHTML = `<div class="feestkaart"><div class="feesttitel">✨ Nieuw account</div>
+      <p>Kies een naam en een wachtwoordje. Onthoud ze goed, dan kun je overal verder spelen!</p>${veld}
+      ${heeftVoortgang() ? `<label class="meenemen"><input type="checkbox" id="wolkmee" checked> Neem mijn spel van nu mee</label>` : ""}
+      <button class="koop" id="wolkmaak">Account maken</button><br>
+      <button class="sluit" id="wolkterug">Ik heb al een account</button></div>`;
+  else d.innerHTML = `<div class="feestkaart"><div class="feesttitel">☁️ Inloggen</div>
+      <p>Log in, dan wordt je museum bewaard en kun je op elk apparaat verder spelen.</p>${veld}
+      <button class="koop" id="wolkin">Inloggen</button>
+      <p class="ofwel">of</p>
+      <button class="koop tweede" id="wolknieuw">✨ Nieuw account maken</button><br>
+      <button class="sluit" id="wolksluit">Nu even niet</button></div>`;
+  (document.fullscreenElement || document.body).appendChild(d);
+  const knop = id => d.querySelector("#" + id);
+  const fout = t => knop("wolkfout").textContent = t;
+  if (knop("wolksluit")) knop("wolksluit").onclick = () => d.remove();
+  if (knop("wolknieuw")) knop("wolknieuw").onclick = () => { d.remove(); wolkScherm("nieuw"); };
+  if (knop("wolkterug")) knop("wolkterug").onclick = () => { d.remove(); wolkScherm(); };
+  if (knop("wolkuit")) knop("wolkuit").onclick = () => {
+    // uitloggen: je spel blijft veilig in je account, op dit apparaat begint de volgende speler opnieuw
+    wolk = { code: "", naam: "", versie: 0, vuil: false, laatst: "" }; bewaarWolk();
+    d.remove(); leegSpel(); tekenWolkPil();
+  };
+  const lees = () => ({ naam: knop("wolknaam").value.trim(), ww: knop("wolkwacht").value.trim() });
+  const controleer = ({ naam, ww }) => naam.length < 2 ? "Typ eerst je naam." : ww.length < 4 ? "Je wachtwoordje moet minstens 4 tekens hebben." : "";
+  const welkom = (naam, code, versie) => { wolk = { code, naam, versie, vuil: false, laatst: "" }; bewaarWolk(); d.remove(); tekenWolkPil(); };
+
+  if (knop("wolkin")) {
+    const login = async () => {
+      const v = lees(), f = controleer(v); if (f) return fout(f);
+      fout("Even kijken...");
+      try {
+        const r = await accountVraag("login", v.naam, v.ww);
+        if (r.status === 401) return fout("Die naam of dat wachtwoordje klopt niet. Probeer het nog eens!");
+        if (!r.ok) return fout("Er ging iets mis. Probeer het nog eens.");
+        welkom(r.naam, r.code, -1);
+        wolk.vuil = heeftVoortgang(); bewaarWolk(); // speelde je hier al zonder account, dan mag je kiezen
+        haalUitWolk(true);
+      } catch { fout("Er is nu geen internet. Probeer het straks nog eens."); }
+    };
+    knop("wolkin").onclick = login;
+    knop("wolkwacht").onkeydown = e => { if (e.key === "Enter") login(); };
+  }
+  if (knop("wolkmaak")) {
+    const maak = async () => {
+      const v = lees(), f = controleer(v); if (f) return fout(f);
+      fout("Even bezig...");
+      try {
+        const r = await accountVraag("nieuw", v.naam, v.ww);
+        if (r.status === 409) return fout("Die naam is al bezet. Kies een andere naam, of log in.");
+        if (!r.ok) return fout("Er ging iets mis. Probeer het nog eens.");
+        const mee = knop("wolkmee") ? knop("wolkmee").checked : false;
+        welkom(r.naam, r.code, 0);
+        if (!mee) leegSpel();
+        await stuurNaarWolk(true);
+        melding(`Welkom, ${r.naam}! Je account is klaar. Je museum wordt nu bewaard. ☁️`);
+      } catch { fout("Er is nu geen internet. Probeer het straks nog eens."); }
+    };
+    knop("wolkmaak").onclick = maak;
+    knop("wolkwacht").onkeydown = e => { if (e.key === "Enter") maak(); };
+  }
+  setTimeout(() => knop("wolknaam") && knop("wolknaam").focus(), 50);
+}
+
+document.getElementById("wolkpil").addEventListener("click", () => wolkScherm());
 wolkKlaar = true;
 tekenWolkPil(); haalUitWolk();
 </script>
