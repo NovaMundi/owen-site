@@ -1819,7 +1819,7 @@ teken();
 nieuweSteen();
 startHulpje();
 // ---------- je museum gaat mee: inloggen en op elk apparaat verder spelen ----------
-// Een account met naam en wachtwoordje (de server bewaart alleen een versleutelde versie). De opslag op dit apparaat blijft de baas: zonder
+// Een account met naam en wachtwoord (de server bewaart alleen een versleutelde versie). De opslag op dit apparaat blijft de baas: zonder
 // internet speel je gewoon door. Er wordt nooit stil iets overschreven: heeft iemand ergens anders
 // verder gespeeld, dan kies je zelf welk spel je houdt.
 const WOLK = "https://jakevanpelt.com/.netlify/functions/fossil-diggers";
@@ -1924,12 +1924,12 @@ function wolkScherm(stand) {
   const d = document.createElement("div");
   d.className = "feestscherm";
   const veld = `<input id="wolknaam" placeholder="Je naam" maxlength="20" autocomplete="off">
-    <input id="wolkwacht" placeholder="Je wachtwoordje" maxlength="20" autocomplete="off"><p id="wolkfout"></p>`;
+    <input id="wolkwacht" placeholder="Je wachtwoord" maxlength="20" autocomplete="off"><p id="wolkfout"></p>`;
   if (wolk.code) d.innerHTML = `<div class="feestkaart"><div class="feesttitel">☁️ Hoi ${wolk.naam}!</div>
-      <p>Je museum wordt bewaard. Log op een ander apparaat in met dezelfde naam en hetzelfde wachtwoordje, dan speel je daar verder.</p>
+      <p>Je museum wordt bewaard. Log op een ander apparaat in met dezelfde naam en hetzelfde wachtwoord, dan speel je daar verder.</p>
       <button class="koop" id="wolkuit">Uitloggen</button><br><button class="sluit" id="wolksluit">Sluiten</button></div>`;
   else if (stand === "nieuw") d.innerHTML = `<div class="feestkaart"><div class="feesttitel">✨ Nieuw account</div>
-      <p>Kies een naam en een wachtwoordje. Onthoud ze goed, dan kun je overal verder spelen!</p>${veld}
+      <p>Kies een naam en een wachtwoord. Onthoud ze goed, dan kun je overal verder spelen!</p>${veld}
       ${heeftVoortgang() ? `<label class="meenemen"><input type="checkbox" id="wolkmee" checked> Neem mijn spel van nu mee</label>` : ""}
       <button class="koop" id="wolkmaak">Account maken</button><br>
       <button class="sluit" id="wolkterug">Ik heb al een account</button></div>`;
@@ -1951,7 +1951,7 @@ function wolkScherm(stand) {
     d.remove(); leegSpel(); tekenWolkPil();
   };
   const lees = () => ({ naam: knop("wolknaam").value.trim(), ww: knop("wolkwacht").value.trim() });
-  const controleer = ({ naam, ww }) => naam.length < 2 ? "Typ eerst je naam." : ww.length < 4 ? "Je wachtwoordje moet minstens 4 tekens hebben." : "";
+  const controleer = ({ naam, ww }) => naam.length < 2 ? "Typ eerst je naam." : ww.length < 4 ? "Je wachtwoord moet minstens 4 tekens hebben." : "";
   const welkom = (naam, code, versie) => { wolk = { code, naam, versie, vuil: false, laatst: "" }; bewaarWolk(); d.remove(); tekenWolkPil(); };
 
   if (knop("wolkin")) {
@@ -1960,7 +1960,7 @@ function wolkScherm(stand) {
       fout("Even kijken...");
       try {
         const r = await accountVraag("login", v.naam, v.ww);
-        if (r.status === 401) return fout("Die naam of dat wachtwoordje klopt niet. Probeer het nog eens!");
+        if (r.status === 401) return fout("Die naam of dat wachtwoord klopt niet. Probeer het nog eens!");
         if (!r.ok) return fout("Er ging iets mis. Probeer het nog eens.");
         welkom(r.naam, r.code, -1);
         wolk.vuil = heeftVoortgang(); bewaarWolk(); // speelde je hier al zonder account, dan mag je kiezen
