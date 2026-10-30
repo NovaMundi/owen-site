@@ -141,6 +141,7 @@ function kindKaart(k) {
     <div class="qr-vak"></div>
     <div class="knoppen">
       <button class="toon-qr">${k.slug ? '📷 QR-code tonen' : '📷 QR-code maken'}</button>
+      ${k.slug ? `<button class="zacht hier-spelen">▶️ Hier spelen als ${veilig(k.naam)}</button>` : ''}
       ${k.slug ? '<button class="zacht nieuwe-qr">🔄 Nieuwe QR-code</button>' : ''}
       <button class="gevaar weg">Verwijderen</button>
     </div>`;
@@ -165,6 +166,8 @@ function kindKaart(k) {
     }
     toonQr($('.qr-vak', el), k);
   };
+  // Op dit apparaat (bijv. de telefoon of laptop van papa) spelen als dit kind, zonder te scannen.
+  $('.hier-spelen', el)?.addEventListener('click', () => (location.href = linkVan(k.slug)));
   $('.nieuwe-qr', el)?.addEventListener('click', async () => {
     if (!confirm(`Nieuwe QR-code voor ${k.naam}? De oude werkt dan niet meer: de tablet die nu gekoppeld is, moet de nieuwe code opnieuw scannen.`)) return;
     if (await bewaar('kind-qr', { id: k.id }, 'Nieuwe QR-code gemaakt. De oude werkt niet meer.')) toonQr(document.querySelector(`[data-kind="${k.id}"] .qr-vak`), gezin.kinderen.find((x) => x.id === k.id));

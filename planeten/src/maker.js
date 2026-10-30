@@ -476,7 +476,7 @@ async function toonEtalage() {
   }
   const speel = document.createElement('div');
   speel.className = 'etalage-spelen';
-  speel.innerHTML = '<button class="tt-klaar">🚀 Zelf spelen</button><a class="ouder-link" href="ouder.html">Ouderportaal</a>';
+  speel.innerHTML = '<button class="tt-klaar">🚀 Zelf spelen</button><a class="ouder-link" href="ouder.html">Ben je papa of mama? Log in om te spelen of tablets te koppelen</a>';
   speel.querySelector('button').onclick = () => {
     geluid.klik();
     toonMelding('Om te spelen heb je je eigen QR-code nodig. Vraag papa of mama!', 4500);
