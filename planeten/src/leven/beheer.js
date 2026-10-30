@@ -58,7 +58,10 @@ export function kleurVan(url) {
 }
 
 export class Leven {
-  constructor({ wezens, beeld, snelheid = 1, opNieuws, opNieuweSoort, opBewaard, naamVan }) {
+  constructor({ wezens, beeld, snelheid = 1, opNieuws, opNieuweSoort, opBewaard, naamVan, inhalen = true }) {
+    // Alleen kijken (etalage): niet eerst alle gemiste jaren narekenen, maar de planeet tonen zoals
+    // hij het laatst gespeeld is. Dat duurt anders op een telefoon soms een halve minuut.
+    this.inhalen = inhalen;
     // De naam van de speler (zoals ingevoerd): die wordt de god in het geloof van de wezens.
     this.naamVan = naamVan || ((wie) => wie);
     this.opBewaard = opBewaard || (() => {});
@@ -103,7 +106,7 @@ export class Leven {
       const jaren = jarenTussen(this.w, this.w.laatst, nu) * this.snelheid;
       const jaarVoor = this.w.jaar;
       const minuten = (nu - this.w.laatst) / 60000;
-      if (jaren > 1) {
+      if (jaren > 1 && this.inhalen) {
         this.bezig = true;
         const res = await rekenOpAchtergrond(this.w, this.regios, jaren, nu);
         this.bezig = false;
@@ -113,7 +116,7 @@ export class Leven {
       this.w.laatst = nu;
       this.snelKlaar(nu);
       const nieuws = this.w.kroniek.filter((e) => e.jaar > jaarVoor && e.belang >= 2);
-      if (jaren >= 10) weg = { minuten, jaren, nieuws, jaarVoor };
+      if (jaren >= 10 && this.inhalen) weg = { minuten, jaren, nieuws, jaarVoor };
       this.gezien = this.w.nr || 0;
     }
     await this.syncSoorten();
